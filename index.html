@@ -9,6 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <style>
   :root{
     --bg:#f4f7fb;
@@ -827,6 +828,20 @@ header{background:linear-gradient(135deg,#0f2a5e 0%,#2a4bb3 55%,#6d5ce7 100%);}
 .quick-tile small{display:block;margin-top:2px;font-size:10.5px;line-height:1.35;color:#6b7c99;font-weight:500;}
 @media (max-width:1100px){.welcome-bar{grid-template-columns:1fr;}.quick-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
 @media (max-width:640px){.welcome-bar{padding:18px 16px;}.quick-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+
+  /* --- Under Time · Biometric lookup --- */
+  .utb-info{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:12.5px;color:#475569;background:#f8fafc;border:1px solid #e4eaf1;border-radius:12px;padding:10px 14px;margin-bottom:14px}
+  .utb-info b{color:#172b4d}
+  .utb-info .warn{color:#b45309;font-weight:600}
+  .utb-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;background:#fff;border:1px solid #e4eaf1;border-radius:16px;padding:18px;box-shadow:0 8px 24px rgba(30,50,80,.05)}
+  .utb-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+  .ut-tag.miss{background:#fff7e6;color:#b45309;border:1px solid #fcd34d}
+  .ut-tag.rev{background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe}
+  .ut-tag.nosch{background:#f1f5f9;color:#475569;border:1px solid #cbd5e1}
+  #utbTable td.utb-remark{white-space:normal;min-width:260px;max-width:420px;font-size:12px;color:#475569;line-height:1.4}
+  #utbTable tr.utb-missrow td{background:#fffbeb}
+  #utbSummary{grid-template-columns:repeat(5,minmax(0,1fr))}
+  @media(max-width:1100px){#utbSummary{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head>
 <body class="auth-locked">
@@ -1281,6 +1296,88 @@ header{background:linear-gradient(135deg,#0f2a5e 0%,#2a4bb3 55%,#6d5ce7 100%);}
         <div id="utCapNote" style="display:none;padding:10px 18px;font-size:12px;color:#64748b;border-top:1px solid #eef2f7"></div>
       </div>
     </div>
+
+    <!-- ===== Biometric Undertime Lookup (reads the stored Biometric Validation history) ===== -->
+    <div id="utbCard" style="margin-top:34px">
+      <div class="payslip-intro" style="margin-bottom:16px">
+        <div>
+          <div class="eyebrow" style="color:#2563eb;margin-bottom:7px">Attendance · Biometric Lookup</div>
+          <h2>Undertime from Biometric Records</h2>
+          <p>Search the biometric history already stored in the Biometric Validation tab — no need to upload the biometric report again. Actual clock-in / clock-out come from the biometric history (first Entry → last Exit of each attendance period). Scheduled times and fixed working hours come from the attendance report loaded above, because biometric punches carry no schedule.</p>
+        </div>
+        <div class="pdf-mark" style="background:linear-gradient(135deg,#2563eb,#3b82f6)">BIO</div>
+      </div>
+
+      <div id="utbInfo" class="utb-info"></div>
+
+      <div class="utb-controls">
+        <div class="control-field">
+          <label for="utbPeriodMode">Period type</label>
+          <select id="utbPeriodMode">
+            <option value="range">Date range</option>
+            <option value="month">Whole month</option>
+          </select>
+        </div>
+        <div class="control-field utb-range">
+          <label for="utbStart">Start date</label>
+          <input type="date" id="utbStart">
+        </div>
+        <div class="control-field utb-range">
+          <label for="utbEnd">End date</label>
+          <input type="date" id="utbEnd">
+        </div>
+        <div class="control-field utb-month" style="display:none">
+          <label for="utbMonth">Month</label>
+          <input type="month" id="utbMonth">
+        </div>
+        <div class="control-field">
+          <label for="utbStaff">Staff ID (blank = all staff)</label>
+          <input type="text" id="utbStaff" list="utbStaffIds" placeholder="e.g. 1001" autocomplete="off">
+          <datalist id="utbStaffIds"></datalist>
+        </div>
+        <div class="control-field">
+          <label for="utbShow">Show</label>
+          <select id="utbShow">
+            <option value="all">All records</option>
+            <option value="under">Under Time only</option>
+            <option value="lateearly">Late / Early Out only</option>
+            <option value="missing">Missing / incomplete biometric</option>
+            <option value="review">Needs review</option>
+            <option value="clean">No issues</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="utb-actions">
+        <button class="btn-primary" id="utbGo" type="button">⌕&nbsp; Generate report</button>
+        <button class="btn-secondary" id="utbReset" type="button">↺&nbsp; Reset filters</button>
+        <button class="btn-secondary" id="utbExport" type="button" disabled>↓&nbsp; Export to Excel</button>
+      </div>
+
+      <div id="utbStatus" class="status" style="margin:14px 0 18px"></div>
+
+      <div id="utbResults" style="display:none">
+        <div class="summary" id="utbSummary"></div>
+        <div class="payslip-table-card">
+          <div class="payslip-table-head">
+            <h3 id="utbTitle">Biometric Undertime Records</h3>
+            <span id="utbMeta"></span>
+          </div>
+          <div class="table-wrap" style="border:0;border-radius:0;max-height:560px">
+            <table id="utbTable">
+              <thead><tr>
+                <th>Staff ID</th><th>Staff Name</th><th>Date</th>
+                <th>Sched. Start</th><th>Sched. End</th><th>Clock-In</th><th>Clock-Out</th>
+                <th>Sched. Hrs</th><th>Actual Hrs</th><th>Late</th><th>Early Out</th><th>Total Undertime</th>
+                <th>Status</th><th>Remarks / discrepancy details</th>
+              </tr></thead>
+              <tbody id="utbBody"></tbody>
+            </table>
+          </div>
+          <div id="utbCap" style="display:none;padding:10px 18px;font-size:12px;color:#64748b;border-top:1px solid #eef2f7"></div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <section class="tab-panel" id="claimPanel" role="tabpanel" aria-labelledby="tabClaim">
@@ -1449,6 +1546,7 @@ header{background:linear-gradient(135deg,#0f2a5e 0%,#2a4bb3 55%,#6d5ce7 100%);}
       <div class="bvh-actions">
         <button class="bvh-btn" id="bvhList" type="button">View stored uploads</button>
         <button class="bvh-btn" id="bvhExport" type="button">↓ Export backup (.json)</button>
+        <button class="bvh-btn" id="sbSyncBtn" type="button" style="display:none">☁ Sync with cloud</button>
         <button class="bvh-btn" id="bvhImportBtn" type="button">↑ Restore backup</button>
         <button class="bvh-btn danger" id="bvhClear" type="button">Clear history</button>
         <input type="file" id="bvhImportInput" accept=".json,application/json" style="display:none">
@@ -1457,6 +1555,7 @@ header{background:linear-gradient(135deg,#0f2a5e 0%,#2a4bb3 55%,#6d5ce7 100%);}
         <div class="table-wrap"><table><thead><tr><th>Upload</th><th>Saved on</th><th>Punches</th><th>Covers</th><th></th></tr></thead><tbody id="bvhBatchBody"></tbody></table></div>
       </div>
       <div class="bvh-msg" id="bvhMsg"></div>
+      <div class="bvh-msg" id="sbSyncMsg"></div>
       <p class="bvh-note">When OT Report Analysis finds a day with no valid biometric record, it also searches this history (merged with the report currently loaded) before keeping the finding. The history lives only in this browser and on this device — clearing site data deletes it, so export a backup regularly.</p>
     </div>
 
@@ -2010,7 +2109,7 @@ async function bvhSaveResult(res, fileName) {
   if (!list.length) return { total: 0, added: 0, refreshed: 0 };
   const db = await bvhOpen();
   const before = await bvhReq(db.transaction('punches').objectStore('punches').count());
-  const batchId = 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const batchId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   let minTs = Infinity, maxTs = -Infinity; const staff = new Set();
   const tx = db.transaction(['punches', 'batches'], 'readwrite');
   const ps = tx.objectStore('punches');
@@ -2023,7 +2122,7 @@ async function bvhSaveResult(res, fileName) {
   const after = await bvhReq(db.transaction('punches').objectStore('punches').count());
   BVH.version++;
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
-  return { total: list.length, added: after - before, refreshed: list.length - (after - before), minTs, maxTs };
+  return { total: list.length, added: after - before, refreshed: list.length - (after - before), minTs, maxTs, batchId };
 }
 
 async function bvhLoadRange(minTs, maxTs) {
@@ -6174,6 +6273,645 @@ async function bvExportExceptions() {
 <script>try { bvhInit(); } catch (e) { console.warn('History card init failed', e); }</script>
 <script>
 /* ============================================================================
+   UNDER TIME — BIOMETRIC LOOKUP
+   Reads the biometric history already stored by the Biometric Validation tab
+   (IndexedDB, plus the report currently loaded there) and compares each
+   attendance period against the schedule in the Under Time attendance report.
+   Nothing here writes to, or alters, the stored biometric data.
+   ============================================================================ */
+const UTB = { sched: null, schedWb: null, schedSheet: '', rows: [], view: [], meta: null, seq: 0, stats: null };
+const UTB_CAP = 500;
+
+// ---- pure helpers (no DOM / storage) ---------------------------------------
+function utbDateToMs(v) {
+  if (typeof v === 'number') { const d = excelSerialToDate(v); return d ? d.getTime() : null; }
+  if (v instanceof Date && !isNaN(v)) return Date.UTC(v.getUTCFullYear(), v.getUTCMonth(), v.getUTCDate());
+  if (typeof v === 'string') {
+    const m = v.trim().match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})$/);
+    if (m) return Date.UTC(+m[3], +m[2] - 1, +m[1]);
+  }
+  return null;
+}
+function utbFmtDate(ms) {
+  const d = new Date(ms);
+  return String(d.getUTCDate()).padStart(2, '0') + '.' + String(d.getUTCMonth() + 1).padStart(2, '0') + '.' + d.getUTCFullYear();
+}
+// minutes-of-day (may exceed 1440 for overnight) -> "HH:MM"
+function utbClock(min) { return minutesToHHMM(((min % 1440) + 1440) % 1440); }
+// punch timestamp -> "HH:MM", with "(+1)" when it falls on a later day than the attendance day
+function utbPunchClock(ts, dayMs) {
+  if (ts === null || ts === undefined) return '';
+  const d = new Date(ts);
+  const t = String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0');
+  const dd = Math.floor(ts / 86400000) - Math.floor(dayMs / 86400000);
+  return dd > 0 ? `${t} (+${dd})` : t;
+}
+
+// Builds the schedule from the attendance report loaded in the Under Time tab.
+// Mirrors processUndertimeWorkbook (same allocation exclusions, same
+// Dispatched-over-Planned rule, same Column N / position fixed hours) but does
+// NOT require an actual sign-on/off, since the actuals come from biometrics.
+function utbBuildSchedule() {
+  if (!utWorkbook) return null;
+  if (UTB.sched && UTB.schedWb === utWorkbook && UTB.schedSheet === utSheetName) return UTB.sched;
+  const ws = utWorkbook.Sheets[utSheetName];
+  if (!ws || !ws['!ref']) return null;
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  const list = [];
+  for (let r = range.s.r + 1; r <= range.e.r; r++) {
+    const sap = getVal(ws, r, 0);
+    if (sap === undefined || sap === null || sap === '') continue;
+    const allocation = getVal(ws, r, 10);
+    if (isUtAllocationExcluded(allocation)) continue;            // leave / rest / training / RDOT — not a scheduled duty
+    const dateMs = utbDateToMs(getVal(ws, r, 8));
+    if (dateMs === null) continue;
+    const position = getVal(ws, r, 5) || '';
+    const L = getVal(ws, r, 11), M = getVal(ws, r, 12), N = getVal(ws, r, 13), dispatched = getVal(ws, r, 9);
+    const R = getVal(ws, r, 17), S = getVal(ws, r, 18);
+
+    let plannedStartMin = null, plannedEndMin = null;
+    if (typeof L === 'number') plannedStartMin = timeCellToMinutes(L);
+    if (typeof M === 'number') {
+      plannedEndMin = timeCellToMinutes(M);
+      if (plannedStartMin !== null && plannedEndMin <= plannedStartMin) plannedEndMin += 1440;
+    }
+    let dutyStartMin = null, dutyEndMin = null;
+    const dt = parseDispatchedTimes(dispatched);
+    if (dt) { dutyStartMin = dt.start; dutyEndMin = dt.end; if (dutyEndMin <= dutyStartMin) dutyEndMin += 1440; }
+    else { dutyStartMin = plannedStartMin; dutyEndMin = plannedEndMin; }
+    if (dutyStartMin === null) continue;                           // no scheduled shift on this row
+
+    const fixedMin = (typeof N === 'number' && N > 0) ? timeCellToMinutes(N) : getFixedMinutesForPosition(position);
+
+    // what the attendance report itself says (for discrepancy remarks only)
+    let reportUnderMin = null;
+    if (typeof R === 'number' && typeof S === 'number') {
+      const a = timeCellToMinutes(R); let b = timeCellToMinutes(S); if (b <= a) b += 1440;
+      reportUnderMin = Math.max(0, fixedMin - (b - a));
+    }
+    list.push({
+      id: normalizeEmployeeKey(sap), sap, name: `${getVal(ws, r, 1) || ''} ${getVal(ws, r, 2) || ''}`.trim(),
+      position, line: getVal(ws, r, 6) || '', dateMs, dutyStartMin, dutyEndMin, fixedMin, reportUnderMin,
+    });
+  }
+  UTB.sched = list; UTB.schedWb = utWorkbook; UTB.schedSheet = utSheetName;
+  return list;
+}
+
+// The calculation. sch = schedule row (or null), per = biometric period (or null).
+// Same rules as the existing Under Time report:
+//   Under Time = max(0, fixed duty duration − actual worked duration)
+//   Late       = max(0, actual sign-on − duty start)      (duty = Dispatched, else Planned)
+//   Early Out  = max(0, duty end − actual sign-off)
+// Actual duration = first Entry → last Exit of the biometric period, each cut to the minute.
+function utbComputeRow(sch, per, ctx) {
+  const row = {
+    id: sch ? sch.id : per.idKey, name: (sch && sch.name) || (ctx.names && ctx.names.get(sch ? sch.id : per.idKey)) || '',
+    position: sch ? sch.position : '', line: sch ? sch.line : '',
+    dateMs: sch ? sch.dateMs : per.attDay,
+    schStartMin: sch ? sch.dutyStartMin : null, schEndMin: sch ? sch.dutyEndMin : null, fixedMin: sch ? sch.fixedMin : null,
+    entryTs: per ? per.firstEntryTs : null, exitTs: per ? per.lastExitTs : null,
+    actualMin: null, lateMin: null, earlyMin: null, underMin: null,
+    tags: [], kind: 'ok', review: false, remarks: [],
+  };
+  if (!per) {
+    row.kind = 'missing';
+    if (ctx.coverMin !== null && (row.dateMs < ctx.coverMin || row.dateMs > ctx.coverMax)) {
+      row.tags.push('Outside Stored Range');
+      row.remarks.push('No biometric data is stored for this date (stored history covers ' + utbFmtDate(ctx.coverMin) + ' → ' + utbFmtDate(ctx.coverMax) + '). Not counted as undertime.');
+    } else {
+      row.tags.push('No Biometric Record');
+      row.remarks.push('Scheduled duty but no biometric punches found for this staff on this date. Not counted as undertime — verify manually.');
+    }
+    if (sch && sch.reportUnderMin !== null && sch.reportUnderMin !== undefined) row.remarks.push('The attendance report has an actual sign-on/off for this day.');
+    return row;
+  }
+  per.details.filter(d => d.sev === 'error' || d.sev === 'review').forEach(d => row.remarks.push(d.text));
+  if (!(per.firstEntryTs !== null && per.lastExitTs !== null)) {
+    row.kind = 'incomplete';
+    row.tags.push(per.firstEntryTs === null ? 'Missing Clock-In' : 'Missing Clock-Out');
+    row.remarks.push('Working hours cannot be calculated from an incomplete punch pair. Not counted as undertime.');
+    return row;
+  }
+  if (per.flagged || per.details.some(d => d.sev === 'review')) { row.review = true; }
+  const entryMin = Math.floor(per.firstEntryTs / 60000), exitMin = Math.floor(per.lastExitTs / 60000);
+  row.actualMin = exitMin - entryMin;
+  const actualStartMin = ((entryMin % 1440) + 1440) % 1440;
+  const actualEndMin = actualStartMin + row.actualMin;
+  if (!sch) { row.kind = 'noschedule'; row.tags.push('No Schedule'); row.remarks.push('Biometric punches exist for this date but no scheduled duty was found in the attendance report (rest day, leave, OT, or schedule not loaded).'); if (row.review) row.tags.push('Needs Review'); return row; }
+
+  let diff = actualStartMin - sch.dutyStartMin;                 // wrap-safe around midnight
+  if (diff > 720) diff -= 1440; else if (diff < -720) diff += 1440;
+  row.lateMin = Math.max(0, diff);
+  const alignedDutyEnd = (actualStartMin - diff) + (sch.dutyEndMin - sch.dutyStartMin);
+  row.earlyMin = Math.max(0, alignedDutyEnd - actualEndMin);
+  row.underMin = Math.max(0, sch.fixedMin - row.actualMin);
+  if (row.lateMin > 0) row.tags.push('Late');
+  if (row.earlyMin > 0) row.tags.push('Early Out');
+  if (row.underMin > 0) row.tags.push('Under Time');
+  if (!row.tags.length) row.tags.push('No Under Time');
+  if (row.review) row.tags.push('Needs Review');
+  if (ctx.multi > 1) row.remarks.push(`${ctx.multi} biometric periods found on this date; the most complete one was used.`);
+  if (sch.reportUnderMin !== null && sch.reportUnderMin !== undefined && sch.reportUnderMin !== row.underMin)
+    row.remarks.push(`Differs from the attendance report, which gives Under Time ${minutesToTotalHHMM(sch.reportUnderMin)}.`);
+  return row;
+}
+
+// ---- data access (read-only) ------------------------------------------------
+async function utbLoadPeriods(fromMs, toMs) {
+  if (!BVH.available) throw new Error('This browser does not support IndexedDB, so the stored biometric history is unavailable.');
+  const hist = await bvhLoadRange(fromMs - BV_DAY, toMs + 2 * BV_DAY);
+  const map = new Map();
+  hist.forEach(p => map.set(bvhKey(p.id, p.ts, p.d), { id: p.id, ts: p.ts, dir: p.d }));
+  const cur = (bvResult && bvResult.punches) || [];        // report currently loaded in Biometric Validation (may not be saved yet)
+  cur.forEach(p => {
+    const id = normalizeEmployeeKey(p.id);
+    if (id && p.ts >= fromMs - BV_DAY && p.ts <= toMs + 2 * BV_DAY) map.set(bvhKey(id, p.ts, p.dir), { id, ts: p.ts, dir: p.dir });
+  });
+  const names = new Map();
+  ((bvResult && bvResult.results) || []).forEach(r => { const k = normalizeEmployeeKey(r.id); if (k && r.name && !names.has(k)) names.set(k, r.name); });
+  const periods = [];
+  if (map.size) {
+    const rows = []; map.forEach(v => rows.push([v.id, '', bvIsoTs(v.ts), v.dir === 'E' ? 'Sign-in' : 'Sign-out']));
+    let S; try { S = (bvResult && bvResult.settings) || bvReadSettings(); } catch (e) { S = { ...BV_DEFAULTS }; }
+    const res = bvProcess(rows, { ts: 2, id: 0, name: 1, dir: 3, res: null, start: 0 }, 'ANY', S);
+    res.results.forEach(p => { p.idKey = normalizeEmployeeKey(p.id); periods.push(p); });
+  }
+  const st = await bvhStats();
+  let cMin = st.total ? bvDayKey(st.minTs) : null, cMax = st.total ? bvDayKey(st.maxTs) : null;
+  if (cur.length) {
+    const a = bvDayKey(Math.min(...cur.map(p => p.ts))), b = bvDayKey(Math.max(...cur.map(p => p.ts)));
+    cMin = cMin === null ? a : Math.min(cMin, a); cMax = cMax === null ? b : Math.max(cMax, b);
+  }
+  return { periods, names, coverMin: cMin, coverMax: cMax };
+}
+
+// ---- report generation -------------------------------------------------------
+function utbSetStatus(msg, kind) { const s = el('utbStatus'); s.textContent = msg || ''; s.className = 'status' + (kind ? ' ' + kind : ''); }
+
+function utbReadCriteria() {
+  let fromMs, toMs, label;
+  if (el('utbPeriodMode').value === 'month') {
+    const m = el('utbMonth').value.match(/^(\d{4})-(\d{2})$/);
+    if (!m) throw new Error('Select a month.');
+    fromMs = Date.UTC(+m[1], +m[2] - 1, 1); toMs = Date.UTC(+m[1], +m[2], 0);
+    label = `${m[2]}/${m[1]}`;
+  } else {
+    fromMs = parseIsoDate(el('utbStart').value); toMs = parseIsoDate(el('utbEnd').value);
+    if (fromMs === null || toMs === null) throw new Error('Select both a start date and an end date.');
+    if (fromMs > toMs) throw new Error('The start date is after the end date.');
+    label = `${utbFmtDate(fromMs)} → ${utbFmtDate(toMs)}`;
+  }
+  const raw = el('utbStaff').value.trim();
+  const staffKey = raw ? normalizeEmployeeKey(raw) : '';
+  return { fromMs, toMs, label, staffKey, staffRaw: raw };
+}
+
+async function utbGenerate() {
+  const seq = ++UTB.seq;
+  let crit;
+  try { crit = utbReadCriteria(); } catch (e) { utbSetStatus(e.message, 'error'); return; }
+  utbSetStatus('Reading stored biometric history…');
+  el('utbGo').disabled = true;
+  try {
+    const sched = utbBuildSchedule();
+    const data = await utbLoadPeriods(crit.fromMs, crit.toMs);
+    if (seq !== UTB.seq) return;
+    if (data.coverMin === null) { utbSetStatus('No biometric data is stored yet. Process a biometric report in the Biometric Validation tab first — it is saved automatically.', 'error'); el('utbResults').style.display = 'none'; el('utbExport').disabled = true; return; }
+
+    // index biometric periods by staff + attendance day (only days inside the requested window)
+    const idx = new Map();
+    data.periods.forEach(p => {
+      if (p.attDay < crit.fromMs || p.attDay > crit.toMs) return;
+      if (crit.staffKey && p.idKey !== crit.staffKey) return;
+      const k = p.idKey + '|' + p.attDay;
+      if (!idx.has(k)) idx.set(k, []);
+      idx.get(k).push(p);
+    });
+
+    const ctxBase = { names: data.names, coverMin: data.coverMin, coverMax: data.coverMax };
+    const rows = []; const used = new Set(); const seenSched = new Set();
+    (sched || []).forEach(s => {
+      if (s.dateMs < crit.fromMs || s.dateMs > crit.toMs) return;
+      if (crit.staffKey && s.id !== crit.staffKey) return;
+      const k = s.id + '|' + s.dateMs;
+      if (seenSched.has(k)) return;                           // never duplicate a staff/day record
+      seenSched.add(k);
+      const cands = idx.get(k) || [];
+      let best = null;
+      if (cands.length) {
+        best = cands.slice().sort((a, b) => ((b.firstEntryTs !== null && b.lastExitTs !== null) - (a.firstEntryTs !== null && a.lastExitTs !== null)) || ((a.firstEntryTs ?? a.lastExitTs) - (b.firstEntryTs ?? b.lastExitTs)))[0];
+        cands.forEach(c => used.add(c));
+      }
+      rows.push(utbComputeRow(s, best, { ...ctxBase, multi: cands.length }));
+    });
+    // Single-staff searches also list biometric days that have no scheduled duty, so nothing is hidden.
+    let unlisted = 0;
+    idx.forEach(list => list.forEach(p => {
+      if (used.has(p)) return;
+      if (crit.staffKey) rows.push(utbComputeRow(null, p, { ...ctxBase, multi: 1 })); else unlisted++;
+    }));
+    rows.sort((a, b) => (String(a.id).localeCompare(String(b.id), undefined, { numeric: true })) || (a.dateMs - b.dateMs));
+
+    UTB.rows = rows;
+    UTB.meta = { crit, unlisted, schedLoaded: !!(sched && sched.length), coverMin: data.coverMin, coverMax: data.coverMax };
+    utbRenderAll();
+
+    if (!rows.length) {
+      utbSetStatus(crit.staffKey ? `No schedule or biometric records found for Staff ID ${crit.staffRaw} in ${crit.label}.` : `No scheduled duties found in ${crit.label}.` + (sched && sched.length ? '' : ' Load the attendance report above to supply the schedule.'), 'error');
+    } else {
+      let msg = `${rows.length} record${rows.length === 1 ? '' : 's'} for ${crit.staffKey ? 'Staff ID ' + crit.staffRaw : 'all staff'} · ${crit.label}.`;
+      if (!UTB.meta.schedLoaded) msg += ' No attendance report is loaded, so no schedule is available — actual times are shown but undertime cannot be calculated.';
+      if (unlisted) msg += ` ${unlisted} biometric day(s) with no scheduled duty (rest day / leave / OT) are not listed; search a specific Staff ID to see them.`;
+      utbSetStatus(msg, UTB.meta.schedLoaded ? 'ok' : 'warn');
+    }
+  } catch (err) {
+    console.error(err);
+    utbSetStatus('Could not generate the report: ' + err.message, 'error');
+  } finally { el('utbGo').disabled = false; }
+}
+
+// ---- display -----------------------------------------------------------------
+function utbTagClass(t) {
+  return t === 'Late' ? 'late' : t === 'Early Out' ? 'early' : t === 'Under Time' ? 'under' : t === 'No Under Time' ? 'ok'
+    : t === 'Needs Review' ? 'rev' : t === 'No Schedule' ? 'nosch' : 'miss';
+}
+function utbApplyView() {
+  const show = el('utbShow').value;
+  UTB.view = UTB.rows.filter(r => {
+    if (show === 'under') return r.tags.includes('Under Time');
+    if (show === 'lateearly') return r.tags.includes('Late') || r.tags.includes('Early Out');
+    if (show === 'missing') return r.kind === 'missing' || r.kind === 'incomplete';
+    if (show === 'review') return r.review;
+    if (show === 'clean') return r.tags.includes('No Under Time') && !r.review;
+    return true;
+  });
+}
+function utbRenderAll() {
+  utbApplyView();
+  const rows = UTB.rows;
+  const evald = rows.filter(r => r.underMin !== null);
+  const under = rows.filter(r => r.underMin > 0);
+  const totalUnder = under.reduce((n, r) => n + r.underMin, 0);
+  const missing = rows.filter(r => r.kind === 'missing' || r.kind === 'incomplete').length;
+  const review = rows.filter(r => r.review).length;
+  el('utbSummary').innerHTML = `
+    <div class="stat"><div class="n">${evald.length}</div><div class="l">Days evaluated</div></div>
+    <div class="stat flag"><div class="n">${under.length}</div><div class="l">Under Time days</div></div>
+    <div class="stat flag"><div class="n">${minutesToTotalHHMM(totalUnder)}</div><div class="l">Total Under Time (hh:mm)</div></div>
+    <div class="stat flag"><div class="n">${missing}</div><div class="l">Missing / incomplete biometric</div></div>
+    <div class="stat"><div class="n">${review}</div><div class="l">Needs review</div></div>`;
+  const shown = UTB.view.slice(0, UTB_CAP);
+  el('utbBody').innerHTML = shown.length ? shown.map(r => `
+    <tr class="${r.kind === 'missing' || r.kind === 'incomplete' ? 'utb-missrow' : ''}">
+      <td class="num">${esc(r.id)}</td>
+      <td class="name">${esc(r.name) || '—'}</td>
+      <td class="num">${esc(utbFmtDate(r.dateMs))}</td>
+      <td class="num">${r.schStartMin !== null ? utbClock(r.schStartMin) : '—'}</td>
+      <td class="num">${r.schEndMin !== null ? utbClock(r.schEndMin) : '—'}</td>
+      <td class="num">${r.entryTs !== null ? esc(utbPunchClock(r.entryTs, r.dateMs)) : '—'}</td>
+      <td class="num">${r.exitTs !== null ? esc(utbPunchClock(r.exitTs, r.dateMs)) : '—'}</td>
+      <td class="num">${r.fixedMin !== null ? minutesToTotalHHMM(r.fixedMin) : '—'}</td>
+      <td class="num">${r.actualMin !== null ? minutesToTotalHHMM(r.actualMin) : '—'}</td>
+      <td class="num">${r.lateMin !== null ? minutesToTotalHHMM(r.lateMin) : '—'}</td>
+      <td class="num">${r.earlyMin !== null ? minutesToTotalHHMM(r.earlyMin) : '—'}</td>
+      <td class="num">${r.underMin !== null ? minutesToTotalHHMM(r.underMin) : '—'}</td>
+      <td>${r.tags.map(t => `<span class="ut-tag ${utbTagClass(t)}">${esc(t)}</span>`).join('')}</td>
+      <td class="utb-remark">${esc(r.remarks.join(' ')) || '—'}</td>
+    </tr>`).join('') : '<tr><td colspan="14" class="pay-empty">No records match the current view.</td></tr>';
+  el('utbMeta').textContent = `${UTB.view.length} of ${rows.length} records`;
+  const cap = el('utbCap');
+  if (UTB.view.length > UTB_CAP) { cap.style.display = 'block'; cap.textContent = `Showing the first ${UTB_CAP} of ${UTB.view.length} records. Use “Export to Excel” for the complete list.`; }
+  else cap.style.display = 'none';
+  el('utbResults').style.display = 'block';
+  el('utbExport').disabled = !UTB.view.length;
+}
+
+// ---- info bar + controls -------------------------------------------------------
+async function utbRefreshInfo() {
+  const box = el('utbInfo'); if (!box) return;
+  const parts = [];
+  try {
+    if (!BVH.available) parts.push('<span class="warn">Stored biometric history is unavailable in this browser.</span>');
+    else {
+      const st = await bvhStats(); UTB.stats = st;
+      if (st.total) {
+        parts.push(`<span><b>Biometric history:</b> ${st.total.toLocaleString()} punches · ${st.staff.toLocaleString()} staff · ${esc(utbFmtDate(bvDayKey(st.minTs)))} → ${esc(utbFmtDate(bvDayKey(st.maxTs)))}</span>`);
+        const lo = bvIsoTs(st.minTs).slice(0, 10), hi = bvIsoTs(st.maxTs).slice(0, 10);
+        ['utbStart', 'utbEnd'].forEach(i => { el(i).min = lo; el(i).max = hi; });
+        el('utbMonth').min = lo.slice(0, 7); el('utbMonth').max = hi.slice(0, 7);
+      } else parts.push('<span class="warn">Biometric history is empty — process a report in the Biometric Validation tab first.</span>');
+      const ids = new Set(st.ids || []); const sc = utbBuildSchedule(); if (sc) sc.forEach(s => ids.add(s.id));
+      el('utbStaffIds').innerHTML = [...ids].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true })).map(i => `<option value="${esc(i)}"></option>`).join('');
+    }
+  } catch (e) { parts.push('<span class="warn">Could not read the biometric history: ' + esc(e.message) + '</span>'); }
+  const sc = utWorkbook ? utbBuildSchedule() : null;
+  parts.push(sc ? `<span><b>Schedule source:</b> attendance report loaded (${sc.length.toLocaleString()} scheduled duties)</span>`
+    : '<span class="warn">Schedule source: no attendance report loaded above — needed for scheduled times and fixed hours.</span>');
+  box.innerHTML = parts.join('');
+}
+function utbTogglePeriod() {
+  const month = el('utbPeriodMode').value === 'month';
+  document.querySelectorAll('#utbCard .utb-range').forEach(e => e.style.display = month ? 'none' : '');
+  document.querySelectorAll('#utbCard .utb-month').forEach(e => e.style.display = month ? '' : 'none');
+}
+function utbReset() {
+  ++UTB.seq;
+  el('utbPeriodMode').value = 'range'; utbTogglePeriod();
+  ['utbStart', 'utbEnd', 'utbMonth', 'utbStaff'].forEach(i => el(i).value = '');
+  el('utbShow').value = 'all';
+  UTB.rows = []; UTB.view = []; UTB.meta = null;
+  el('utbResults').style.display = 'none'; el('utbBody').innerHTML = ''; el('utbExport').disabled = true;
+  utbSetStatus('');
+}
+
+// ---- Excel export ----------------------------------------------------------------
+async function utbExport() {
+  if (!UTB.view.length) return;
+  const btn = el('utbExport'), orig = btn.innerHTML; btn.disabled = true; btn.textContent = 'Building…';
+  try {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Undertime (Biometric)');
+    ws.columns = [
+      { header: 'Staff ID', key: 'id', width: 11 }, { header: 'Staff Name', key: 'name', width: 28 },
+      { header: 'Position', key: 'pos', width: 20 }, { header: 'Line', key: 'line', width: 10 },
+      { header: 'Date', key: 'date', width: 12 },
+      { header: 'Scheduled Start', key: 'ss', width: 11 }, { header: 'Scheduled End', key: 'se', width: 11 },
+      { header: 'Clock-In', key: 'ci', width: 12 }, { header: 'Clock-Out', key: 'co', width: 12 },
+      { header: 'Scheduled Hours', key: 'sh', width: 11 }, { header: 'Actual Hours', key: 'ah', width: 11 },
+      { header: 'Late', key: 'late', width: 9 }, { header: 'Early Out', key: 'early', width: 9 },
+      { header: 'Total Undertime (hh:mm)', key: 'ut', width: 13 }, { header: 'Undertime (minutes)', key: 'utm', width: 12 },
+      { header: 'Status', key: 'st', width: 30 }, { header: 'Remarks', key: 'rem', width: 70 },
+    ];
+    ws.getRow(1).eachCell(c => { c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } }; c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }; });
+    UTB.view.forEach(r => {
+      const row = ws.addRow({
+        id: r.id, name: r.name, pos: r.position, line: r.line, date: utbFmtDate(r.dateMs),
+        ss: r.schStartMin !== null ? utbClock(r.schStartMin) : '', se: r.schEndMin !== null ? utbClock(r.schEndMin) : '',
+        ci: r.entryTs !== null ? utbPunchClock(r.entryTs, r.dateMs) : '', co: r.exitTs !== null ? utbPunchClock(r.exitTs, r.dateMs) : '',
+        sh: r.fixedMin !== null ? minutesToTotalHHMM(r.fixedMin) : '', ah: r.actualMin !== null ? minutesToTotalHHMM(r.actualMin) : '',
+        late: r.lateMin !== null ? minutesToTotalHHMM(r.lateMin) : '', early: r.earlyMin !== null ? minutesToTotalHHMM(r.earlyMin) : '',
+        ut: r.underMin !== null ? minutesToTotalHHMM(r.underMin) : '', utm: r.underMin !== null ? r.underMin : '',
+        st: r.tags.join(', '), rem: r.remarks.join(' '),
+      });
+      row.getCell('rem').alignment = { wrapText: true, vertical: 'top' };
+      if (r.kind === 'missing' || r.kind === 'incomplete') row.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF7E6' } }; });
+      if (r.underMin > 0) row.getCell('ut').font = { bold: true, color: { argb: 'FF6541C7' } };
+      if (r.lateMin) row.getCell('late').font = { bold: true, color: { argb: 'FFDC2626' } };
+      if (r.earlyMin) row.getCell('early').font = { bold: true, color: { argb: 'FFDC2626' } };
+    });
+    ws.views = [{ state: 'frozen', ySplit: 1 }];
+    ws.autoFilter = 'A1:Q' + ws.rowCount;
+
+    // Summary sheet
+    const sum = wb.addWorksheet('Summary');
+    const m = UTB.meta;
+    sum.getCell('A1').value = 'Undertime from Biometric Records — Summary'; sum.getCell('A1').font = { bold: true, size: 14, color: { argb: 'FF172B4D' } };
+    const info = [
+      ['Period', m.crit.label], ['Staff', m.crit.staffKey ? m.crit.staffRaw : 'All staff'],
+      ['View exported', el('utbShow').selectedOptions[0].textContent], ['Generated', new Date().toLocaleString()],
+      ['Biometric data covers', utbFmtDate(m.coverMin) + ' → ' + utbFmtDate(m.coverMax)],
+    ];
+    info.forEach((p, i) => { sum.getCell(`A${3 + i}`).value = p[0]; sum.getCell(`B${3 + i}`).value = p[1]; sum.getCell(`A${3 + i}`).font = { bold: true }; });
+    const v = UTB.view, ev = v.filter(r => r.underMin !== null), un = v.filter(r => r.underMin > 0);
+    const tot = [
+      ['Records exported', v.length], ['Days evaluated', ev.length], ['Under Time days', un.length],
+      ['Total Under Time (hh:mm)', minutesToTotalHHMM(un.reduce((n, r) => n + r.underMin, 0))],
+      ['Missing / incomplete biometric (not counted as undertime)', v.filter(r => r.kind === 'missing' || r.kind === 'incomplete').length],
+      ['Needs review', v.filter(r => r.review).length],
+    ];
+    tot.forEach((p, i) => { sum.getCell(`A${10 + i}`).value = p[0]; sum.getCell(`B${10 + i}`).value = p[1]; sum.getCell(`B${10 + i}`).font = { bold: true }; });
+    const by = new Map();
+    v.forEach(r => {
+      if (!by.has(r.id)) by.set(r.id, { id: r.id, name: r.name, days: 0, under: 0, underMin: 0, late: 0, early: 0, missing: 0 });
+      const e = by.get(r.id); if (!e.name && r.name) e.name = r.name;
+      if (r.underMin !== null) e.days++;
+      if (r.underMin > 0) { e.under++; e.underMin += r.underMin; }
+      if (r.lateMin > 0) e.late++; if (r.earlyMin > 0) e.early++;
+      if (r.kind === 'missing' || r.kind === 'incomplete') e.missing++;
+    });
+    const hr = 18; sum.getCell(`A${hr - 1}`).value = 'By staff'; sum.getCell(`A${hr - 1}`).font = { bold: true, size: 12 };
+    ['Staff ID', 'Staff Name', 'Days evaluated', 'Under Time days', 'Total Under Time (hh:mm)', 'Late days', 'Early Out days', 'Missing biometric days'].forEach((h, i) => {
+      const c = sum.getCell(hr, i + 1); c.value = h; c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } }; c.alignment = { horizontal: 'center', wrapText: true };
+    });
+    [...by.values()].sort((a, b) => b.underMin - a.underMin).forEach((e, i) => {
+      [e.id, e.name, e.days, e.under, minutesToTotalHHMM(e.underMin), e.late, e.early, e.missing].forEach((val, ci) => { sum.getCell(hr + 1 + i, ci + 1).value = val; });
+    });
+    sum.getColumn(1).width = 52; sum.getColumn(2).width = 28; for (let i = 3; i <= 8; i++) sum.getColumn(i).width = 16;
+
+    const buf = await wb.xlsx.writeBuffer();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    a.download = 'Undertime_Biometric_' + (m.crit.staffKey ? m.crit.staffRaw.replace(/[^\w\-]+/g, '_') : 'AllStaff') + '_' + m.crit.label.replace(/[^\w]+/g, '-').replace(/^-|-$/g, '') + '.xlsx';
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  } catch (err) {
+    console.error(err); utbSetStatus('Failed to build the Excel file: ' + err.message, 'error');
+  } finally { btn.innerHTML = orig; btn.disabled = !UTB.view.length; }
+}
+
+(function utbInit() {
+  if (!el('utbCard')) return;
+  el('utbPeriodMode').addEventListener('change', utbTogglePeriod);
+  el('utbGo').addEventListener('click', utbGenerate);
+  el('utbReset').addEventListener('click', utbReset);
+  el('utbExport').addEventListener('click', utbExport);
+  el('utbShow').addEventListener('change', () => { if (UTB.rows.length) utbRenderAll(); });
+  el('utbCard').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.tagName === 'INPUT') { e.preventDefault(); utbGenerate(); } });
+  el('tabUndertime').addEventListener('click', utbRefreshInfo);
+  el('utFileInput').addEventListener('change', () => setTimeout(utbRefreshInfo, 400));
+  el('utDropzone').addEventListener('drop', () => setTimeout(utbRefreshInfo, 400));
+  utbRefreshInfo();
+})();
+
+</script>
+<script>
+/* ============================================================================
+   SUPABASE LAYER  (cloud storage + sign-in for the biometric history)
+   ----------------------------------------------------------------------------
+   1. Paste your Project URL and anon (public) key below.  Leave them empty to
+      keep the app exactly as it was (browser-only storage, local login).
+   2. The anon key is meant to be public — the data is protected by Row Level
+      Security, which only allows signed-in users (see the SQL you ran).
+   3. IndexedDB stays as a fast local cache; Supabase is the shared source of
+      truth.  Nothing in the existing screens needed to change.
+   ============================================================================ */
+const SB_CONFIG = {
+  url: '',        // e.g. 'https://abcdxyz.supabase.co'
+  anonKey: '',    // Project Settings → API → "anon public" key
+  chunk: 1000,    // rows per request
+};
+
+const SB = (function () {
+  const enabled = !!(SB_CONFIG.url && SB_CONFIG.anonKey && window.supabase && window.supabase.createClient);
+  const out = { enabled, ready: false, client: null, onSignedIn() {}, syncAll: async () => {}, signOut: async () => {}, getSession: async () => null };
+  if (!enabled) return out;
+
+  const client = window.supabase.createClient(SB_CONFIG.url, SB_CONFIG.anonKey, { auth: { persistSession: true, autoRefreshToken: true } });
+  out.client = client;
+  const LS_PUSHED = 'otats.sb.pushedBatches.v1';
+  const isUuid = s => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(s));
+  const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); }));
+  // Gate times are wall-clock values (the app keeps them as UTC milliseconds on purpose), so they go to a
+  // "timestamp without time zone" column unchanged and come back the same.
+  const toCloud = ms => new Date(ms).toISOString().slice(0, 19);
+  const fromCloud = s => Date.parse(String(s).slice(0, 19) + 'Z');
+  const loadPushed = () => { try { return new Set(JSON.parse(localStorage.getItem(LS_PUSHED) || '[]')); } catch (e) { return new Set(); } };
+  const savePushed = set => { try { localStorage.setItem(LS_PUSHED, JSON.stringify([...set])); } catch (e) {} };
+  const msg = (text, kind) => { const m = document.getElementById('sbSyncMsg'); if (!m) return; m.textContent = text || ''; m.className = 'bvh-msg' + (kind ? ' ' + kind : ''); };
+  const fail = (what, error) => new Error(what + ': ' + (error && error.message ? error.message : error));
+
+  out.getSession = async () => { const { data } = await client.auth.getSession(); return data && data.session ? data.session : null; };
+  out.signOut = async () => { try { await client.auth.signOut(); } catch (e) {} out.ready = false; };
+
+  // ---- push one batch (batch row first, then its punches in chunks) ----------------------------
+  async function pushBatch(id, meta, punches) {
+    const staff = new Set(punches.map(p => p.id));
+    let minTs = Infinity, maxTs = -Infinity;
+    punches.forEach(p => { if (p.ts < minTs) minTs = p.ts; if (p.ts > maxTs) maxTs = p.ts; });
+    const b = Object.assign({ file: 'biometric report', at: Date.now() }, meta || {});
+    let r = await client.from('biometric_batches').upsert({
+      id, file_name: b.file, punches: punches.length, staff: staff.size,
+      min_ts: isFinite(minTs) ? toCloud(minTs) : null, max_ts: isFinite(maxTs) ? toCloud(maxTs) : null,
+      uploaded_at: new Date(b.at).toISOString(),
+    }, { onConflict: 'id' });
+    if (r.error) throw fail('Could not save the upload record', r.error);
+    const seen = new Map();
+    punches.forEach(p => seen.set(p.id + '|' + p.ts + '|' + p.d, { staff_id: p.id, punched_at: toCloud(p.ts), direction: p.d, batch_id: id }));
+    const rows = [...seen.values()];
+    for (let i = 0; i < rows.length; i += SB_CONFIG.chunk) {
+      r = await client.from('biometric_punches').upsert(rows.slice(i, i + SB_CONFIG.chunk), { onConflict: 'staff_id,punched_at,direction' });
+      if (r.error) throw fail('Could not save punches', r.error);
+      if (rows.length > SB_CONFIG.chunk) msg(`Uploading to cloud… ${Math.min(i + SB_CONFIG.chunk, rows.length).toLocaleString()} / ${rows.length.toLocaleString()}`);
+    }
+  }
+  async function localBatchPunches(id) {
+    const db = await bvhOpen();
+    return bvhReq(db.transaction('punches').objectStore('punches').index('byBatch').getAll(IDBKeyRange.only(id)));
+  }
+  async function localBatchMeta(id) {
+    const db = await bvhOpen();
+    return bvhReq(db.transaction('batches').objectStore('batches').get(id));
+  }
+  async function remapLocalBatch(oldId, newId, meta) {
+    const db = await bvhOpen();
+    const tx = db.transaction(['punches', 'batches'], 'readwrite');
+    const rq = tx.objectStore('punches').index('byBatch').openCursor(IDBKeyRange.only(oldId));
+    rq.onsuccess = () => { const c = rq.result; if (c) { const v = c.value; v.b = newId; c.update(v); c.continue(); } };
+    tx.objectStore('batches').delete(oldId);
+    if (meta) tx.objectStore('batches').put(Object.assign({}, meta, { id: newId }));
+    await bvhDone(tx);
+  }
+  async function pullBatch(cb) {
+    const rows = [];
+    for (let from = 0; ; from += SB_CONFIG.chunk) {
+      const r = await client.from('biometric_punches').select('staff_id,punched_at,direction')
+        .eq('batch_id', cb.id).order('punched_at').order('staff_id').order('direction').range(from, from + SB_CONFIG.chunk - 1);
+      if (r.error) throw fail('Could not download punches', r.error);
+      r.data.forEach(x => rows.push({ id: x.staff_id, ts: fromCloud(x.punched_at), d: x.direction }));
+      if (r.data.length < SB_CONFIG.chunk) break;
+    }
+    const db = await bvhOpen();
+    for (let i = 0; i < Math.max(rows.length, 1); i += 5000) {
+      const tx = db.transaction(['punches', 'batches'], 'readwrite');
+      const ps = tx.objectStore('punches');
+      rows.slice(i, i + 5000).forEach(p => ps.put({ k: bvhKey(p.id, p.ts, p.d), id: p.id, ts: p.ts, d: p.d, b: cb.id }));
+      if (i === 0) tx.objectStore('batches').put({ id: cb.id, file: cb.file_name, at: Date.parse(cb.uploaded_at), punches: cb.punches, staff: cb.staff, minTs: cb.min_ts ? fromCloud(cb.min_ts) : null, maxTs: cb.max_ts ? fromCloud(cb.max_ts) : null });
+      await bvhDone(tx);
+    }
+    return rows.length;
+  }
+
+  // ---- full two-way sync ------------------------------------------------------------------------
+  let syncing = false, again = false;
+  out.syncAll = async function (manual) {
+    if (!out.ready) return;
+    if (syncing) { again = true; return; }
+    syncing = true;
+    const btn = document.getElementById('sbSyncBtn'); if (btn) btn.disabled = true;
+    try {
+      msg('Syncing with the cloud…');
+      const cr = await client.from('biometric_batches').select('id,file_name,punches,staff,min_ts,max_ts,uploaded_at').limit(10000);
+      if (cr.error) throw fail('Could not read the cloud history', cr.error);
+      const cloud = new Map(cr.data.map(b => [b.id, b]));
+      const pushedSet = loadPushed();
+      const db = await bvhOpen();
+      const lp = await bvhReq(db.transaction('punches').objectStore('punches').getAll());
+      const lbMeta = new Map((await bvhReq(db.transaction('batches').objectStore('batches').getAll())).map(b => [b.id, b]));
+      const groups = new Map();
+      lp.forEach(p => { if (!groups.has(p.b)) groups.set(p.b, 0); groups.set(p.b, groups.get(p.b) + 1); });
+      let pushed = 0, pulled = 0, removed = 0;
+
+      for (const [bid] of groups) {
+        if (cloud.has(bid) && pushedSet.has(bid)) continue;                                                  // confirmed complete in the cloud
+        if (!cloud.has(bid) && pushedSet.has(bid)) { await _origDelete(bid); pushedSet.delete(bid); removed++; continue; }   // removed from the cloud on another device
+        // otherwise: new, restored from a backup, or an earlier upload that did not finish — (re)send it (idempotent upsert)
+        const newId = isUuid(bid) ? bid : uuid();
+        const meta = lbMeta.get(bid) || { file: 'Imported history', at: Date.now() };
+        if (newId !== bid) await remapLocalBatch(bid, newId, lbMeta.get(bid) || null);
+        const punches = await localBatchPunches(newId);
+        await pushBatch(newId, meta, punches);
+        pushedSet.add(newId); savePushed(pushedSet); pushed++;
+      }
+      for (const cb of cr.data) {
+        if (groups.has(cb.id)) continue;
+        await pullBatch(cb); pushedSet.add(cb.id); pulled++;
+      }
+      savePushed(pushedSet);
+      BVH.version++;
+      msg(`Cloud sync complete — ${pushed} upload${pushed === 1 ? '' : 's'} sent, ${pulled} downloaded${removed ? `, ${removed} removed (deleted on another device)` : ''}. Last sync ${new Date().toLocaleTimeString()}.`, 'ok');
+      try { await bvhRefreshCard(); } catch (e) {}
+      try { await utbRefreshInfo(); } catch (e) {}
+    } catch (e) {
+      console.error(e);
+      msg('Cloud sync failed: ' + e.message + ' — your data is safe in this browser; press “Sync with cloud” to retry.', 'error');
+    } finally {
+      syncing = false; if (btn) btn.disabled = false;
+      if (again) { again = false; setTimeout(() => out.syncAll(), 200); }
+    }
+  };
+
+  out.onSignedIn = async function () {
+    out.ready = true;
+    const btn = document.getElementById('sbSyncBtn'); if (btn) { btn.style.display = ''; if (!btn.__wired) { btn.__wired = true; btn.addEventListener('click', () => out.syncAll(true)); } }
+    const pill = document.querySelector('#bvhCard .bvh-pill'); if (pill) pill.textContent = 'cloud + this browser';
+    await out.syncAll();
+  };
+
+  // ---- hooks into the existing history functions (their callers are unchanged) -----------------
+  const _origSave = bvhSaveResult, _origDelete = bvhDeleteBatch, _origImport = bvhImport;
+  bvhSaveResult = async function (res, fileName) {
+    const r = await _origSave(res, fileName);
+    if (out.ready && r && r.batchId) {
+      try {
+        const punches = await localBatchPunches(r.batchId);
+        const meta = await localBatchMeta(r.batchId);
+        msg('Uploading to the cloud…');
+        await pushBatch(r.batchId, meta, punches);
+        const s = loadPushed(); s.add(r.batchId); savePushed(s);
+        msg(`Saved to the cloud (${punches.length.toLocaleString()} punches). ${new Date().toLocaleTimeString()}`, 'ok');
+      } catch (e) { console.error(e); msg('Saved in this browser but NOT yet in the cloud: ' + e.message + ' — press “Sync with cloud” to retry.', 'error'); }
+    }
+    return r;
+  };
+  bvhDeleteBatch = async function (batchId) {
+    if (out.ready && isUuid(batchId)) {
+      const r = await client.from('biometric_batches').delete().eq('id', batchId);
+      if (r.error) throw fail('Could not remove it from the cloud', r.error);   // abort: keep local and cloud consistent
+      const s = loadPushed(); s.delete(batchId); savePushed(s);
+    }
+    return _origDelete(batchId);
+  };
+  bvhImport = async function (obj) {
+    const r = await _origImport(obj);
+    if (out.ready) setTimeout(() => out.syncAll(), 100);   // push the restored history to the cloud
+    return r;
+  };
+  return out;
+})();
+window.SB = SB;   // a top-level const is not a window property; the sign-in layer reads window.SB
+</script>
+<script>
+/* ============================================================================
    AUTHENTICATION LAYER
    ----------------------------------------------------------------------------
    IMPORTANT — read before relying on this:
@@ -6219,6 +6957,7 @@ async function bvExportExceptions() {
   const SS_SESSION = 'otats.session.v1', SS_TOKEN = 'otats.token.v1';
   const $ = id => document.getElementById(id);
   const serverMode = !!AUTH_CONFIG.loginUrl;
+  const sbMode = !!(window.SB && window.SB.enabled);   // Supabase Auth (set SB_CONFIG above)
 
   // ---- guarded storage (file:// / private modes can throw) ------------------------------
   const store = (area) => ({
@@ -6270,7 +7009,7 @@ async function bvExportExceptions() {
 
   function applyView() {
     const hasAccount = !!(AUTH_CONFIG.interimAccount || readJSON(LS, LS_ACCOUNT));
-    view = serverMode ? 'login' : (hasAccount ? 'login' : 'setup');
+    view = (serverMode || sbMode) ? 'login' : (hasAccount ? 'login' : 'setup');
     const setup = view === 'setup';
     $('authHeading').textContent = setup ? 'Set up local access' : 'Sign in';
     $('authSub').textContent = setup
@@ -6280,16 +7019,18 @@ async function bvExportExceptions() {
     $('authPassHint').style.display = setup ? '' : 'none';
     $('authPass').setAttribute('autocomplete', setup ? 'new-password' : 'current-password');
     $('authPass').placeholder = setup ? 'Choose a password' : 'Enter your password';
-    $('authReset').style.display = (!serverMode && !AUTH_CONFIG.interimAccount && hasAccount) ? '' : 'none';
+    $('authReset').style.display = (!serverMode && !sbMode && !AUTH_CONFIG.interimAccount && hasAccount) ? '' : 'none';
     const pill = $('authModePill');
-    pill.className = 'auth-mode-pill' + (serverMode ? ' server' : '');
-    pill.textContent = serverMode ? 'Secure sign-in' : (AUTH_CONFIG.interimAccount ? 'Interim access' : 'Local access mode');
-    $('authNote').innerHTML = serverMode
+    pill.className = 'auth-mode-pill' + ((serverMode || sbMode) ? ' server' : '');
+    pill.textContent = (serverMode || sbMode) ? 'Secure sign-in' : (AUTH_CONFIG.interimAccount ? 'Interim access' : 'Local access mode');
+    $('authNote').innerHTML = sbMode
+      ? '<strong>Cloud sign-in.</strong> Use the email and password created for you in the system. If you cannot sign in, contact your system administrator.'
+      : serverMode
       ? '<strong>Your organisation’s sign-in service</strong> verifies these credentials. If you cannot sign in, contact your system administrator.'
       : AUTH_CONFIG.interimAccount
       ? '<strong>Interim login.</strong> This is a temporary built-in account used until the secure sign-in service is connected. It only deters casual access and is <strong>not</strong> secure authentication.'
       : '<strong>Local access mode.</strong> This login is stored only in this browser (as a salted hash) and keeps casual users out. It is <strong>not</strong> secure authentication — anyone with this file or browser access could bypass it. Connect a server sign-in (see <code>AUTH_CONFIG</code> in the page source) for real security.';
-    $('authLinkLeft').textContent = serverMode ? 'Forgot your password? Contact your administrator.' : '';
+    $('authLinkLeft').textContent = (serverMode || sbMode) ? 'Forgot your password? Contact your administrator.' : '';
     setBusy(false);
   }
 
@@ -6331,6 +7072,20 @@ async function bvExportExceptions() {
     const user = data.user || {};
     return { name: user.name || user.displayName || u, role: user.role || '', token: data.token || '' };
   }
+  async function sbLogin(u, p) {
+    let res;
+    try { res = await window.SB.client.auth.signInWithPassword({ email: u, password: p }); }
+    catch (e) { throw new AuthError('Cannot reach the sign-in service. Check your connection and try again.'); }
+    if (res.error) {
+      const st = res.error.status;
+      if (st === 400 || st === 401 || /invalid login|credentials/i.test(res.error.message || '')) throw new AuthError('Incorrect email or password. Please check your details and try again.', { credential: true, field: 'pass' });
+      if (st === 429) throw new AuthError('Too many sign-in attempts. Please wait a few minutes and try again.');
+      if (!st) throw new AuthError('Cannot reach the sign-in service. Check your connection and try again.');
+      throw new AuthError(res.error.message || 'The sign-in service returned an error. Please try again.');
+    }
+    const user = res.data.user || {}, um = user.user_metadata || {}, am = user.app_metadata || {};
+    return { name: um.full_name || um.name || user.email || u, role: am.role || 'Signed in' };
+  }
   async function localSetup(u, p, c) {
     if (!cryptoOk()) throw new AuthError('Secure hashing is unavailable in this browser context (a secure https:// or file:// page is required). Use the server sign-in instead.');
     if (!LS.set('otats.__probe', '1')) throw new AuthError('This browser is blocking local storage, so a local login cannot be saved. Allow site data or use the server sign-in.');
@@ -6362,6 +7117,7 @@ async function bvExportExceptions() {
     $('authPass').value = ''; $('authConfirm').value = '';
     lastActive = Date.now(); startIdleWatch();
     window.scrollTo(0, 0);
+    if (sbMode) { try { window.SB.onSignedIn(); } catch (e) { console.warn('Cloud sync could not start', e); } }
   }
   function showLogin(message, info) {
     document.body.classList.add('auth-locked');
@@ -6377,7 +7133,9 @@ async function bvExportExceptions() {
   function signOut() {
     if (!confirm('Sign out now?\n\nAnything you have analysed on this page but not downloaded or saved will be cleared.')) return;
     stopIdleWatch(); clearSession(); logoutServer();
-    try { location.reload(); } catch (e) { showLogin(); }
+    const done = () => { try { location.reload(); } catch (e) { showLogin(); } };
+    if (sbMode) { window.SB.signOut().then(done, done); return; }
+    done();
   }
   function lockForIdle() {
     stopIdleWatch(); clearSession(); logoutServer();
@@ -6410,10 +7168,10 @@ async function bvExportExceptions() {
     setBusy(true, view === 'setup' ? 'Creating login…' : 'Signing in…');
     const t0 = Date.now();
     try {
-      const result = serverMode ? await serverLogin(u, p) : (view === 'setup' ? await localSetup(u, p, c) : await localLogin(u, p));
+      const result = sbMode ? await sbLogin(u, p) : serverMode ? await serverLogin(u, p) : (view === 'setup' ? await localSetup(u, p, c) : await localLogin(u, p));
       await sleep(Math.max(0, 450 - (Date.now() - t0)));   // let the "signing in" feedback register
       resetFailures();
-      SS.set(SS_SESSION, JSON.stringify({ name: result.name, role: result.role, mode: serverMode ? 'server' : 'local', at: Date.now() }));
+      SS.set(SS_SESSION, JSON.stringify({ name: result.name, role: result.role, mode: sbMode ? 'sb' : (serverMode ? 'server' : 'local'), at: Date.now() }));
       if (result.token) SS.set(SS_TOKEN, result.token);
       setBusy(false); unlock(result);
     } catch (err) {
@@ -6453,9 +7211,10 @@ async function bvExportExceptions() {
   // ---- boot: the login screen is always the first thing shown ------------------------------------------------------------
   (async function boot() {
     const saved = readJSON(SS, SS_SESSION);
-    const fresh = saved && saved.mode === (serverMode ? 'server' : 'local') && (Date.now() - saved.at) < Math.max(1, AUTH_CONFIG.idleTimeoutMin || 480) * 60000;
+    const fresh = saved && saved.mode === (sbMode ? 'sb' : (serverMode ? 'server' : 'local')) && (Date.now() - saved.at) < Math.max(1, AUTH_CONFIG.idleTimeoutMin || 480) * 60000;
     if (fresh) {
       let valid = true;
+      if (sbMode) { try { valid = !!(await window.SB.getSession()); } catch (e) { valid = false; } }
       if (serverMode && AUTH_CONFIG.sessionCheckUrl) {
         try { valid = (await fetch(AUTH_CONFIG.sessionCheckUrl, { credentials: AUTH_CONFIG.sendCookies ? 'include' : 'same-origin' })).ok; } catch (e) { valid = false; }
       }

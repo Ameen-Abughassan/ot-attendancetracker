@@ -6744,7 +6744,15 @@ const SB_CONFIG = {
 const SB = (function () {
   const enabled = !!(SB_CONFIG.url && SB_CONFIG.anonKey && window.supabase && window.supabase.createClient);
   const out = { enabled, ready: false, client: null, onSignedIn() {}, syncAll: async () => {}, signOut: async () => {}, getSession: async () => null };
-  if (!enabled) return out;
+  if (!enabled) {
+    // make it obvious why nothing reaches Supabase
+    const why = !(SB_CONFIG.url && SB_CONFIG.anonKey)
+      ? 'Cloud storage is OFF: the Supabase URL and key in SB_CONFIG are empty, so history is saved in this browser only.'
+      : 'Cloud storage is OFF: the Supabase library did not load (check the internet connection or an ad-blocker).';
+    const show = () => { const m = document.getElementById('sbSyncMsg'); if (m) { m.textContent = why; m.className = 'bvh-msg warn'; } };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show); else show();
+    return out;
+  }
 
   const client = window.supabase.createClient(SB_CONFIG.url, SB_CONFIG.anonKey, { auth: { persistSession: true, autoRefreshToken: true } });
   out.client = client;

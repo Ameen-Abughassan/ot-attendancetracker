@@ -1303,7 +1303,7 @@ header{background:linear-gradient(135deg,#0f2a5e 0%,#2a4bb3 55%,#6d5ce7 100%);}
         <div>
           <div class="eyebrow" style="color:#2563eb;margin-bottom:7px">Attendance · Biometric Lookup</div>
           <h2>Undertime from Biometric Records</h2>
-          <p>Search the biometric history already stored in the Biometric Validation tab — no need to upload the biometric report again. Actual clock-in / clock-out come from the biometric history (first Entry → last Exit of each attendance period). Scheduled times and fixed working hours come from the attendance report loaded above, because biometric punches carry no schedule.</p>
+          <p>Search the biometric history already stored in the Biometric Validation tab — no need to upload the biometric report again. Actual clock-in / clock-out come from the biometric history (first Entry → last Exit of each attendance period). Scheduled start / end times come from the OT Validation data saved in OT History (the Dispatch column), falling back to the attendance report; biometric punches carry no schedule of their own.</p>
         </div>
         <div class="pdf-mark" style="background:linear-gradient(135deg,#2563eb,#3b82f6)">BIO</div>
       </div>
@@ -1352,9 +1352,11 @@ header{background:linear-gradient(135deg,#0f2a5e 0%,#2a4bb3 55%,#6d5ce7 100%);}
         <button class="btn-primary" id="utbGo" type="button">⌕&nbsp; Generate report</button>
         <button class="btn-secondary" id="utbReset" type="button">↺&nbsp; Reset filters</button>
         <button class="btn-secondary" id="utbExport" type="button" disabled>↓&nbsp; Export to Excel</button>
+        <button class="btn-secondary" id="sbAttSyncBtn" type="button" style="display:none">☁&nbsp; Sync schedules</button>
       </div>
 
-      <div id="utbStatus" class="status" style="margin:14px 0 18px"></div>
+      <div id="utbStatus" class="status" style="margin:14px 0 6px"></div>
+      <div class="bvh-msg" id="utbSyncMsg" style="margin:0 0 14px"></div>
 
       <div id="utbResults" style="display:none">
         <div class="summary" id="utbSummary"></div>
@@ -1369,7 +1371,7 @@ header{background:linear-gradient(135deg,#0f2a5e 0%,#2a4bb3 55%,#6d5ce7 100%);}
                 <th>Staff ID</th><th>Staff Name</th><th>Date</th>
                 <th>Sched. Start</th><th>Sched. End</th><th>Clock-In</th><th>Clock-Out</th>
                 <th>Sched. Hrs</th><th>Actual Hrs</th><th>Late</th><th>Early Out</th><th>Total Undertime</th>
-                <th>Status</th><th>Remarks / discrepancy details</th>
+                <th>Schedule source</th><th>Status</th><th>Remarks / discrepancy details</th>
               </tr></thead>
               <tbody id="utbBody"></tbody>
             </table>
@@ -4594,7 +4596,7 @@ el('saveHistoryBtn').addEventListener('click', async () => {
         batchId, empDateKey: key, empKey: key.split('||')[0],
         sap: v.sap, name: v.name, dateVal: v.dateVal, minutes: v.minutes, rule: v.rule,
         religion: v.religion || '', line: v.line || '', position: v.position || '',
-        noBiometric: !!v.noBiometric,
+        noBiometric: !!v.noBiometric, dispatched: v.dispatched || '',
       });
     });
     const periodLabel = blocks.length ? `${formatRosterDate(blocks[0].dateVal)} → ${formatRosterDate(blocks[blocks.length-1].dateVal)}` : '';
@@ -4692,7 +4694,8 @@ function buildMasterOtReference() {
       const info = analysis.corrections?.[r]?.[bi];
       const minutes = (info && typeof info.minutes === 'number') ? info.minutes : null;
       const position = getVal(ws, r, block.startCol + 4) || firstPosition;
-      map.set(empKey + '||' + dateKey, { sap: sap ?? '', name: String(name), dateVal: block.dateVal, minutes, rule: info?.rule || null, religion, line, position, noBiometric: !!info?.noBiometric });
+      const dispatchedRaw = getVal(ws, r, block.startCol + 1);   // Dispatched cell: "CODE\nHH:MM - HH:MM"
+      map.set(empKey + '||' + dateKey, { sap: sap ?? '', name: String(name), dateVal: block.dateVal, minutes, rule: info?.rule || null, religion, line, position, noBiometric: !!info?.noBiometric, dispatched: typeof dispatchedRaw === 'string' ? dispatchedRaw : '' });
     });
   }
   return { map, employeeKeys, employeeNames, employeeCount: employeeKeys.size, dayCount: blocks.length };
@@ -6284,6 +6287,121 @@ async function bvExportExceptions() {
 const UTB = { sched: null, schedWb: null, schedSheet: '', rows: [], view: [], meta: null, seq: 0, stats: null };
 const UTB_CAP = 500;
 
+// ---- Stored attendance schedules (IndexedDB cache; shared through Supabase when connected) ----------------
+// Each attendance report loaded in this tab is kept as a "batch" of schedule rows (staff, date, duty start/end,
+// fixed hours) so the schedule survives a refresh and is available on other devices — no re-upload needed.
+const ATT = { DB: 'otats-att-schedule', db: null };
+const attReq = rq => new Promise((res, rej) => { rq.onsuccess = () => res(rq.result); rq.onerror = () => rej(rq.error); });
+const attDone = tx => new Promise((res, rej) => { tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error || new Error('The storage transaction was aborted.')); });
+function attOpen() {
+  if (ATT.db) return Promise.resolve(ATT.db);
+  if (typeof indexedDB === 'undefined') return Promise.reject(new Error('IndexedDB is not available in this browser.'));
+  return new Promise((res, rej) => {
+    const rq = indexedDB.open(ATT.DB, 1);
+    rq.onupgradeneeded = () => { const db = rq.result; const rs = db.createObjectStore('rows', { keyPath: 'k' }); rs.createIndex('byB', 'b'); db.createObjectStore('batches', { keyPath: 'id' }); };
+    rq.onsuccess = () => { ATT.db = rq.result; ATT.db.onversionchange = () => { ATT.db.close(); ATT.db = null; }; res(ATT.db); };
+    rq.onerror = () => rej(rq.error || new Error('Could not open the attendance schedule store.'));
+  });
+}
+async function attSaveBatch(meta, rows) {
+  const db = await attOpen();
+  const tx = db.transaction(['rows', 'batches'], 'readwrite');
+  const rs = tx.objectStore('rows');
+  rows.forEach(r => rs.put(Object.assign({}, r, { k: r.id + '|' + r.dateMs, b: meta.id })));   // newer upload wins for the same staff + date
+  tx.objectStore('batches').put({ id: meta.id, file: meta.file, at: meta.at, rows: rows.length });
+  await attDone(tx);
+  return { batchId: meta.id, rows: rows.length };
+}
+async function attBatchesList() { const db = await attOpen(); return attReq(db.transaction('batches').objectStore('batches').getAll()); }
+async function attRowsOfBatch(id) { const db = await attOpen(); return attReq(db.transaction('rows').objectStore('rows').index('byB').getAll(IDBKeyRange.only(id))); }
+async function attLoadRows() {
+  const db = await attOpen();
+  const rows = await attReq(db.transaction('rows').objectStore('rows').getAll());
+  const at = new Map((await attBatchesList()).map(b => [b.id, b.at || 0]));
+  return rows.sort((a, b) => (at.get(a.b) || 0) - (at.get(b.b) || 0));   // oldest upload first
+}
+async function attDeleteBatch(id) {
+  const db = await attOpen();
+  const tx = db.transaction(['rows', 'batches'], 'readwrite');
+  const rs = tx.objectStore('rows');
+  const rq = rs.index('byB').openKeyCursor(IDBKeyRange.only(id));
+  rq.onsuccess = () => { const c = rq.result; if (c) { rs.delete(c.primaryKey); c.continue(); } };
+  tx.objectStore('batches').delete(id);
+  await attDone(tx);
+}
+const utbUuid = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); });
+
+// Rostered duty times from the OT Validation data — the DISPATCH column of the saved OT History
+// (plus the OT file analysed in this session). Dispatch cells look like "D1\n07:00 - 15:30".
+function utbOtSchedule() {
+  const rows = []; let total = 0, withDisp = 0;
+  let combined; try { combined = getCombinedMasterLookup(); } catch (e) { return { rows, total, withDisp }; }
+  combined.map.forEach((v, key) => {
+    total++;
+    const sep = key.lastIndexOf('||'); const dateMs = Number(key.slice(sep + 2));
+    if (sep < 0 || !isFinite(dateMs)) return;
+    const disp = typeof v.dispatched === 'string' ? v.dispatched : '';
+    const dt = parseDispatchedTimes(disp);
+    if (!dt) return;                                                  // leave / rest day / no times
+    withDisp++;
+    if (isUtAllocationExcluded(disp.split('\n')[0].trim())) return;  // leave, training, RDOT … — not a normal scheduled duty
+    let end = dt.end; if (end <= dt.start) end += 1440;
+    rows.push({ id: key.slice(0, sep), sap: v.sap, name: v.name || '', position: v.position || '', line: v.line || '', dateMs,
+      dutyStartMin: dt.start, dutyEndMin: end, fixedMin: getFixedMinutesForPosition(v.position), reportUnderMin: null, source: 'OT History (Dispatch)' });
+  });
+  return { rows, total, withDisp };
+}
+
+// All schedule sources merged: stored attendance schedules < attendance report loaded now < OT Dispatch (for the duty TIMES).
+// Fixed hours keep the existing rule: the attendance report's Column N when we have it, else the position table.
+async function utbLoadSchedule() {
+  const m = new Map();
+  const put = s => m.set(s.id + '|' + s.dateMs, s);
+  let stored = []; try { stored = await attLoadRows(); } catch (e) { stored = []; }
+  stored.forEach(r => put({ id: r.id, sap: r.sap || r.id, name: r.name || '', position: r.position || '', line: r.line || '', dateMs: r.dateMs,
+    dutyStartMin: r.dutyStartMin, dutyEndMin: r.dutyEndMin, fixedMin: r.fixedMin, reportUnderMin: r.reportUnderMin ?? null, source: 'Attendance report' }));
+  const live = utbBuildLiveSchedule() || [];
+  live.forEach(put);
+  const ot = utbOtSchedule();
+  ot.rows.forEach(o => {
+    const a = m.get(o.id + '|' + o.dateMs);
+    if (a) {
+      o.fixedMin = a.fixedMin; o.reportUnderMin = a.reportUnderMin;
+      if (!o.name) o.name = a.name; if (!o.position) o.position = a.position; if (!o.line) o.line = a.line;
+      if (a.dutyStartMin !== o.dutyStartMin || (a.dutyEndMin - a.dutyStartMin) !== (o.dutyEndMin - o.dutyStartMin))
+        o.note = `The attendance report gives a different duty time (${utbClock(a.dutyStartMin)}–${utbClock(a.dutyEndMin)}); the OT Dispatch time was used.`;
+    }
+    put(o);
+  });
+  return { rows: [...m.values()], counts: { stored: stored.length, live: live.length, ot: ot.rows.length, otTotal: ot.total, otWithDisp: ot.withDisp } };
+}
+function utbScheduleHint(c) {
+  if (!c) return '';
+  if (c.otTotal && !c.otWithDisp) return ' The saved OT History has no Dispatch times — it was saved before this update. Re-validate the OT report and save it to OT History again so the rostered duty times are stored.';
+  if (!c.ot && !c.stored && !c.live) return ' No schedule is available: save the OT report to OT History (Claim tab) or load the attendance report above.';
+  return '';
+}
+
+// Keep the schedule of each attendance report loaded in this tab (replacing an earlier upload of the same file).
+const ATT_LAST = { wb: null };
+async function utbPersistSchedule() {
+  if (!utWorkbook || ATT_LAST.wb === utWorkbook) return;
+  ATT_LAST.wb = utWorkbook;
+  const live = utbBuildLiveSchedule();
+  if (!live || !live.length) return;
+  const file = (el('utFilename').textContent || '').trim() || 'attendance report';
+  for (const b of (await attBatchesList()).filter(x => x.file === file)) await attDeleteBatch(b.id);
+  await attSaveBatch({ id: utbUuid(), file, at: Date.now() }, live.map(({ source, ...r }) => r));
+  await utbRefreshInfo();
+}
+function utbWatchWorkbook() {
+  let n = 0; const iv = setInterval(() => {
+    n++;
+    if (utWorkbook && utWorkbook !== ATT_LAST.wb) { clearInterval(iv); utbPersistSchedule().catch(e => console.warn('Could not store the attendance schedule', e)); }
+    else if (n > 60) clearInterval(iv);
+  }, 300);
+}
+
 // ---- pure helpers (no DOM / storage) ---------------------------------------
 function utbDateToMs(v) {
   if (typeof v === 'number') { const d = excelSerialToDate(v); return d ? d.getTime() : null; }
@@ -6313,7 +6431,7 @@ function utbPunchClock(ts, dayMs) {
 // Mirrors processUndertimeWorkbook (same allocation exclusions, same
 // Dispatched-over-Planned rule, same Column N / position fixed hours) but does
 // NOT require an actual sign-on/off, since the actuals come from biometrics.
-function utbBuildSchedule() {
+function utbBuildLiveSchedule() {
   if (!utWorkbook) return null;
   if (UTB.sched && UTB.schedWb === utWorkbook && UTB.schedSheet === utSheetName) return UTB.sched;
   const ws = utWorkbook.Sheets[utSheetName];
@@ -6353,7 +6471,7 @@ function utbBuildSchedule() {
     }
     list.push({
       id: normalizeEmployeeKey(sap), sap, name: `${getVal(ws, r, 1) || ''} ${getVal(ws, r, 2) || ''}`.trim(),
-      position, line: getVal(ws, r, 6) || '', dateMs, dutyStartMin, dutyEndMin, fixedMin, reportUnderMin,
+      position, line: getVal(ws, r, 6) || '', dateMs, dutyStartMin, dutyEndMin, fixedMin, reportUnderMin, source: 'Attendance report',
     });
   }
   UTB.sched = list; UTB.schedWb = utWorkbook; UTB.schedSheet = utSheetName;
@@ -6374,7 +6492,7 @@ function utbComputeRow(sch, per, ctx) {
     schStartMin: sch ? sch.dutyStartMin : null, schEndMin: sch ? sch.dutyEndMin : null, fixedMin: sch ? sch.fixedMin : null,
     entryTs: per ? per.firstEntryTs : null, exitTs: per ? per.lastExitTs : null,
     actualMin: null, lateMin: null, earlyMin: null, underMin: null,
-    tags: [], kind: 'ok', review: false, remarks: [],
+    tags: [], kind: 'ok', review: false, remarks: [], source: sch ? (sch.source || '') : '',
   };
   if (!per) {
     row.kind = 'missing';
@@ -6400,7 +6518,7 @@ function utbComputeRow(sch, per, ctx) {
   row.actualMin = exitMin - entryMin;
   const actualStartMin = ((entryMin % 1440) + 1440) % 1440;
   const actualEndMin = actualStartMin + row.actualMin;
-  if (!sch) { row.kind = 'noschedule'; row.tags.push('No Schedule'); row.remarks.push('Biometric punches exist for this date but no scheduled duty was found in the attendance report (rest day, leave, OT, or schedule not loaded).'); if (row.review) row.tags.push('Needs Review'); return row; }
+  if (!sch) { row.kind = 'noschedule'; row.tags.push('No Schedule'); row.remarks.push('Biometric punches exist for this date but no scheduled duty (Dispatch times) was found for it in OT History or the attendance report — rest day, leave, overtime call-in, or the OT report for this period has not been saved to OT History yet.'); if (row.review) row.tags.push('Needs Review'); return row; }
 
   let diff = actualStartMin - sch.dutyStartMin;                 // wrap-safe around midnight
   if (diff > 720) diff -= 1440; else if (diff < -720) diff += 1440;
@@ -6413,6 +6531,7 @@ function utbComputeRow(sch, per, ctx) {
   if (row.underMin > 0) row.tags.push('Under Time');
   if (!row.tags.length) row.tags.push('No Under Time');
   if (row.review) row.tags.push('Needs Review');
+  if (sch.note) row.remarks.push(sch.note);
   if (ctx.multi > 1) row.remarks.push(`${ctx.multi} biometric periods found on this date; the most complete one was used.`);
   if (sch.reportUnderMin !== null && sch.reportUnderMin !== undefined && sch.reportUnderMin !== row.underMin)
     row.remarks.push(`Differs from the attendance report, which gives Under Time ${minutesToTotalHHMM(sch.reportUnderMin)}.`);
@@ -6476,7 +6595,8 @@ async function utbGenerate() {
   utbSetStatus('Reading stored biometric history…');
   el('utbGo').disabled = true;
   try {
-    const sched = utbBuildSchedule();
+    const sch = await utbLoadSchedule();
+    const sched = sch.rows;
     const data = await utbLoadPeriods(crit.fromMs, crit.toMs);
     if (seq !== UTB.seq) return;
     if (data.coverMin === null) { utbSetStatus('No biometric data is stored yet. Process a biometric report in the Biometric Validation tab first — it is saved automatically.', 'error'); el('utbResults').style.display = 'none'; el('utbExport').disabled = true; return; }
@@ -6516,14 +6636,15 @@ async function utbGenerate() {
     rows.sort((a, b) => (String(a.id).localeCompare(String(b.id), undefined, { numeric: true })) || (a.dateMs - b.dateMs));
 
     UTB.rows = rows;
-    UTB.meta = { crit, unlisted, schedLoaded: !!(sched && sched.length), coverMin: data.coverMin, coverMax: data.coverMax };
+    UTB.meta = { crit, unlisted, schedCounts: sch.counts, schedLoaded: !!(sched && sched.length), coverMin: data.coverMin, coverMax: data.coverMax };
     utbRenderAll();
 
     if (!rows.length) {
-      utbSetStatus(crit.staffKey ? `No schedule or biometric records found for Staff ID ${crit.staffRaw} in ${crit.label}.` : `No scheduled duties found in ${crit.label}.` + (sched && sched.length ? '' : ' Load the attendance report above to supply the schedule.'), 'error');
+      utbSetStatus(crit.staffKey ? `No schedule or biometric records found for Staff ID ${crit.staffRaw} in ${crit.label}.` : `No scheduled duties found in ${crit.label}.` + (sched && sched.length ? '' : utbScheduleHint(sch.counts)), 'error');
     } else {
       let msg = `${rows.length} record${rows.length === 1 ? '' : 's'} for ${crit.staffKey ? 'Staff ID ' + crit.staffRaw : 'all staff'} · ${crit.label}.`;
-      if (!UTB.meta.schedLoaded) msg += ' No attendance report is loaded, so no schedule is available — actual times are shown but undertime cannot be calculated.';
+      if (!UTB.meta.schedLoaded) msg += ' No scheduled duty times were found, so actual times are shown but undertime cannot be calculated.' + utbScheduleHint(sch.counts);
+      else { const ns = rows.filter(r => r.kind === 'noschedule').length; if (ns) msg += ` ${ns} day(s) with biometric punches have no scheduled duty on file.` + (crit.staffKey ? utbScheduleHint(sch.counts) : ''); }
       if (unlisted) msg += ` ${unlisted} biometric day(s) with no scheduled duty (rest day / leave / OT) are not listed; search a specific Staff ID to see them.`;
       utbSetStatus(msg, UTB.meta.schedLoaded ? 'ok' : 'warn');
     }
@@ -6578,9 +6699,10 @@ function utbRenderAll() {
       <td class="num">${r.lateMin !== null ? minutesToTotalHHMM(r.lateMin) : '—'}</td>
       <td class="num">${r.earlyMin !== null ? minutesToTotalHHMM(r.earlyMin) : '—'}</td>
       <td class="num">${r.underMin !== null ? minutesToTotalHHMM(r.underMin) : '—'}</td>
+      <td>${esc(r.source) || '—'}</td>
       <td>${r.tags.map(t => `<span class="ut-tag ${utbTagClass(t)}">${esc(t)}</span>`).join('')}</td>
       <td class="utb-remark">${esc(r.remarks.join(' ')) || '—'}</td>
-    </tr>`).join('') : '<tr><td colspan="14" class="pay-empty">No records match the current view.</td></tr>';
+    </tr>`).join('') : '<tr><td colspan="15" class="pay-empty">No records match the current view.</td></tr>';
   el('utbMeta').textContent = `${UTB.view.length} of ${rows.length} records`;
   const cap = el('utbCap');
   if (UTB.view.length > UTB_CAP) { cap.style.display = 'block'; cap.textContent = `Showing the first ${UTB_CAP} of ${UTB.view.length} records. Use “Export to Excel” for the complete list.`; }
@@ -6593,6 +6715,7 @@ function utbRenderAll() {
 async function utbRefreshInfo() {
   const box = el('utbInfo'); if (!box) return;
   const parts = [];
+  let sch = null; try { sch = await utbLoadSchedule(); } catch (e) { sch = null; }
   try {
     if (!BVH.available) parts.push('<span class="warn">Stored biometric history is unavailable in this browser.</span>');
     else {
@@ -6603,13 +6726,19 @@ async function utbRefreshInfo() {
         ['utbStart', 'utbEnd'].forEach(i => { el(i).min = lo; el(i).max = hi; });
         el('utbMonth').min = lo.slice(0, 7); el('utbMonth').max = hi.slice(0, 7);
       } else parts.push('<span class="warn">Biometric history is empty — process a report in the Biometric Validation tab first.</span>');
-      const ids = new Set(st.ids || []); const sc = utbBuildSchedule(); if (sc) sc.forEach(s => ids.add(s.id));
+      const ids = new Set(st.ids || []); if (sch) sch.rows.forEach(s => ids.add(s.id));
       el('utbStaffIds').innerHTML = [...ids].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true })).map(i => `<option value="${esc(i)}"></option>`).join('');
     }
   } catch (e) { parts.push('<span class="warn">Could not read the biometric history: ' + esc(e.message) + '</span>'); }
-  const sc = utWorkbook ? utbBuildSchedule() : null;
-  parts.push(sc ? `<span><b>Schedule source:</b> attendance report loaded (${sc.length.toLocaleString()} scheduled duties)</span>`
-    : '<span class="warn">Schedule source: no attendance report loaded above — needed for scheduled times and fixed hours.</span>');
+  const c = sch && sch.counts;
+  if (c && (c.ot || c.stored || c.live)) {
+    const bits = [];
+    if (c.ot) bits.push(`OT History Dispatch (${c.ot.toLocaleString()} duties)`);
+    if (c.stored) bits.push(`stored attendance schedules (${c.stored.toLocaleString()} rows)`);
+    if (c.live) bits.push(`attendance report loaded now (${c.live.toLocaleString()} rows)`);
+    parts.push(`<span><b>Schedule sources:</b> ${bits.join(' · ')}</span>`);
+  } else parts.push('<span class="warn"><b>Schedule:</b> none available.' + esc(utbScheduleHint(c)).replace(/^ /, ' ') + '</span>');
+  if (c && c.otTotal && !c.otWithDisp) parts.push('<span class="warn">OT History has no Dispatch times yet — re-save the OT report to OT History.</span>');
   box.innerHTML = parts.join('');
 }
 function utbTogglePeriod() {
@@ -6643,7 +6772,7 @@ async function utbExport() {
       { header: 'Scheduled Hours', key: 'sh', width: 11 }, { header: 'Actual Hours', key: 'ah', width: 11 },
       { header: 'Late', key: 'late', width: 9 }, { header: 'Early Out', key: 'early', width: 9 },
       { header: 'Total Undertime (hh:mm)', key: 'ut', width: 13 }, { header: 'Undertime (minutes)', key: 'utm', width: 12 },
-      { header: 'Status', key: 'st', width: 30 }, { header: 'Remarks', key: 'rem', width: 70 },
+      { header: 'Schedule Source', key: 'src', width: 22 }, { header: 'Status', key: 'st', width: 30 }, { header: 'Remarks', key: 'rem', width: 70 },
     ];
     ws.getRow(1).eachCell(c => { c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } }; c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }; });
     UTB.view.forEach(r => {
@@ -6654,7 +6783,7 @@ async function utbExport() {
         sh: r.fixedMin !== null ? minutesToTotalHHMM(r.fixedMin) : '', ah: r.actualMin !== null ? minutesToTotalHHMM(r.actualMin) : '',
         late: r.lateMin !== null ? minutesToTotalHHMM(r.lateMin) : '', early: r.earlyMin !== null ? minutesToTotalHHMM(r.earlyMin) : '',
         ut: r.underMin !== null ? minutesToTotalHHMM(r.underMin) : '', utm: r.underMin !== null ? r.underMin : '',
-        st: r.tags.join(', '), rem: r.remarks.join(' '),
+        src: r.source, st: r.tags.join(', '), rem: r.remarks.join(' '),
       });
       row.getCell('rem').alignment = { wrapText: true, vertical: 'top' };
       if (r.kind === 'missing' || r.kind === 'incomplete') row.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF7E6' } }; });
@@ -6663,7 +6792,7 @@ async function utbExport() {
       if (r.earlyMin) row.getCell('early').font = { bold: true, color: { argb: 'FFDC2626' } };
     });
     ws.views = [{ state: 'frozen', ySplit: 1 }];
-    ws.autoFilter = 'A1:Q' + ws.rowCount;
+    ws.autoFilter = 'A1:R' + ws.rowCount;
 
     // Summary sheet
     const sum = wb.addWorksheet('Summary');
@@ -6720,8 +6849,11 @@ async function utbExport() {
   el('utbShow').addEventListener('change', () => { if (UTB.rows.length) utbRenderAll(); });
   el('utbCard').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.tagName === 'INPUT') { e.preventDefault(); utbGenerate(); } });
   el('tabUndertime').addEventListener('click', utbRefreshInfo);
-  el('utFileInput').addEventListener('change', () => setTimeout(utbRefreshInfo, 400));
-  el('utDropzone').addEventListener('drop', () => setTimeout(utbRefreshInfo, 400));
+  el('utFileInput').addEventListener('change', () => { utbWatchWorkbook(); setTimeout(utbRefreshInfo, 400); });
+  el('utDropzone').addEventListener('drop', () => { utbWatchWorkbook(); setTimeout(utbRefreshInfo, 400); });
+  // when OT History changes (save / delete / cloud download) refresh the schedule summary
+  const _refreshOt = refreshOtHistoryCache;
+  refreshOtHistoryCache = async function () { const r = await _refreshOt.apply(this, arguments); try { utbRefreshInfo(); } catch (e) {} return r; };
   utbRefreshInfo();
 })();
 
@@ -6885,8 +7017,10 @@ const SB = (function () {
     const btn = document.getElementById('sbSyncBtn'); if (btn) { btn.style.display = ''; if (!btn.__wired) { btn.__wired = true; btn.addEventListener('click', () => out.syncAll(true)); } }
     const pill = document.querySelector('#bvhCard .bvh-pill'); if (pill) pill.textContent = 'cloud + this browser';
     const ob = document.getElementById('sbOtSyncBtn'); if (ob) { ob.style.display = ''; if (!ob.__wired) { ob.__wired = true; ob.addEventListener('click', () => out.syncOt()); } }
+    const ab = document.getElementById('sbAttSyncBtn'); if (ab) { ab.style.display = ''; if (!ab.__wired) { ab.__wired = true; ab.addEventListener('click', () => out.syncAtt()); } }
     await out.syncAll();
     await out.syncOt();
+    await out.syncAtt();
   };
 
   // ---- hooks into the existing history functions (their callers are unchanged) -----------------
@@ -6941,13 +7075,13 @@ const SB = (function () {
       date_val: r.dateVal === undefined || r.dateVal === null ? null : String(r.dateVal),
       minutes: Number.isFinite(r.minutes) ? Math.round(r.minutes) : null,
       rule: r.rule || null, religion: r.religion || '', line: r.line || '', position: r.position || '',
-      no_biometric: !!r.noBiometric,
+      no_biometric: !!r.noBiometric, dispatched: r.dispatched ? String(r.dispatched) : null,
     };
   }
   function otRecFromCloud(x, batchId) {
     const ms = Date.parse(x.work_date + 'T00:00:00Z');
     return { batchId, empDateKey: x.emp_key + '||' + ms, empKey: x.emp_key, sap: (/^[1-9]\d{0,14}$/.test(String(x.sap)) ? Number(x.sap) : x.sap), name: x.name, dateVal: x.date_val || rosterDay(ms),
-      minutes: x.minutes, rule: x.rule, religion: x.religion || '', line: x.line || '', position: x.position || '', noBiometric: !!x.no_biometric };
+      minutes: x.minutes, rule: x.rule, religion: x.religion || '', line: x.line || '', position: x.position || '', noBiometric: !!x.no_biometric, dispatched: x.dispatched || '' };
   }
   async function pushOtBatch(id, meta, records) {
     let r = await client.from('ot_history_batches').upsert({
@@ -7067,6 +7201,95 @@ const SB = (function () {
       saveOtPushed(new Set());
     }
     return _origOtClear();
+  };
+
+  // ======================= ATTENDANCE SCHEDULE (Under Time tab) =======================
+  // Local store: IndexedDB "otats-att-schedule".  Cloud: attendance_batches / attendance_schedule (one row per staff + date).
+  const LS_ATT_PUSHED = 'otats.sb.pushedAttBatches.v1';
+  const loadAttPushed = () => { try { return new Set(JSON.parse(localStorage.getItem(LS_ATT_PUSHED) || '[]')); } catch (e) { return new Set(); } };
+  const saveAttPushed = set => { try { localStorage.setItem(LS_ATT_PUSHED, JSON.stringify([...set])); } catch (e) {} };
+  const attMsg = (text, kind) => { const m = document.getElementById('utbSyncMsg'); if (!m) return; m.textContent = text || ''; m.className = 'bvh-msg' + (kind ? ' ' + kind : ''); };
+  const attIso = ms => new Date(ms).toISOString().slice(0, 10);
+
+  async function pushAttBatch(id, meta, rows) {
+    let r = await client.from('attendance_batches').upsert({ id, file_name: meta.file || 'attendance report', uploaded_at: new Date(meta.at || Date.now()).toISOString() }, { onConflict: 'id' });
+    if (r.error) throw fail('Could not save the attendance upload record', r.error);
+    const seen = new Map();
+    rows.forEach(x => {
+      if (!isFinite(x.dateMs)) return;
+      seen.set(x.id + '|' + x.dateMs, { staff_id: String(x.id), work_date: attIso(x.dateMs), staff_name: x.name || null, position: x.position || null, line: x.line || null,
+        duty_start_min: Number.isFinite(x.dutyStartMin) ? x.dutyStartMin : null, duty_end_min: Number.isFinite(x.dutyEndMin) ? x.dutyEndMin : null,
+        fixed_min: Number.isFinite(x.fixedMin) ? x.fixedMin : null, report_under_min: Number.isFinite(x.reportUnderMin) ? x.reportUnderMin : null, batch_id: id });
+    });
+    const list = [...seen.values()];
+    for (let i = 0; i < list.length; i += SB_CONFIG.chunk) {
+      r = await client.from('attendance_schedule').upsert(list.slice(i, i + SB_CONFIG.chunk), { onConflict: 'staff_id,work_date' });
+      if (r.error) throw fail('Could not save the schedule rows', r.error);
+      if (list.length > SB_CONFIG.chunk) attMsg(`Uploading schedule… ${Math.min(i + SB_CONFIG.chunk, list.length).toLocaleString()} / ${list.length.toLocaleString()}`);
+    }
+    return list.length;
+  }
+  async function pullAttBatch(cb) {
+    const rows = [];
+    for (let from = 0; ; from += SB_CONFIG.chunk) {
+      const r = await client.from('attendance_schedule').select('*').eq('batch_id', cb.id).order('staff_id').order('work_date').range(from, from + SB_CONFIG.chunk - 1);
+      if (r.error) throw fail('Could not download the schedule', r.error);
+      r.data.forEach(x => rows.push({ id: x.staff_id, sap: x.staff_id, name: x.staff_name || '', position: x.position || '', line: x.line || '',
+        dateMs: Date.parse(x.work_date + 'T00:00:00Z'), dutyStartMin: x.duty_start_min, dutyEndMin: x.duty_end_min, fixedMin: x.fixed_min, reportUnderMin: x.report_under_min }));
+      if (r.data.length < SB_CONFIG.chunk) break;
+    }
+    await _origAttSave({ id: cb.id, file: cb.file_name, at: Date.parse(cb.uploaded_at) }, rows);
+    return rows.length;
+  }
+  let attSyncing = false, attAgain = false;
+  out.syncAtt = async function () {
+    if (!out.ready) return;
+    if (attSyncing) { attAgain = true; return; }
+    attSyncing = true;
+    const btn = document.getElementById('sbAttSyncBtn'); if (btn) btn.disabled = true;
+    try {
+      attMsg('Syncing attendance schedules with the cloud…');
+      const cr = await client.from('attendance_batches').select('id,file_name,uploaded_at').limit(10000);
+      if (cr.error) throw fail('Could not read the cloud schedules', cr.error);
+      const cloud = new Map(cr.data.map(b => [b.id, b]));
+      const pushedSet = loadAttPushed();
+      const local = await attBatchesList();
+      const localIds = new Set(local.map(b => b.id));
+      let pushed = 0, pulled = 0, removed = 0;
+      for (const lb of local) {
+        if (cloud.has(lb.id) && pushedSet.has(lb.id)) continue;
+        if (!cloud.has(lb.id) && pushedSet.has(lb.id)) { await _origAttDelete(lb.id); pushedSet.delete(lb.id); removed++; continue; }   // removed on another device
+        await pushAttBatch(lb.id, lb, await attRowsOfBatch(lb.id));
+        pushedSet.add(lb.id); saveAttPushed(pushedSet); pushed++;
+      }
+      for (const cb of cr.data) { if (localIds.has(cb.id)) continue; await pullAttBatch(cb); pushedSet.add(cb.id); pulled++; }
+      saveAttPushed(pushedSet);
+      attMsg(`Schedules synced — ${pushed} upload${pushed === 1 ? '' : 's'} sent, ${pulled} downloaded${removed ? `, ${removed} removed` : ''}. ${new Date().toLocaleTimeString()}`, 'ok');
+      try { await utbRefreshInfo(); } catch (e) {}
+    } catch (e) {
+      console.error(e);
+      attMsg('Schedule sync failed: ' + e.message + ' — the schedule is safe in this browser; press “Sync schedules” to retry.', 'error');
+    } finally {
+      attSyncing = false; if (btn) btn.disabled = false;
+      if (attAgain) { attAgain = false; setTimeout(() => out.syncAtt(), 200); }
+    }
+  };
+  const _origAttSave = attSaveBatch, _origAttDelete = attDeleteBatch;
+  attSaveBatch = async function (meta, rows) {
+    const r = await _origAttSave(meta, rows);
+    if (out.ready) {
+      try { attMsg('Uploading the schedule to the cloud…'); const n = await pushAttBatch(meta.id, meta, rows); const s = loadAttPushed(); s.add(meta.id); saveAttPushed(s); attMsg(`Schedule saved to the cloud (${n.toLocaleString()} staff-days). ${new Date().toLocaleTimeString()}`, 'ok'); }
+      catch (e) { console.error(e); attMsg('Schedule saved in this browser but NOT yet in the cloud: ' + e.message + ' — press “Sync schedules” to retry.', 'error'); }
+    }
+    return r;
+  };
+  attDeleteBatch = async function (id) {
+    if (out.ready) {
+      const r = await client.from('attendance_batches').delete().eq('id', id);
+      if (r.error) throw fail('Could not remove the schedule from the cloud', r.error);
+      const s = loadAttPushed(); s.delete(id); saveAttPushed(s);
+    }
+    return _origAttDelete(id);
   };
   return out;
 })();

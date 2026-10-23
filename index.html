@@ -2616,7 +2616,11 @@ function runAnalysis() {
       // regardless of what Actual shows.
       const ramadanActive = isReligionIS(religion) && isDateInRamadan(block.dateVal, ramadanRange);
       const plannedDurMin = parseDispatchedDuration(planned);
-      const ramadanExtended = ramadanActive && dispatchedDurMin !== null && plannedDurMin !== null && dispatchedDurMin > plannedDurMin;
+      // Ramadan (IS): standard working day is 6:00. Any actual working time beyond
+      // 6:00 is an extension, up to 8:30 total per day — independent of whether
+      // Dispatch was coded/extended beyond Planned. Applies to every roster day with
+      // a scheduled shift (Dispatched has times); off/leave days with no shift are untouched.
+      const ramadanExtended = ramadanActive && dispatchedDurMin !== null;
 
       // Holidays (Eid Elfitr, Eid Aldah, Founding Day, National Day): date-driven,
       // applies to every staff member (no Religion check). A roster date inside
@@ -2673,20 +2677,18 @@ function runAnalysis() {
           if (otMin === null || Math.abs(calc - otMin) > 1) changed = true;
         }
       } else if (ramadanExtended) {
-        // Ramadan (IS) rule — now gated on Dispatch being extended beyond
-        // Planned (like Rule 1), not on Actual alone. Formula: cap Actual
-        // Working Hours at the Dispatched duration (only the extended,
-        // scheduled time counts — same principle as Rule 1), cap that again
-        // at the 8:30 Ramadan payable ceiling, then subtract the 6:00
-        // Ramadan normal-day baseline. E.g. Dispatch 07:00–15:30 (8:30) →
-        // capped at 8:30 → 8:30 − 6:00 = 2:30 OT.
+        // Ramadan (IS) rule: standard working day is 6:00; any actual working time
+        // beyond 6:00 is an extension, payable up to a total of 8:30 per day.
+        // OT = max(0, min(Actual working time, 8:30) - 6:00), from the biometric punch
+        // (anchor: Dispatch start if punched in early, else actual punch-in).
+        // No dependence on Dispatched being longer than Planned.
+        const ramadanClaimsExtra = (otMin !== null && otMin > 0) || /EXT/.test(typeof dispatched === 'string' ? dispatched.split(/\r?\n/)[0].toUpperCase() : '') || (plannedDurMin !== null && dispatchedDurMin > plannedDurMin);
         if (!isValidBiometric(actual)) {
-          reasonSkip = 'No valid biometric Actual record';
+          if (ramadanClaimsExtra) reasonSkip = 'No valid biometric Actual record';
         } else if (workingMin === null) {
           reasonSkip = implausibleWorking ? 'Working Hrs > 14:00 — treated as invalid biometric' : 'Working Hrs unavailable';
         } else {
-          const cappedWorking = Math.min(workingMin, dispatchedDurMin);
-          let calc = Math.max(0, Math.min(cappedWorking, RAMADAN_MAX_MIN) - RAMADAN_NORMAL_MIN);
+          let calc = Math.max(0, Math.min(workingMin, RAMADAN_MAX_MIN) - RAMADAN_NORMAL_MIN);
           if (calc < MIN_OT_MIN) calc = 0;
           correctedMin = calc;
           ruleApplied = 'Ramadan (IS)';

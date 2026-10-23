@@ -1397,6 +1397,7 @@ header{background:linear-gradient(135deg,#0f2a5e 0%,#2a4bb3 55%,#6d5ce7 100%);}
         <h3>Saved OT History</h3>
         <div style="display:flex;gap:10px;align-items:center">
           <span id="claimHistoryMeta"></span>
+          <button class="btn-secondary" id="sbOtSyncBtn" style="padding:7px 12px;font-size:11px;display:none">☁&nbsp; Sync OT history</button>
           <button class="btn-secondary" id="clearHistoryBtn" style="padding:7px 12px;font-size:11px" disabled>🗑&nbsp; Clear All History</button>
         </div>
       </div>
@@ -1408,6 +1409,7 @@ header{background:linear-gradient(135deg,#0f2a5e 0%,#2a4bb3 55%,#6d5ce7 100%);}
           <tbody id="claimHistoryBody"><tr><td colspan="7" class="pay-empty">No OT history saved yet — analyze a file in the OT Validator tab, then click "Save to OT History".</td></tr></tbody>
         </table>
       </div>
+      <div class="bvh-msg" id="otSyncMsg" style="padding:0 18px 12px"></div>
     </div>
 
     <div class="upload-actions" style="margin-bottom:24px">
@@ -4585,7 +4587,7 @@ el('saveHistoryBtn').addEventListener('click', async () => {
   const original = btn.textContent;
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
-    const batchId = 'batch_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    const batchId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'batch_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
     const records = [];
     otMasterReference.map.forEach((v, key) => {
       records.push({
@@ -4608,7 +4610,7 @@ el('saveHistoryBtn').addEventListener('click', async () => {
     };
     await idbSaveBatch(batchMeta, records);
     await refreshOtHistoryCache();
-    setStatus(`Saved "${batchMeta.label}" to OT History (${records.length} records) — now available for Claim Validation.`, 'ok');
+    setStatus(`Saved "${batchMeta.label}" to OT History (${records.length} records) — now available for Claim Validation.` + (typeof OT_CLOUD_NOTE === 'function' ? OT_CLOUD_NOTE() : ''), 'ok');
   } catch (err) {
     console.error(err);
     setStatus('Failed to save to OT History: ' + err.message, 'error');
@@ -6882,7 +6884,9 @@ const SB = (function () {
     out.ready = true;
     const btn = document.getElementById('sbSyncBtn'); if (btn) { btn.style.display = ''; if (!btn.__wired) { btn.__wired = true; btn.addEventListener('click', () => out.syncAll(true)); } }
     const pill = document.querySelector('#bvhCard .bvh-pill'); if (pill) pill.textContent = 'cloud + this browser';
+    const ob = document.getElementById('sbOtSyncBtn'); if (ob) { ob.style.display = ''; if (!ob.__wired) { ob.__wired = true; ob.addEventListener('click', () => out.syncOt()); } }
     await out.syncAll();
+    await out.syncOt();
   };
 
   // ---- hooks into the existing history functions (their callers are unchanged) -----------------
@@ -6913,6 +6917,156 @@ const SB = (function () {
     const r = await _origImport(obj);
     if (out.ready) setTimeout(() => out.syncAll(), 100);   // push the restored history to the cloud
     return r;
+  };
+
+  // ======================= OT HISTORY (Claim OT Validation) =======================
+  // Local store: IndexedDB "otValidatorHistoryDB" (batches + records).  Cloud: ot_history_batches / ot_history_records.
+  const LS_OT_PUSHED = 'otats.sb.pushedOtBatches.v1';
+  const loadOtPushed = () => { try { return new Set(JSON.parse(localStorage.getItem(LS_OT_PUSHED) || '[]')); } catch (e) { return new Set(); } };
+  const saveOtPushed = set => { try { localStorage.setItem(LS_OT_PUSHED, JSON.stringify([...set])); } catch (e) {} };
+  const otMsg = (text, kind) => { const m = document.getElementById('otSyncMsg'); if (!m) return; m.textContent = text || ''; m.className = 'bvh-msg' + (kind ? ' ' + kind : ''); };
+  let otLastNote = '';
+  window.OT_CLOUD_NOTE = () => otLastNote;
+  const pad2 = n => String(n).padStart(2, '0');
+  const isoDay = ms => new Date(ms).toISOString().slice(0, 10);
+  const rosterDay = ms => { const d = new Date(ms); return pad2(d.getUTCDate()) + '.' + pad2(d.getUTCMonth() + 1) + '.' + d.getUTCFullYear(); };
+
+  function otRecToCloud(r, batchId) {
+    const ms = Number(String(r.empDateKey).split('||').pop());
+    if (!isFinite(ms)) return null;
+    return {
+      batch_id: batchId, emp_key: String(r.empKey), work_date: isoDay(ms),
+      sap: r.sap === undefined || r.sap === null ? '' : String(r.sap),
+      name: r.name === undefined || r.name === null ? null : String(r.name),
+      date_val: r.dateVal === undefined || r.dateVal === null ? null : String(r.dateVal),
+      minutes: Number.isFinite(r.minutes) ? Math.round(r.minutes) : null,
+      rule: r.rule || null, religion: r.religion || '', line: r.line || '', position: r.position || '',
+      no_biometric: !!r.noBiometric,
+    };
+  }
+  function otRecFromCloud(x, batchId) {
+    const ms = Date.parse(x.work_date + 'T00:00:00Z');
+    return { batchId, empDateKey: x.emp_key + '||' + ms, empKey: x.emp_key, sap: (/^[1-9]\d{0,14}$/.test(String(x.sap)) ? Number(x.sap) : x.sap), name: x.name, dateVal: x.date_val || rosterDay(ms),
+      minutes: x.minutes, rule: x.rule, religion: x.religion || '', line: x.line || '', position: x.position || '', noBiometric: !!x.no_biometric };
+  }
+  async function pushOtBatch(id, meta, records) {
+    let r = await client.from('ot_history_batches').upsert({
+      id, label: meta.label || 'OT batch', period: meta.period || null,
+      employee_count: meta.employeeCount ?? null, day_count: meta.dayCount ?? null, record_count: records.length,
+      source_file_name: meta.sourceFileName || null, saved_at: new Date(meta.savedAt || Date.now()).toISOString(),
+    }, { onConflict: 'id' });
+    if (r.error) throw fail('Could not save the OT batch', r.error);
+    const seen = new Map(); let skipped = 0;
+    records.forEach(rec => { const c = otRecToCloud(rec, id); if (!c) { skipped++; return; } seen.set(c.emp_key + '|' + c.work_date, c); });
+    const rows = [...seen.values()];
+    for (let i = 0; i < rows.length; i += SB_CONFIG.chunk) {
+      r = await client.from('ot_history_records').upsert(rows.slice(i, i + SB_CONFIG.chunk), { onConflict: 'emp_key,work_date,batch_id' });
+      if (r.error) throw fail('Could not save OT records', r.error);
+      if (rows.length > SB_CONFIG.chunk) otMsg(`Uploading OT history… ${Math.min(i + SB_CONFIG.chunk, rows.length).toLocaleString()} / ${rows.length.toLocaleString()}`);
+    }
+    return { sent: rows.length, skipped };
+  }
+  async function localOtRecords(id) {
+    const db = await openOtHistoryDb();
+    return idbReq(db.transaction('records', 'readonly').objectStore('records').index('batchId').getAll(IDBKeyRange.only(id)));
+  }
+  async function remapOtBatch(oldId, newId, meta) {
+    const db = await openOtHistoryDb();
+    const tx = db.transaction(['batches', 'records'], 'readwrite');
+    tx.objectStore('batches').delete(oldId);
+    tx.objectStore('batches').put(Object.assign({}, meta, { batchId: newId }));
+    const rq = tx.objectStore('records').index('batchId').openCursor(IDBKeyRange.only(oldId));
+    rq.onsuccess = () => { const c = rq.result; if (c) { const v = c.value; v.batchId = newId; c.update(v); c.continue(); } };
+    await idbTxDone(tx);
+  }
+  async function pullOtBatch(cb) {
+    const recs = [];
+    for (let from = 0; ; from += SB_CONFIG.chunk) {
+      const r = await client.from('ot_history_records').select('*').eq('batch_id', cb.id).order('id').range(from, from + SB_CONFIG.chunk - 1);
+      if (r.error) throw fail('Could not download OT records', r.error);
+      r.data.forEach(x => recs.push(otRecFromCloud(x, cb.id)));
+      if (r.data.length < SB_CONFIG.chunk) break;
+    }
+    await _origOtSave({ batchId: cb.id, label: cb.label, period: cb.period, employeeCount: cb.employee_count, dayCount: cb.day_count,
+      recordCount: recs.length, savedAt: Date.parse(cb.saved_at), sourceFileName: cb.source_file_name || '' }, recs);
+    return recs.length;
+  }
+
+  let otSyncing = false, otAgain = false;
+  out.syncOt = async function () {
+    if (!out.ready) return;
+    if (otSyncing) { otAgain = true; return; }
+    otSyncing = true;
+    const btn = document.getElementById('sbOtSyncBtn'); if (btn) btn.disabled = true;
+    try {
+      otMsg('Syncing OT history with the cloud…');
+      const cr = await client.from('ot_history_batches').select('id,label,period,employee_count,day_count,record_count,source_file_name,saved_at').limit(10000);
+      if (cr.error) throw fail('Could not read the cloud OT history', cr.error);
+      const cloud = new Map(cr.data.map(b => [b.id, b]));
+      const pushedSet = loadOtPushed();
+      const localBatches = await idbGetAllBatches();
+      const localIds = new Set(localBatches.map(b => b.batchId));
+      let pushed = 0, pulled = 0, removed = 0;
+      for (const lb of localBatches) {
+        const id = lb.batchId;
+        if (cloud.has(id) && pushedSet.has(id)) continue;                                                   // confirmed complete in the cloud
+        if (!cloud.has(id) && pushedSet.has(id)) { await _origOtDelete(id); pushedSet.delete(id); removed++; continue; }   // deleted on another device
+        const newId = isUuid(id) ? id : uuid();
+        if (newId !== id) await remapOtBatch(id, newId, lb);
+        const recs = await localOtRecords(newId);
+        await pushOtBatch(newId, lb, recs);
+        pushedSet.add(newId); saveOtPushed(pushedSet); pushed++;
+      }
+      for (const cb of cr.data) {
+        if (localIds.has(cb.id)) continue;
+        await pullOtBatch(cb); pushedSet.add(cb.id); pulled++;
+      }
+      saveOtPushed(pushedSet);
+      await refreshOtHistoryCache();
+      otMsg(`OT history synced — ${pushed} batch${pushed === 1 ? '' : 'es'} sent, ${pulled} downloaded${removed ? `, ${removed} removed (deleted on another device)` : ''}. ${new Date().toLocaleTimeString()}`, 'ok');
+    } catch (e) {
+      console.error(e);
+      otMsg('OT history sync failed: ' + e.message + ' — your saved batches are safe in this browser; press “Sync OT history” to retry.', 'error');
+    } finally {
+      otSyncing = false; if (btn) btn.disabled = false;
+      if (otAgain) { otAgain = false; setTimeout(() => out.syncOt(), 200); }
+    }
+  };
+
+  const _origOtSave = idbSaveBatch, _origOtDelete = idbDeleteBatch, _origOtClear = idbClearAllHistory;
+  idbSaveBatch = async function (meta, records) {
+    await _origOtSave(meta, records);                       // local save first — never lost
+    otLastNote = '';
+    if (!out.ready) { otLastNote = ' (Not signed in to the cloud — saved in this browser only.)'; return; }
+    if (!isUuid(meta.batchId)) { otLastNote = ' Cloud upload pending — use “Sync OT history”.'; return; }
+    try {
+      otMsg('Uploading OT history to the cloud…');
+      const r = await pushOtBatch(meta.batchId, meta, records);
+      const s = loadOtPushed(); s.add(meta.batchId); saveOtPushed(s);
+      otLastNote = ` Also saved to the cloud (${r.sent.toLocaleString()} records).`;
+      otMsg(`Saved to the cloud: "${meta.label}" — ${r.sent.toLocaleString()} records. ${new Date().toLocaleTimeString()}`, 'ok');
+    } catch (e) {
+      console.error(e);
+      otLastNote = ' NOT saved to the cloud yet — ' + e.message + ' (press “Sync OT history” to retry).';
+      otMsg('Saved in this browser but NOT yet in the cloud: ' + e.message, 'error');
+    }
+  };
+  idbDeleteBatch = async function (batchId) {
+    if (out.ready && isUuid(batchId)) {
+      const r = await client.from('ot_history_batches').delete().eq('id', batchId);
+      if (r.error) throw fail('Could not delete it from the cloud', r.error);   // abort: keep local and cloud consistent
+      const s = loadOtPushed(); s.delete(batchId); saveOtPushed(s);
+    }
+    return _origOtDelete(batchId);
+  };
+  idbClearAllHistory = async function () {
+    if (out.ready) {
+      if (!window.confirm('Signed in to the cloud: this ALSO permanently deletes the shared OT History in the cloud (all users and devices).\n\nContinue?')) throw new Error('Cancelled — nothing was deleted.');
+      const r = await client.from('ot_history_batches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (r.error) throw fail('Could not clear the cloud OT history', r.error);
+      saveOtPushed(new Set());
+    }
+    return _origOtClear();
   };
   return out;
 })();

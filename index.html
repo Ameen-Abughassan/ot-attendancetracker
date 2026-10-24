@@ -1057,6 +1057,10 @@ header{background:linear-gradient(135deg,#0f2a5e 0%,#2a4bb3 55%,#6d5ce7 100%);}
     <h3>Full-day overtime holidays</h3>
     <p>For roster dates inside any of the ranges below, OT is calculated directly from the Actual Biometric working time: the full working time (capped at the Dispatched duration, same 12:00 ceiling as normal) counts as OT — no baseline deduction. Applies to all staff regardless of Religion. All four holiday types below share this identical calculation rule. Update these dates each year — no code changes needed.</p>
     <div class="holiday-rows" id="holidayRows"></div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px;position:relative;z-index:1;">
+      <button class="bvh-btn" id="sbDateSyncBtn" type="button" style="display:none">☁ Sync Ramadan &amp; holiday dates</button>
+      <div class="bvh-msg" id="dateCfgSyncMsg" style="margin-top:0"></div>
+    </div>
   </div>
 
   <div class="upload-actions">
@@ -1870,6 +1874,7 @@ const fileInput = el('fileInput');
   el(id).addEventListener('change', () => {
     localStorage.setItem(key, el(id).value);
     updateRamadanBadge();
+    dateCfgTouch('ramadan');
   });
 });
 updateRamadanBadge();
@@ -1884,10 +1889,37 @@ HOLIDAY_TYPES.forEach(h => {
     el(id).addEventListener('change', () => {
       localStorage.setItem(key, el(id).value);
       updateHolidayBadge(h.id);
+      dateCfgTouch('holiday.' + h.id);
     });
   });
   updateHolidayBadge(h.id);
 });
+
+// --- Cloud-synced dates (Ramadan + holidays) ---------------------------------
+// Each setting is one row in Supabase (table ot_date_config; key 'ramadan' or 'holiday.<id>'). localStorage stays as
+// the offline cache. The cloud layer (SB.syncDates) pushes edits and pulls other people's. A key whose edit has not
+// reached the cloud yet is "pending" and wins over the cloud copy on the next sync.
+const DATE_CFG_PENDING_KEY = 'otValidator.dateConfig.pending';
+function dateCfgDefs() {
+  return [{ key: 'ramadan', startId: 'ramadanStart', endId: 'ramadanEnd', startLs: RAMADAN_STORAGE_KEY_START, endLs: RAMADAN_STORAGE_KEY_END, refresh: updateRamadanBadge }]
+    .concat(HOLIDAY_TYPES.map(h => ({
+      key: 'holiday.' + h.id, startId: `holiday_${h.id}_start`, endId: `holiday_${h.id}_end`,
+      startLs: holidayStorageKey(h.id, 'start'), endLs: holidayStorageKey(h.id, 'end'), refresh: () => updateHolidayBadge(h.id)
+    })));
+}
+function dateCfgPending() { try { return new Set(JSON.parse(localStorage.getItem(DATE_CFG_PENDING_KEY) || '[]')); } catch (e) { return new Set(); } }
+function dateCfgSavePending(set) { try { localStorage.setItem(DATE_CFG_PENDING_KEY, JSON.stringify([...set])); } catch (e) {} }
+function dateCfgTouch(key) {
+  const p = dateCfgPending(); p.add(key); dateCfgSavePending(p);
+  if (typeof window.dateCfgOnChange === 'function') window.dateCfgOnChange(key);
+}
+// Write cloud values into the inputs and the local cache (no change event fires, so nothing is sent back).
+function dateCfgApply(def, start, end) {
+  el(def.startId).value = start || '';
+  el(def.endId).value = end || '';
+  try { localStorage.setItem(def.startLs, start || ''); localStorage.setItem(def.endLs, end || ''); } catch (e) {}
+  def.refresh();
+}
 
 dropzone.addEventListener('click', () => fileInput.click());
 ['dragover','dragenter'].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.add('drag'); }));
@@ -7056,8 +7088,63 @@ const SB = (function () {
     }
   };
 
+  // ---- Ramadan + holiday dates (table ot_date_config: one row per setting) ---------------------
+  const dcMsg = (text, kind) => { const m = document.getElementById('dateCfgSyncMsg'); if (!m) return; m.textContent = text || ''; m.className = 'bvh-msg' + (kind ? ' ' + kind : ''); };
+  let dcSyncing = false, dcAgain = false, dcTimer = null, dcLast = 0;
+  out.syncDates = async function (manual) {
+    if (!out.ready || typeof dateCfgDefs !== 'function') return;
+    if (dcSyncing) { dcAgain = true; return; }
+    dcSyncing = true;
+    const btn = document.getElementById('sbDateSyncBtn'); if (btn) btn.disabled = true;
+    try {
+      if (manual) dcMsg('Syncing Ramadan and holiday dates…');
+      const cr = await client.from('ot_date_config').select('key,start_date,end_date').limit(1000);
+      if (cr.error) throw fail('Could not read the cloud dates', cr.error);
+      const cloud = new Map(cr.data.map(r => [r.key, r]));
+      const defs = dateCfgDefs(), pending = dateCfgPending();
+      const rows = []; let pulled = 0;
+      for (const d of defs) {
+        const s = document.getElementById(d.startId).value || '', e = document.getElementById(d.endId).value || '';
+        const c = cloud.get(d.key);
+        const ae = document.activeElement, editing = !!ae && (ae.id === d.startId || ae.id === d.endId);
+        if (pending.has(d.key) || (!c && (s || e))) {
+          rows.push({ key: d.key, start_date: s || null, end_date: e || null, updated_at: new Date().toISOString() });   // local edit (or first-time seed) → cloud
+        } else if (c && !editing && ((c.start_date || '') !== s || (c.end_date || '') !== e)) {
+          dateCfgApply(d, c.start_date, c.end_date); pulled++;                                                          // someone else changed it → here
+        }
+      }
+      if (rows.length) {
+        const w = await client.from('ot_date_config').upsert(rows, { onConflict: 'key' });
+        if (w.error) throw fail('Could not save the dates to the cloud', w.error);
+        // clear "pending" only for settings that still hold exactly what was sent (an edit made meanwhile stays pending)
+        const now = dateCfgPending();
+        rows.forEach(r => {
+          const d = defs.find(x => x.key === r.key);
+          if ((document.getElementById(d.startId).value || '') === (r.start_date || '') && (document.getElementById(d.endId).value || '') === (r.end_date || '')) now.delete(r.key);
+        });
+        dateCfgSavePending(now);
+      }
+      dcLast = Date.now();
+      dcMsg(`Dates synced with the cloud — ${rows.length} sent, ${pulled} updated here. ${new Date().toLocaleTimeString()}`, 'ok');
+    } catch (e) {
+      console.error(e);
+      const hint = /ot_date_config|schema cache|does not exist/i.test(e.message) ? ' Create the ot_date_config table in Supabase first (SQL provided).' : '';
+      dcMsg('Date sync failed: ' + e.message + ' — the dates are safe in this browser; press “Sync Ramadan & holiday dates” to retry.' + hint, 'error');
+    } finally {
+      dcSyncing = false; if (btn) btn.disabled = false;
+      if (dcAgain) { dcAgain = false; setTimeout(() => out.syncDates(), 200); }
+    }
+  };
+  // an edit is pushed ~0.7 s after the last change; other people's changes are picked up when the tab regains focus
+  window.dateCfgOnChange = function () { if (!out.ready) return; clearTimeout(dcTimer); dcTimer = setTimeout(() => out.syncDates(), 700); };
+  const dcOnFocus = () => { if (out.ready && Date.now() - dcLast > 60000) out.syncDates(); };
+  window.addEventListener('focus', dcOnFocus);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) dcOnFocus(); });
+
   out.onSignedIn = async function () {
     out.ready = true;
+    const db = document.getElementById('sbDateSyncBtn'); if (db) { db.style.display = ''; if (!db.__wired) { db.__wired = true; db.addEventListener('click', () => out.syncDates(true)); } }
+    out.syncDates();   // dates first (tiny) so the analysis rules are right while the big history syncs run
     const btn = document.getElementById('sbSyncBtn'); if (btn) { btn.style.display = ''; if (!btn.__wired) { btn.__wired = true; btn.addEventListener('click', () => out.syncAll(true)); } }
     const pill = document.querySelector('#bvhCard .bvh-pill'); if (pill) pill.textContent = 'cloud + this browser';
     const ob = document.getElementById('sbOtSyncBtn'); if (ob) { ob.style.display = ''; if (!ob.__wired) { ob.__wired = true; ob.addEventListener('click', () => out.syncOt()); } }

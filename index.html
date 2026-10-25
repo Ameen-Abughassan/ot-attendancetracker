@@ -842,6 +842,220 @@ header{background:linear-gradient(135deg,#0f2a5e 0%,#2a4bb3 55%,#6d5ce7 100%);}
   #utbTable tr.utb-missrow td{background:#fffbeb}
   #utbSummary{grid-template-columns:repeat(5,minmax(0,1fr))}
   @media(max-width:1100px){#utbSummary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* ===== Command Center layout: sidebar nav + interior page styling ===== */
+main{display:grid !important;grid-template-columns:236px minmax(0,1fr);column-gap:24px;align-items:start;max-width:1480px !important}
+main>*{grid-column:2;min-width:0}
+main>.app-tabs{grid-column:1;grid-row:1 / span 30;position:sticky;top:16px;flex-direction:column;gap:2px;width:auto !important;padding:10px !important;margin:0 !important;background:var(--panel,#fff);border:1px solid var(--line,#e3e9f2);border-radius:16px;box-shadow:0 8px 24px rgba(31,52,84,.07)}
+main>.app-tabs .app-tab{display:flex;align-items:center;gap:10px;text-align:left;padding:10px 12px;font-weight:600;border-radius:10px;color:#607089}
+main>.app-tabs .app-tab:hover{background:#f7f9fc;color:#2563eb}
+main>.app-tabs .app-tab.active{background:#eff6ff;color:#2563eb;box-shadow:inset 3px 0 0 #2563eb}
+main>.app-tabs .app-tab:focus-visible{outline:2px solid #2563eb;outline-offset:1px}
+.app-tabs .tab-ico{width:18px;height:18px}
+.tab-panel>.panel-intro:first-child{position:sticky;top:0;z-index:5;margin:0 0 16px;padding:14px 18px;background:#fff;border:1px solid #e3e9f2;border-left:4px solid var(--tab-accent,#2563eb);border-radius:14px;box-shadow:0 8px 24px rgba(31,52,84,.07)}
+.cc-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+.cc-card{background:#fff;border:1px solid #e3e9f2;border-radius:16px;padding:16px;box-shadow:0 8px 24px rgba(31,52,84,.07)}
+.cc-card h3{margin:0 0 4px;font-size:15px}.cc-card p{margin:0;color:#607089;font-size:13px}
+.cc-kpi b{display:block;font:500 28px var(--mono,monospace);margin:4px 0;color:#172033}
+.cc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.cc-tool{all:unset;box-sizing:border-box;cursor:pointer;background:#fff;border:1px solid #e3e9f2;border-radius:16px;padding:16px;display:block;box-shadow:0 8px 24px rgba(31,52,84,.07)}
+.cc-tool:hover{border-color:#2563eb}.cc-tool:focus-visible{outline:2px solid #2563eb}
+.cc-chip{display:inline-block;margin-top:10px;font-size:12px;font-weight:600;padding:2px 10px;border-radius:99px;background:#ecfdf3;color:#16a34a}
+.cc-chip.warn{background:#fff7ed;color:#d97706}
+.cc-h{margin:18px 0 10px;font-size:15px}
+@media(max-width:900px){main{grid-template-columns:1fr}main>*{grid-column:1}main>.app-tabs{grid-row:auto;grid-column:1;position:static;flex-direction:row;overflow-x:auto}main>.app-tabs .app-tab{white-space:nowrap}}
+
+.cc2-hero{background:#26215C;color:#fff;border-radius:18px;padding:20px;margin-bottom:14px;display:flex;gap:20px;justify-content:space-between;align-items:center;flex-wrap:wrap}
+.cc2-hero small{color:#CECBF6;font-size:13px}.cc2-hero h2{margin:2px 0 4px;font-size:22px;color:#fff}.cc2-hero p{margin:0;color:#CECBF6;font-size:13px}
+.cc2-rg{display:flex;align-items:center;gap:16px}.cc2-ring{width:92px;height:92px;flex:none}
+.cc2-hs{display:grid;grid-template-columns:repeat(2,minmax(110px,1fr));gap:8px}.cc2-hs div{background:#3C3489;border-radius:12px;padding:9px 12px}
+.cc2-hs b{display:block;font:500 18px var(--mono,monospace);color:#fff}.cc2-hs span{font-size:12px;color:#CECBF6}
+.cc2-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px}
+.cc2-k,.cc2-c{background:#fff;border:1px solid #e3e9f2;border-radius:16px;padding:14px;box-shadow:0 8px 24px rgba(31,52,84,.07)}
+.cc2-ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:8px}
+.cc2-k small{display:block;color:#607089;font-size:13px}.cc2-k b{font:500 26px var(--mono,monospace);color:#172033}
+.cc2-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:12px}
+.cc2-c h4{margin:0 0 2px;font-size:15px}.cc2-c p{margin:0;color:#607089;font-size:13px}
+.cc2-bars{display:flex;align-items:flex-end;gap:4px;height:110px;margin-top:12px}.cc2-bars i{flex:1;min-width:4px;border-radius:5px 5px 2px 2px;background:#AFA9EC}.cc2-bars i.pk{background:#EF9F27}
+.cc2-empty{color:#8794a8;font-size:13px;display:block;margin-top:12px}
+.cc2-pr{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:13px}.cc2-pr span:first-child{width:120px;color:#607089;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cc2-tr{flex:1;height:9px;border-radius:99px;background:#eef3f9;overflow:hidden}.cc2-tr i{display:block;height:100%;border-radius:99px;background:#7F77DD}
+.cc2-al{all:unset;box-sizing:border-box;width:100%;cursor:pointer;display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid #e3e9f2}.cc2-al:first-child{border-top:0}
+.cc2-al:focus-visible{outline:2px solid #2563eb}.cc2-al b{flex:1;font-weight:500}.cc2-al small{display:block;color:#607089;font-weight:400}
+.cc2-n{font:500 14px var(--mono,monospace);padding:2px 10px;border-radius:99px;background:#eff6ff;color:#1d4ed8}.cc2-n.w{background:#fff7ed;color:#b45309}.cc2-n.r{background:#fef2f2;color:#b91c1c}
+@media(max-width:900px){.cc2-hero{padding:16px}.cc2-rg{width:100%}
+main>.app-tabs{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:50;margin:0 !important;border-radius:16px 16px 0 0;justify-content:space-around;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px)) !important}
+main>.app-tabs .app-tab{flex-direction:column;gap:2px;padding:6px 4px;font-size:10px;flex:1;min-width:0}
+main>.app-tabs .app-tab .tab-label{overflow:hidden;text-overflow:ellipsis;max-width:100%}
+main{padding-bottom:96px !important}}
+
+/* ===== Clean workspace: white and light-grey, navy text, blue accents ===== */
+body{background:#f5f7fa !important;color:#0f2747}
+header{padding:16px 28px !important}header:after{display:none !important}header p,.trust-badge{display:none !important}
+header h1{font-size:20px !important;margin:0 !important;color:#0f2747 !important}.eyebrow{margin-bottom:4px !important}
+.welcome-bar{display:none !important}
+main{grid-template-columns:232px minmax(0,1fr);max-width:1560px !important;padding-top:20px !important}
+main.nav-collapsed{grid-template-columns:72px minmax(0,1fr)}
+main>.app-tabs{background:#0f2747 !important;border:0 !important;border-radius:16px !important;padding:12px 10px !important;gap:2px !important;box-shadow:none !important;max-height:calc(100vh - 32px);overflow:auto}
+main>.app-tabs .app-tab{color:#b8c6de !important;background:transparent !important;box-shadow:none !important;border-radius:10px !important;font-weight:500 !important}
+main>.app-tabs .app-tab:hover{background:#1b3a6b !important;color:#fff !important}
+main>.app-tabs .app-tab.active{background:#1d4ed8 !important;color:#fff !important;box-shadow:none !important}
+.nav-brand{display:flex;align-items:center;gap:10px;padding:4px 6px 14px;color:#fff}
+.nav-logo{width:34px;height:34px;border-radius:10px;background:#2563eb;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex:none}
+.nav-name{font-size:13px;line-height:1.25;font-weight:600;flex:1}
+.nav-toggle{all:unset;cursor:pointer;width:26px;height:26px;border-radius:8px;text-align:center;line-height:24px;color:#b8c6de;font-size:18px}.nav-toggle:hover{background:#1b3a6b;color:#fff}.nav-toggle:focus-visible{outline:2px solid #60a5fa}
+.nav-grp{color:#7f93b5;font-size:12px;padding:14px 10px 4px}
+main.nav-collapsed .nav-name,main.nav-collapsed .nav-grp,main.nav-collapsed .tab-label{display:none}
+main.nav-collapsed .nav-brand{flex-direction:column;padding-bottom:10px}main.nav-collapsed .nav-toggle{transform:rotate(180deg)}
+main.nav-collapsed .app-tab{justify-content:center}
+.ws-bar{position:sticky;top:0;z-index:30;display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:10px 12px;margin-bottom:14px;box-shadow:0 2px 10px rgba(15,39,71,.06)}
+.ws-bar input,.ws-bar select{height:36px;border:1px solid #d5deea;border-radius:9px;padding:0 10px;background:#fff;color:#0f2747;font:inherit;font-size:13px}
+.ws-bar #wsQ{flex:1;min-width:190px}.ws-bar input:focus,.ws-bar select:focus{outline:2px solid #2563eb;outline-offset:0;border-color:#2563eb}
+.ws-f{display:flex;align-items:center;gap:6px;font-size:12px;color:#5b6b86}
+.ws-b{height:36px;border:1px solid #d5deea;background:#fff;color:#0f2747;border-radius:9px;padding:0 14px;font:inherit;font-size:13px;font-weight:500;cursor:pointer}.ws-b:hover{background:#f5f7fa}.ws-b:focus-visible{outline:2px solid #2563eb}
+.ws-p{background:#2563eb;border-color:#2563eb;color:#fff}.ws-p:hover{background:#1d4ed8}
+.ws-n{font-size:12px;color:#5b6b86;margin-left:auto}
+.ws-mw{position:relative}.ws-menu{position:absolute;right:0;top:42px;min-width:270px;max-height:340px;overflow:auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 16px 40px rgba(15,39,71,.16);padding:6px;z-index:40}
+.ws-menu small{display:block;color:#5b6b86;font-size:12px;padding:8px 10px 2px}
+.ws-menu button{all:unset;box-sizing:border-box;display:block;width:100%;padding:8px 10px;border-radius:8px;font-size:13px;color:#0f2747;cursor:pointer}.ws-menu button:hover{background:#eff6ff}.ws-menu button[aria-disabled=true]{color:#94a3b8;cursor:default}.ws-menu button:focus-visible{outline:2px solid #2563eb}
+.ws-hide{display:none !important}
+.tab-panel>.panel-intro:first-child{top:72px !important;border-left-color:#2563eb !important}
+.ov-h h2{margin:0;font-size:24px;color:#0f2747}.ov-h p{margin:2px 0 14px;color:#5b6b86;font-size:13px}
+.ov-ks{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:14px}
+.ov-k,.ov-c{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:14px 16px;box-shadow:0 2px 10px rgba(15,39,71,.04)}
+.ov-k small{display:block;color:#5b6b86;font-size:13px}.ov-k b{display:block;font:600 26px var(--mono,monospace);color:#0f2747;margin:4px 0 2px}.ov-k span{font-size:12px;color:#5b6b86}
+.ov-k.alert b{color:#b91c1c}.ov-pb{height:6px;border-radius:99px;background:#e2e8f0;overflow:hidden;margin-top:8px}.ov-pb i{display:block;height:100%;background:#2563eb;border-radius:99px}
+.ov-c{margin-bottom:14px}.ov-c h3{margin:0;font-size:16px;color:#0f2747}.ov-sm{color:#5b6b86;font-size:12px;margin:2px 0 0}
+.ov-ch{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.ov-tw{overflow-x:auto}.ov-t{width:100%;border-collapse:collapse;min-width:760px;font-size:13px}
+.ov-t th{text-align:left;color:#5b6b86;font-weight:500;font-size:12px;padding:10px 8px;background:#f5f7fa;border-bottom:1px solid #e2e8f0}
+.ov-t td{padding:11px 8px;border-bottom:1px solid #eef2f7;color:#0f2747}.ov-t tr.cl{cursor:pointer}.ov-t tr.cl:hover td{background:#f8fbff}.ov-t td.m{font-family:var(--mono,monospace)}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:3px 10px;border-radius:99px;white-space:nowrap}.pill:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill.r{background:#fef2f2;color:#b91c1c}.pill.a{background:#fff7ed;color:#b45309}.pill.g{background:#ecfdf3;color:#15803d}
+.ov-pg{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding-top:12px;font-size:12px;color:#5b6b86}.ov-pgb{display:flex;align-items:center;gap:8px}.ov-pgb select{height:32px;border:1px solid #d5deea;border-radius:8px;padding:0 6px}.ov-pgb .ws-b{height:32px}
+.ov-empty{text-align:center;padding:26px 8px !important;color:#5b6b86 !important}
+.ov-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.ov-bars{display:flex;align-items:flex-end;gap:4px;height:130px;margin-top:14px}.ov-bars i{flex:1;min-width:4px;border-radius:5px 5px 2px 2px;background:#bfdbfe}.ov-bars i.pk{background:#2563eb}
+.ov-e{color:#8794a8;font-size:13px;display:block;margin-top:14px}
+.ov-pr{display:flex;align-items:center;gap:10px;margin-top:12px;font-size:13px}.ov-pr span:first-child{width:130px;color:#5b6b86;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ov-tr{flex:1;height:9px;border-radius:99px;background:#e2e8f0;overflow:hidden}.ov-tr i{display:block;height:100%;background:#2563eb;border-radius:99px}
+@media(max-width:900px){main{padding-bottom:96px !important}
+ main>.app-tabs{background:#0f2747 !important;border-radius:16px 16px 0 0 !important;max-height:none;overflow-x:auto}
+ .nav-brand,.nav-grp{display:none !important}main>.app-tabs .app-tab{color:#b8c6de !important}
+ .ws-bar{position:static}.tab-panel>.panel-intro:first-child{position:static !important}.ws-f{flex:1}}
+
+/* ===== Sidebar on every screen size (icon rail on phones) ===== */
+main>.app-tabs .app-tab{border:0 !important;outline:0}
+main>.app-tabs .app-tab:focus-visible{outline:2px solid #60a5fa !important;outline-offset:-2px}
+main>.app-tabs .tab-ico-wrap{background:transparent !important;box-shadow:none !important;width:auto !important;height:auto !important;color:inherit !important}
+main>.app-tabs .tab-ico{color:inherit !important;stroke:currentColor !important}
+@media(max-width:900px){
+ main{grid-template-columns:56px minmax(0,1fr) !important;column-gap:10px !important;padding:12px 10px 28px !important;width:100%}
+ main>*{grid-column:2}
+ main>.app-tabs{grid-column:1 !important;grid-row:1 / span 30 !important;position:sticky !important;top:8px !important;left:auto !important;right:auto !important;bottom:auto !important;flex-direction:column !important;justify-content:flex-start !important;overflow-x:hidden !important;overflow-y:auto !important;max-height:calc(100vh - 16px);border-radius:16px !important;padding:8px 6px !important;width:auto !important}
+ main>.app-tabs .app-tab{flex:none !important;flex-direction:row !important;justify-content:center !important;width:100%;padding:11px 0 !important}
+ .tab-label,.nav-name,.nav-grp,.nav-toggle{display:none !important}
+ .nav-brand{display:flex !important;justify-content:center;padding:2px 0 10px}
+}
+
+/* ===== Professional inner pages: consistent cards, labels, buttons, no overflow ===== */
+main .tab-panel{min-width:0 !important;max-width:100%}
+main .tab-panel *{min-width:0}
+main .tab-panel table,main .tab-panel .multiselect-panel{min-width:auto}
+main .tab-panel label,main .tab-panel .control-field label,main #payslipPanel .control-field label,main .ramadan-field label,main .holiday-field label{font-family:inherit !important;font-size:13px !important;font-weight:600 !important;letter-spacing:0 !important;text-transform:none !important;color:#334766 !important}
+main .tab-panel thead th{font-family:inherit !important;font-size:12px !important;font-weight:600 !important;letter-spacing:0 !important;text-transform:none !important;color:#5b6b86 !important;background:#f5f7fa !important;padding:10px 12px !important}
+main .tab-panel tbody td{padding:10px 12px;color:#0f2747}
+main .tab-panel input[type=text],main .tab-panel input[type=search],main .tab-panel input[type=number],main .tab-panel input[type=date],main .tab-panel input[type=month],main .tab-panel select,main .tab-panel .multiselect-btn{height:42px;border:1px solid #d5deea !important;border-radius:10px !important;background:#fff !important;color:#0f2747 !important;font-size:14px !important;padding:0 12px;box-shadow:none !important;width:100%;box-sizing:border-box}
+main .tab-panel input:focus,main .tab-panel select:focus,main .tab-panel .multiselect-btn:focus-visible{outline:2px solid #2563eb !important;outline-offset:0;border-color:#2563eb !important}
+main .tab-panel .btn-primary,main .tab-panel .btn-secondary{height:44px;border-radius:10px !important;font-size:14px !important;font-weight:600 !important;letter-spacing:0 !important;text-transform:none !important;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 18px !important;box-shadow:none !important;transform:none !important}
+main .tab-panel .btn-primary{background:#2563eb !important;color:#fff !important;border:1px solid #2563eb !important}
+main .tab-panel .btn-primary:disabled{background:#c7d6f5 !important;border-color:#c7d6f5 !important;color:#fff !important}
+main .tab-panel .btn-primary:not(:disabled):hover{background:#1d4ed8 !important}
+main .tab-panel .btn-secondary{background:#fff !important;color:#0f2747 !important;border:1px solid #d5deea !important}
+main .tab-panel .btn-secondary:disabled{color:#94a3b8 !important;background:#f8fafc !important}
+main .tab-panel .btn-secondary:not(:disabled):hover{background:#f5f7fa !important}
+main .tab-panel .stat,main .tab-panel .pay-stat,main .tab-panel .payslip-controls,main .tab-panel .table-wrap,main .tab-panel .claim-master-banner,main .tab-panel .dropzone{background:#fff;border:1px solid #e2e8f0 !important;border-radius:14px !important;box-shadow:0 2px 10px rgba(15,39,71,.05) !important}
+main .tab-panel .dropzone{border-style:dashed !important;border-color:#b7c6dd !important;background:#fbfcfe}
+main .tab-panel .stat{padding:14px 16px !important;min-height:0 !important}
+main .tab-panel .stat:after{display:none !important}main .tab-panel .stat:before{width:3px !important}
+main .tab-panel .stat .n,main .tab-panel .pay-stat .n,main .tab-panel .pay-stat b{font-size:24px !important;color:#0f2747 !important}
+main .tab-panel .stat .l{font-size:13px !important;font-weight:500 !important;color:#5b6b86 !important}
+main .tab-panel .payslip-intro{background:#fff;border:1px solid #e2e8f0;border-left:4px solid #2563eb;border-radius:14px;padding:16px 18px !important;margin-bottom:14px;box-shadow:0 2px 10px rgba(15,39,71,.05)}
+main .tab-panel .payslip-intro h2{font-size:18px !important;margin:0 0 4px !important;color:#0f2747}main .tab-panel .payslip-intro p{font-size:13px !important;margin:0;color:#5b6b86;line-height:1.55}
+main .tab-panel .payslip-intro .eyebrow{display:none}
+main .pdf-mark{display:none !important}
+@media(max-width:900px){
+ main .tab-panel .top-grid,main .tab-panel .upload-actions,main .tab-panel .actions,main .tab-panel .result-grid,main .tab-panel .rules,main .tab-panel .payslip-controls,main .tab-panel .payslip-actions,main .tab-panel .bv-controls,main .tab-panel .bv-settings,main .tab-panel .utb-controls{grid-template-columns:minmax(0,1fr) !important}
+ main .tab-panel .summary,main .tab-panel .pay-summary,main .tab-panel #utbSummary{grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:10px !important}
+ main .tab-panel .payslip-controls{padding:14px !important;gap:14px !important}
+ main .tab-panel .table-wrap{max-height:none;overflow-x:auto}
+ main .tab-panel h2{font-size:17px}
+ main .tab-panel .btn-primary,main .tab-panel .btn-secondary{width:100%}
+}
+
+/* ===== Header contrast, KPI grid, overview history ===== */
+header{background:#0f2747 !important}
+header h1{color:#fff !important}
+.ov-ks{grid-template-columns:repeat(6,minmax(0,1fr)) !important}
+.ov-ks.ov-ks4{grid-template-columns:repeat(4,minmax(0,1fr)) !important}
+.ov-sec{margin:6px 0 10px}.ov-sec h3{margin:0;font-size:16px;color:#0f2747}
+@media(max-width:1200px){.ov-ks{grid-template-columns:repeat(3,minmax(0,1fr)) !important}}
+@media(max-width:700px){.ov-ks,.ov-ks.ov-ks4{grid-template-columns:repeat(2,minmax(0,1fr)) !important}}
+
+.ws-bar[hidden]{display:none !important}
+.ws-bar{align-items:center !important}
+.ws-bar input,.ws-bar select{height:36px !important;min-height:0 !important;padding:0 10px !important;margin:0 !important;box-shadow:none !important}
+.ws-bar .ws-b{height:36px !important;min-height:0 !important;padding:0 14px !important;line-height:1 !important;margin:0 !important;box-shadow:none !important;width:auto !important}
+.ws-bar .ws-f{margin:0 !important}
+
+.ov-sech{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.ov-sech select{height:36px;border:1px solid #d5deea;border-radius:9px;padding:0 10px;background:#fff;color:#0f2747;font:inherit;font-size:13px;max-width:100%}
+.ov-ks.ov-ks5{grid-template-columns:repeat(5,minmax(0,1fr)) !important}
+.ov-ax{display:flex;justify-content:space-between;font-size:12px;color:#5b6b86;margin-top:6px}
+.ov-bars{height:150px}
+@media(max-width:1200px){.ov-ks.ov-ks5{grid-template-columns:repeat(3,minmax(0,1fr)) !important}}
+@media(max-width:700px){.ov-ks.ov-ks5{grid-template-columns:repeat(2,minmax(0,1fr)) !important}}
+
+.ov-mc{display:flex;align-items:flex-end;gap:14px;min-height:210px;margin-top:14px;overflow-x:auto;padding-bottom:4px}
+.mc{flex:1;min-width:64px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px}
+.mc i{display:block;width:100%;max-width:84px;background:#bfdbfe;border-radius:8px 8px 3px 3px}.mc i.pk{background:#2563eb}
+.mv{font:500 12px var(--mono,monospace);color:#0f2747}.ml{font-size:12px;color:#5b6b86;white-space:nowrap}
+
+/* ===== Professional Overview (single blue palette) ===== */
+.nv-hero{background:#eef4ff;border:1px solid #cfe0ff;border-radius:16px;padding:18px 20px;margin-bottom:12px;color:#0f2747}
+.nv-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.nv-top small{color:#4a6285;font-size:13px}
+.nv-top select{height:34px;border:1px solid #cfe0ff;border-radius:99px;padding:0 12px;background:#fff;color:#1d4ed8;font:inherit;font-size:12px;max-width:100%}
+.nv-big{font:500 38px var(--mono,monospace);margin:6px 0 2px;color:#0f2747}.nv-up{font-size:13px;color:#0f766e;font-weight:500}
+.nv-mini{display:flex;margin-top:14px;border-top:1px solid #cfe0ff;padding-top:12px}.nv-mini div{flex:1;padding-right:10px}.nv-mini div+div{padding-left:16px;border-left:1px solid #cfe0ff}
+.nv-mini b{display:block;font:500 20px var(--mono,monospace);color:#0f2747}.nv-mini span{font-size:12px;color:#4a6285}
+.nv-alert{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #e2e8f0;border-left:4px solid #d97706;border-radius:12px;padding:12px 14px;margin-bottom:12px}
+.nv-alert div{flex:1;min-width:0}.nv-alert b{display:block;font-size:14px;font-weight:600;color:#0f2747}.nv-alert small{display:block;color:#5b6b86;font-size:12px}
+.nv-link{all:unset;cursor:pointer;color:#1d4ed8;font-weight:600;font-size:13px;padding:6px 10px;border-radius:8px}.nv-link:hover{background:#eff6ff}.nv-link:focus-visible{outline:2px solid #2563eb}
+.nv-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:12px}
+.nv-t{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:14px 16px}
+.nv-ic{width:30px;height:30px;border-radius:9px;background:#dbeafe;color:#1d4ed8;display:flex;align-items:center;justify-content:center;flex:none;margin-bottom:8px}
+.nv-t small{display:block;color:#5b6b86;font-size:13px}.nv-t b{font:600 22px var(--mono,monospace);color:#0f2747}
+.nv-pill{font-size:12px;padding:3px 10px;border-radius:99px;background:#dbeafe;color:#1d4ed8;white-space:nowrap}
+.mc i{background:#bfdbfe !important}.mc i.pk{background:#1d4ed8 !important}
+.nv-seg{display:flex;height:14px;border-radius:99px;overflow:hidden;gap:2px;margin-top:14px}.nv-seg i{display:block;height:100%}
+.nv-lg{display:flex;gap:10px;margin-top:12px}.nv-lg div{flex:1;min-width:0}.nv-lg b{display:block;font:500 16px var(--mono,monospace);color:#0f2747}
+.nv-lg span{display:flex;align-items:center;gap:6px;font-size:12px;color:#5b6b86}.nv-lg span i{width:9px;height:9px;border-radius:3px;flex:none}.nv-lg em{font-style:normal;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nv-b{display:flex;gap:12px;align-items:center;padding:11px 4px;border-top:1px solid #eef2f7;cursor:pointer;border-radius:10px}.nv-b:first-child{border-top:0}
+.nv-b:hover{background:#f8fbff}.nv-b:focus-visible{outline:2px solid #2563eb}.nv-b .nv-ic{margin:0}
+.nv-b p{margin:0;flex:1;min-width:0;font-weight:500;color:#0f2747;font-size:14px}.nv-b small{display:block;color:#5b6b86;font-weight:400;font-size:12px}.nv-b em{font-style:normal;color:#1d4ed8;font-weight:600;font-size:13px}
+.nv-more summary{cursor:pointer;font-weight:600;color:#1d4ed8;font-size:14px}.nv-more summary:focus-visible{outline:2px solid #2563eb}
+@media(max-width:700px){.nv-big{font-size:30px}.nv-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* OT colour coding: calculated = green, recorded = red */
+#mismatchBody td.calc{color:#15803d !important;font-weight:700}
+#mismatchBody td.recorded{color:#b91c1c !important;font-weight:700}
+.ov-t td.cg{color:#15803d;font-weight:700}.ov-t td.cr{color:#b91c1c;font-weight:700}
+
+.ov-pe span:first-child{width:190px !important;white-space:normal !important;overflow:visible !important;line-height:1.3;color:#0f2747 !important}
+.ov-pe b{display:block;font-weight:600;font-size:13px}.ov-pe small{display:block;color:#5b6b86;font-size:11px}
+@media(max-width:700px){.ov-pe span:first-child{width:140px !important}}
+
+/* Intro banners scroll with the page (not frozen) */
+main .tab-panel>.panel-intro,main .tab-panel>.panel-intro:first-child{position:static !important;top:auto !important}
 </style>
 </head>
 <body class="auth-locked">
@@ -978,29 +1192,74 @@ header{background:linear-gradient(135deg,#0f2a5e 0%,#2a4bb3 55%,#6d5ce7 100%);}
   </section>
 
   <div class="app-tabs" role="tablist" aria-label="OT application sections">
-    <button class="app-tab active" id="tabValidator" data-tab="validator" type="button" role="tab" aria-selected="true" aria-controls="validatorPanel">
+    <div class="nav-brand" role="presentation"><span class="nav-logo">OT</span><span class="nav-name">Attendance<br>Control</span><button type="button" id="navToggle" class="nav-toggle" aria-label="Collapse sidebar">&#8249;</button></div>
+    <div class="nav-grp" role="presentation">Main</div>
+    <button class="app-tab active" id="tabCommand" data-tab="command" type="button" role="tab" aria-selected="true" aria-controls="ccPanel"><span class="tab-ico-wrap" aria-hidden="true"><svg class="tab-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"></rect><rect x="14" y="3" width="7" height="5" rx="1"></rect><rect x="14" y="12" width="7" height="9" rx="1"></rect><rect x="3" y="16" width="7" height="5" rx="1"></rect></svg></span><span class="tab-label">Overview</span></button>
+    <div class="nav-grp" role="presentation">Workspaces</div>
+    <button class="app-tab" id="tabValidator" data-tab="validator" type="button" role="tab" aria-selected="false" aria-controls="validatorPanel">
       <span class="tab-ico-wrap" aria-hidden="true"><svg class="tab-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path><rect x="9" y="3" width="6" height="4" rx="1"></rect><path d="m9 14 2 2 4-4"></path></svg></span>
-      <span class="tab-label">OT Validator</span>
-    </button>
-    <button class="app-tab" id="tabPayslip" data-tab="payslip" type="button" role="tab" aria-selected="false" aria-controls="payslipPanel">
-      <span class="tab-ico-wrap" aria-hidden="true"><svg class="tab-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></span>
-      <span class="tab-label">Pay Slip Generator</span>
-    </button>
-    <button class="app-tab" id="tabUndertime" data-tab="undertime" type="button" role="tab" aria-selected="false" aria-controls="undertimePanel">
-      <span class="tab-ico-wrap" aria-hidden="true"><svg class="tab-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 14"></polyline></svg></span>
-      <span class="tab-label">Under Time Report</span>
-    </button>
-    <button class="app-tab" id="tabClaim" data-tab="claim" type="button" role="tab" aria-selected="false" aria-controls="claimPanel">
-      <span class="tab-ico-wrap" aria-hidden="true"><svg class="tab-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg></span>
-      <span class="tab-label">OT Claim Validation</span>
+      <span class="tab-label">Overtime</span>
     </button>
     <button class="app-tab" id="tabBiometric" data-tab="biometric" type="button" role="tab" aria-selected="false" aria-controls="bvPanel">
       <span class="tab-ico-wrap" aria-hidden="true"><svg class="tab-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><polyline points="16 11 18 13 22 9"></polyline></svg></span>
       <span class="tab-label">Biometric Validation</span>
     </button>
+    <button class="app-tab" id="tabUndertime" data-tab="undertime" type="button" role="tab" aria-selected="false" aria-controls="undertimePanel">
+      <span class="tab-ico-wrap" aria-hidden="true"><svg class="tab-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 14"></polyline></svg></span>
+      <span class="tab-label">Undertime</span>
+    </button>
+    <button class="app-tab" id="tabPayslip" data-tab="payslip" type="button" role="tab" aria-selected="false" aria-controls="payslipPanel">
+      <span class="tab-ico-wrap" aria-hidden="true"><svg class="tab-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></span>
+      <span class="tab-label">Payslips</span>
+    </button>
+    <button class="app-tab" id="tabClaim" data-tab="claim" type="button" role="tab" aria-selected="false" aria-controls="claimPanel">
+      <span class="tab-ico-wrap" aria-hidden="true"><svg class="tab-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg></span>
+      <span class="tab-label">Claims</span>
+    </button>
+  </div>
+  <div class="ws-bar" id="wsBar" role="search">
+    <input type="search" id="wsQ" placeholder="Search staff ID or name" aria-label="Search staff ID or name">
+    <label class="ws-f">From <input type="date" id="wsFrom"></label>
+    <label class="ws-f">To <input type="date" id="wsTo"></label>
+    <select id="wsSt" aria-label="Status"><option value="">All statuses</option><option value="review">Needs review</option><option value="valid">Valid or matched</option></select>
+    <button type="button" id="wsClear" class="ws-b">Clear</button>
+    <span class="ws-n" id="wsCount"></span>
+    <div class="ws-mw"><button type="button" id="wsAct" class="ws-b ws-p" aria-haspopup="true" aria-expanded="false">Actions &#9662;</button><div class="ws-menu" id="wsMenu" hidden></div></div>
   </div>
 
-  <section class="tab-panel active" id="validatorPanel" role="tabpanel" aria-labelledby="tabValidator">
+  <section class="tab-panel active" id="ccPanel" role="tabpanel" aria-labelledby="tabCommand">
+  <div class="ov-h"><div><h2>Overview</h2><p id="ccSub">Run a tool to populate live figures.</p></div></div>
+  
+  <div id="anWrap">
+  <div class="nv-hero"><div class="nv-top"><small>Total paid overtime</small><select id="anBatch" aria-label="Batch scope"><option value="">All saved batches</option></select></div>
+    <div class="nv-big" id="nvTotal">--</div><span class="nv-up" id="nvDelta"></span>
+    <div class="nv-mini"><div><b id="nvEmp">0</b><span>Employees</span></div><div><b id="nvRec">0</b><span>Entries</span></div><div><b id="nvVer">--</b><span>Verified</span></div></div></div>
+  <div class="nv-alert" id="nvAlert" hidden><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#b45309" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg><div><b id="nvAlertT"></b><small id="nvAlertS"></small></div><button type="button" class="nv-link" id="nvAlertGo">Review</button></div>
+  <div class="nv-tiles"><div class="nv-t"><div class="nv-ic"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><small>Average per employee</small><b id="nvAvg">--</b></div><div class="nv-t"><div class="nv-ic"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg></div><small>Busiest day</small><b id="anPeak">--</b></div><div class="nv-t"><div class="nv-ic"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11a3 3 0 0 0-3 3c0 2 .5 4 1.5 6M12 7a7 7 0 0 0-7 7c0 2 .4 3.4 1 5M12 3a11 11 0 0 1 11 11c0 2-.3 3.5-.8 5"/></svg></div><small>Without biometric</small><b id="nvNoBio">--</b></div><div class="nv-t"><div class="nv-ic"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div><small>Saved batches</small><b id="nvBat">--</b></div></div>
+  <div class="ov-c"><div class="ov-ch"><div><h3>Paid OT by month</h3><p class="ov-sm">Hours per calendar month</p></div><span class="nv-pill" id="anMonTot"></span></div><div class="ov-mc" id="anMon"></div></div>
+  <div class="ov-c"><div class="ov-ch"><div><h3>Paid OT by day</h3><p class="ov-sm">Total paid OT for each roster day. Hover a bar for details.</p></div><span class="nv-pill" id="anDayTot"></span></div><div class="ov-bars" id="anDaily"></div><div class="ov-ax"><span id="anD0"></span><span id="anD1"></span></div></div>
+  <div class="ov-row"><div class="ov-c"><h3>By line</h3><p class="ov-sm">Hours of paid OT, top six lines</p><div id="anLine"></div></div>
+  <div class="ov-c"><h3>Top positions</h3><p class="ov-sm">Hours of paid OT</p><div id="anPos"></div></div></div>
+  <details class="ov-c nv-more"><summary>More analysis</summary>
+    <div class="ov-row" style="margin-top:14px"><div><h3>Top employees</h3><p class="ov-sm" id="anScope"></p><div id="anTop"></div></div><div><h3>How OT was calculated</h3><p class="ov-sm">Share of hours by rule</p><div class="nv-seg" id="nvSeg"></div><div class="nv-lg" id="nvLg"></div><h3 style="margin-top:16px">Biometric coverage</h3><p class="ov-sm" id="anBioT"></p><div class="ov-pb" style="height:10px"><i id="anBioBar" style="width:0"></i></div></div></div>
+  </details>
+  </div>
+  <div class="ov-c" id="anEmpty" hidden><p class="ov-sm" style="font-size:14px">No saved OT history yet. Analyse a roster in Overtime and save the batch to see your overview here.</p></div>
+  <div class="ov-c"><h3>Saved batches</h3><div id="nvBatches"></div></div>
+  <div class="ov-sec"><h3>Current session</h3><p class="ov-sm">Live results from the roster you analyse in this visit.</p></div>
+  <div class="ov-c" id="ovEmpty"><p class="ov-sm" style="font-size:14px">No roster analysed yet. Upload the monthly roster in Overtime to see discrepancies, charts and clean rate here.</p><p style="margin:12px 0 0"><button type="button" class="ws-b ws-p" onclick="switchTab('validator')">Open Overtime</button></p></div>
+  <div id="ovLive" hidden>
+<div class="ov-ks"><div class="ov-k"><small>Entries checked</small><b id="ccEntries">0</b><span id="ccEntriesN"></span></div><div class="ov-k"><small>Discrepancies</small><b id="ccDisc">0</b><span id="ccDiscN">Open items</span></div><div class="ov-k"><small>Unverifiable</small><b id="ccSkip">0</b><span id="ccSkipN">No valid biometric</span></div><div class="ov-k"><small>Claims to review</small><b id="ccClaimsBad">0</b><span id="ccClaimsBadN"></span></div><div class="ov-k"><small>Under time records</small><b id="ccUT">0</b><span id="ccUTN"></span></div><div class="ov-k"><small>Clean rate</small><b id="ccPct">--</b><div class="ov-pb"><i id="ccPbar" style="width:0"></i></div></div></div>
+  <div class="ov-c"><div class="ov-ch"><h3>Outstanding discrepancies</h3><span class="ov-sm" id="ccTblN"></span></div>
+    <div class="ov-tw"><table class="ov-t"><thead><tr><th>Staff ID</th><th>Name</th><th>Position</th><th>Date</th><th>Recorded OT</th><th>Calculated OT</th><th>Status</th></tr></thead><tbody id="ccTbody"></tbody></table></div>
+    <div class="ov-pg"><span id="ccShow"></span><span class="ov-pgb"><select id="ccSize" aria-label="Rows per page"><option>10</option><option>25</option><option>50</option></select><button type="button" id="ccPrev" class="ws-b">Previous</button><span id="ccPg"></span><button type="button" id="ccNext" class="ws-b">Next</button></span></div></div>
+  <div class="ov-row"><div class="ov-c"><h3>Discrepancies by day</h3><p class="ov-sm">Count per roster day</p><div class="ov-bars" id="ccBars"><span class="ov-e">Run the Overtime tool to see this chart.</span></div></div>
+  <div class="ov-c"><h3>Discrepancies by position</h3><p class="ov-sm">Top five positions</p><div id="ccPos"><span class="ov-e">Run the Overtime tool to see this chart.</span></div></div></div>
+
+  </div>
+</section>
+
+  <section class="tab-panel" id="validatorPanel" role="tabpanel" aria-labelledby="tabValidator">
   <p class="panel-intro">Upload the monthly overtime roster. This checks every dispatched entry against two rules, flags mismatches against the recorded Overtime column, and builds a corrected workbook with an OT Correction column beside each day and a live Corrected Total OT column at the end.</p>
   <div class="top-grid">
     <div class="rules-panel">
@@ -3904,9 +4163,9 @@ el('tabPayslip').addEventListener('click',()=>switchTab('payslip'));
 el('tabUndertime').addEventListener('click',()=>switchTab('undertime'));
 el('tabClaim').addEventListener('click',()=>switchTab('claim'));
 el('tabBiometric').addEventListener('click',()=>switchTab('biometric'));
-const TAB_ORDER = ['validator','payslip','undertime','claim','biometric'];
-const TAB_PANEL_ID = { validator:'validatorPanel', payslip:'payslipPanel', undertime:'undertimePanel', claim:'claimPanel', biometric:'bvPanel' };
-const TAB_BTN_ID = { validator:'tabValidator', payslip:'tabPayslip', undertime:'tabUndertime', claim:'tabClaim', biometric:'tabBiometric' };
+const TAB_ORDER = ['command','validator','biometric','undertime','payslip','claim'];
+const TAB_PANEL_ID = { command:'ccPanel', validator:'validatorPanel', payslip:'payslipPanel', undertime:'undertimePanel', claim:'claimPanel', biometric:'bvPanel' };
+const TAB_BTN_ID = { command:'tabCommand', validator:'tabValidator', payslip:'tabPayslip', undertime:'tabUndertime', claim:'tabClaim', biometric:'tabBiometric' };
 function switchTab(name){
   TAB_ORDER.forEach(key => {
     const active = key === name;
@@ -3914,7 +4173,136 @@ function switchTab(name){
     el(TAB_BTN_ID[key]).classList.toggle('active', active);
     el(TAB_BTN_ID[key]).setAttribute('aria-selected', String(active));
   });
+  if(typeof wsOnSwitch==='function')wsOnSwitch(name);
 }
+
+
+
+const ccState={page:1,size:10};
+function ccIso(v){if(v instanceof Date&&!isNaN(v))return v.toISOString().slice(0,10);if(typeof v==='number'&&v>20000&&v<80000)return new Date(Math.round((v-25569)*864e5)).toISOString().slice(0,10);return v==null?'':String(v)}
+function wsGet(){return{q:(el('wsQ').value||'').trim().toLowerCase(),from:el('wsFrom').value,to:el('wsTo').value,st:el('wsSt').value}}
+function ccAll(){const a=analysis;if(!a)return[];return a.mismatches.map(m=>({id:m.sap,name:m.name,pos:m.position||'',date:ccIso(m.date),rec:m.recordedOt,calc:m.calcOt,over:m.recordedOtMin>m.calcOtMin}))}
+function ccFiltered(){const f=wsGet();return ccAll().filter(r=>{
+  if(f.q&&!(String(r.id)+' '+r.name).toLowerCase().includes(f.q))return false;
+  if(/^\d{4}-\d{2}-\d{2}$/.test(r.date)){if(f.from&&r.date<f.from)return false;if(f.to&&r.date>f.to)return false}
+  if(f.st==='valid')return false;return true})}
+function ccRender(){
+  const all=ccAll(),rows=ccFiltered(),n=rows.length,size=ccState.size,pages=Math.max(1,Math.ceil(n/size));
+  if(ccState.page>pages)ccState.page=pages;const st=(ccState.page-1)*size,pg=rows.slice(st,st+size);
+  el('ccTbody').innerHTML=pg.length?pg.map(r=>`<tr class="cl" onclick="switchTab('validator')"><td class="m">${esc(r.id)}</td><td>${esc(r.name)}</td><td>${esc(r.pos)}</td><td class="m">${esc(r.date)}</td><td class="m cr">${esc(r.rec)}</td><td class="m cg">${esc(r.calc)}</td><td><span class="pill ${r.over?'r':'a'}">${r.over?'Recorded above calculated':'Recorded below calculated'}</span></td></tr>`).join(''):`<tr><td colspan="7" class="ov-empty">${all.length?'No discrepancies match these filters.':'No discrepancies yet. Open Overtime and analyse the monthly roster.'}</td></tr>`;
+  el('ccShow').textContent=n?`Showing ${st+1} to ${st+pg.length} of ${n.toLocaleString()} items`:'Showing 0 items';
+  el('ccPg').textContent=`${ccState.page} / ${pages}`;el('ccPrev').disabled=ccState.page<=1;el('ccNext').disabled=ccState.page>=pages;
+  el('ccTblN').textContent=all.length?`${n.toLocaleString()} of ${all.length.toLocaleString()} shown`:'';
+  el('wsCount').textContent=all.length?`${n.toLocaleString()} of ${all.length.toLocaleString()} rows`:'';
+}
+
+function ccAnalysis(){
+  const hm=n=>Math.floor(n/60).toLocaleString()+':'+String(Math.round(n%60)).padStart(2,'0'),T=(id,x)=>{el(id).textContent=x};
+  const sel=el('anBatch'),bs=[...otHistoryBatches].sort((x,y)=>(y.savedAt||0)-(x.savedAt||0));
+  if(sel.options.length!==bs.length+1){const cur=sel.value;sel.innerHTML='<option value="">All saved batches</option>'+bs.map(b=>`<option value="${esc(b.batchId)}">${esc(b.label||'')}${b.period?' ('+esc(b.period)+')':''}</option>`).join('');sel.value=bs.some(b=>b.batchId===cur)?cur:''}
+  el('nvBatches').innerHTML=bs.length?bs.map(b=>`<div class="nv-b" tabindex="0" role="button" onclick="switchTab('payslip')" onkeydown="if(event.key==='Enter')switchTab('payslip')"><div class="nv-ic"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18M9 16l2 2 4-4"/></svg></div><p>${esc(b.period||b.label||'')}<small>${Number(b.employeeCount||0).toLocaleString()} employees, ${Number(b.recordCount||0).toLocaleString()} records${b.savedAt?' · saved '+new Date(b.savedAt).toLocaleDateString():''}</small></p><em>Open</em></div>`).join(''):'<p class="ov-sm" style="margin-top:8px">No saved batches yet. Choose Save to OT History in Overtime.</p>';
+  const v=sel.value,recs=[...otHistoryMap.values()].filter(r=>!v||r.batchId===v);
+  try{const cb=bs.find(x=>x.batchId===v);el('anScope').textContent=(v&&cb?'Batch: '+(cb.period||cb.label||''):'All '+bs.length+' saved batches combined')+'. Total corrected OT per employee, in hours:minutes.'}catch(e){}
+  let live=null;try{if(analysis&&analysis.mismatches.length)live=analysis.mismatches}catch(e){}
+  const noBio=recs.filter(r=>r.noBiometric).length,al=el('nvAlert');
+  if(live){const up=live.filter(m=>m.recordedOtMin>m.calcOtMin).length;T('nvAlertT',live.length.toLocaleString()+' discrepancies need review');T('nvAlertS',up+' recorded above calculated, '+(live.length-up)+' below');el('nvAlertGo').onclick=()=>switchTab('validator');al.hidden=false}
+  else if(noBio){T('nvAlertT',noBio.toLocaleString()+' entries have no biometric verification');T('nvAlertS','Check them in Biometric Validation');el('nvAlertGo').onclick=()=>switchTab('biometric');al.hidden=false}
+  else al.hidden=true;
+  el('anWrap').hidden=!recs.length;el('anEmpty').hidden=!!recs.length;if(!recs.length)return;
+  const grp=fn=>{const m=new Map();recs.forEach(r=>{const k=fn(r);m.set(k,(m.get(k)||0)+(Number(r.minutes)||0))});return m};
+  const total=recs.reduce((a,r)=>a+(Number(r.minutes)||0),0),emps=new Set(recs.map(r=>r.empKey||r.sap)).size;
+  const days=grp(r=>ccIso(r.dateVal)||'Unknown'),dk=[...days.keys()].sort();let pk=dk[0];dk.forEach(k=>{if(days.get(k)>days.get(pk))pk=k});
+  const mo=new Map(),me=new Map();
+  recs.forEach(r=>{const d=ccIso(r.dateVal);let k=null,x;if(x=/^(\d{4})-(\d{2})/.exec(d))k=x[1]+'-'+x[2];else if(x=/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/.exec(d))k=x[3]+'-'+x[2].padStart(2,'0');
+    if(!k)return;mo.set(k,(mo.get(k)||0)+(Number(r.minutes)||0));if(!me.has(k))me.set(k,new Set());me.get(k).add(r.empKey||r.sap)});
+  const ks=[...mo.keys()].sort(),mn=k=>{const[y,m]=k.split('-');return new Date(+y,+m-1,1).toLocaleString('en',{month:'short',year:'numeric'})};
+  T('nvTotal',hm(total)+' h');T('nvEmp',emps.toLocaleString());T('nvRec',recs.length.toLocaleString());T('nvVer',Math.round((recs.length-noBio)/recs.length*100)+'%');
+  if(ks.length>1){const a=mo.get(ks[ks.length-1]),b=mo.get(ks[ks.length-2]),pc=b?(a-b)/b*100:0;T('nvDelta',(pc>=0?'+':'')+pc.toFixed(1)+'% '+mn(ks[ks.length-1])+' vs '+mn(ks[ks.length-2]))}else T('nvDelta',ks.length?'Single month of data':'');
+  T('nvAvg',hm(total/Math.max(1,emps)));T('anPeak',pk);T('nvNoBio',Math.round(noBio/recs.length*100)+'%');T('nvBat',bs.length.toLocaleString());
+  const mm=Math.max(1,...mo.values()),top=ks.reduce((a,k)=>mo.get(k)>(mo.get(a)||0)?k:a,ks[0]);
+  el('anMon').innerHTML=ks.length?ks.map(k=>`<div class="mc" title="${mn(k)}: ${hm(mo.get(k))} · ${me.get(k).size} employees"><span class="mv">${hm(mo.get(k))}</span><i class="${k===top?'pk':''}" style="height:${Math.max(4,mo.get(k)/mm*150)}px"></i><span class="ml">${mn(k)}</span></div>`).join(''):'<span class="ov-e">No dated entries to group.</span>';
+  T('anMonTot',ks.length?ks.length+' month'+(ks.length>1?'s':'')+(top?' · peak '+mn(top):''):'');
+  const rl=[...grp(r=>r.rule||'Standard').entries()].sort((a,b)=>b[1]-a[1]),cols=['#1d4ed8','#60a5fa','#bfdbfe','#e2e8f0'];
+  const rs=rl.slice(0,3),oth=rl.slice(3).reduce((a,x)=>a+x[1],0);if(oth)rs.push(['Other',oth]);
+  el('nvSeg').innerHTML=rs.map((x,i)=>`<i style="width:${x[1]/total*100}%;background:${cols[i]}" title="${esc(x[0])}"></i>`).join('');
+  el('nvLg').innerHTML=rs.map((x,i)=>`<div><b>${Math.round(x[1]/total*100)}%</b><span><i style="background:${cols[i]}"></i><em title="${esc(x[0])}">${esc(x[0])}</em></span></div>`).join('');
+  const bars=(id,map,n)=>{const e=[...map.entries()].sort((a,b)=>b[1]-a[1]).slice(0,n),m=e.length?e[0][1]:1;
+    el(id).innerHTML=e.map(([k,x])=>`<div class="ov-pr"><span title="${esc(k||'Unspecified')}">${esc(k||'Unspecified')}</span><div class="ov-tr"><i style="width:${x/m*100}%"></i></div><span style="width:auto;color:#0f2747">${hm(x)}</span></div>`).join('')||'<span class="ov-e">No data</span>'};
+  bars('anPos',grp(r=>r.position),6);bars('anLine',grp(r=>r.line),6);
+  const mx=Math.max(1,...days.values());
+  el('anDaily').innerHTML=dk.map(k=>`<i class="${k===pk?'pk':''}" style="height:${Math.max(3,days.get(k)/mx*100)}%" title="${esc(k)}: ${hm(days.get(k))}"></i>`).join('');T('anD0',dk[0]);T('anD1',dk[dk.length-1]);T('anDayTot','Peak '+pk+' · '+hm(days.get(pk)));
+  const em=new Map(),nm=new Map(),cn=new Map();recs.forEach(r=>{const k=r.empKey||r.sap,mi=Number(r.minutes)||0;em.set(k,(em.get(k)||0)+mi);if(mi>0)cn.set(k,(cn.get(k)||0)+1);nm.set(k,r.name||r.sap||k)});
+  {const tp=[...em.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10),tmx=tp.length?tp[0][1]:1;
+  el('anTop').innerHTML=tp.map(([k,x])=>`<div class="ov-pr ov-pe"><span title="${esc(nm.get(k)||k)}"><b>${esc(nm.get(k)||k)}</b><small>SAP ${esc(String(k).split('||')[0])} · ${cn.get(k)||0} paid entries</small></span><div class="ov-tr"><i style="width:${x/tmx*100}%"></i></div><span style="width:auto;color:#0f2747">${hm(x)}</span></div>`).join('')||'<span class="ov-e">No data</span>'}
+  T('anBioT',(recs.length-noBio).toLocaleString()+' of '+recs.length.toLocaleString()+' entries verified by biometric');el('anBioBar').style.width=((recs.length-noBio)/recs.length*100).toFixed(1)+'%';
+}
+function ccRefresh(){
+  const t=(id,v)=>{const e=el(id);if(e)e.textContent=v};const f=n=>Number(n).toLocaleString();
+  const a=analysis,rows=(typeof dataEndRow==='number'&&typeof dataStartRow==='number')?dataEndRow-dataStartRow+1:0;
+  const hasLive=!!(a&&blocks.length&&rows);el('ovLive').hidden=!hasLive;el('ovEmpty').hidden=hasLive;
+  el('wsBar').hidden=!hasLive;if(!hasLive)t('ccSub','Your saved OT history is shown below. Analyse a roster in Overtime to see live discrepancies.');
+  try{ccAnalysis()}catch(e){console.error(e)}
+  const valid=claimResults.filter(r=>r.status==='Matched / Valid').length;
+  t('ccClaimsBad',f(claimResults.length-valid));t('ccUT',f(utRecords.length));
+  let pos=[],dayN=[];
+  if(a&&blocks.length&&rows){
+    const entries=blocks.length*rows,d=a.mismatches.length,pct=Math.max(0,Math.min(1,1-d/entries));
+    t('ccEntries',f(entries));t('ccDisc',f(d));t('ccSkip',f(a.skipped.length));t('ccPct',Math.round(pct*100)+'%');el('ccPbar').style.width=(pct*100).toFixed(1)+'%';
+    el('ccDisc').parentNode.classList.toggle('alert',d>0);
+    t('ccSub','Live from your roster: '+f(blocks.length)+' day blocks, '+f(rows)+' employee rows.');
+    const dm=new Map(),pm=new Map();a.mismatches.forEach(m=>{const k=String(m.date);dm.set(k,(dm.get(k)||0)+1);const q=m.position||'Unspecified';pm.set(q,(pm.get(q)||0)+1)});
+    dayN=blocks.map(b=>dm.get(String(b.dateVal))||0);pos=[...pm.entries()].sort((x,y)=>y[1]-x[1]).slice(0,5);
+  }
+  if(dayN.length){const mx=Math.max(1,...dayN);el('ccBars').innerHTML=dayN.map(n=>`<i class="${n===mx&&n>0?'pk':''}" style="height:${Math.max(4,n/mx*100)}%" title="${n}"></i>`).join('')}
+  if(pos.length){const mx=pos[0][1];el('ccPos').innerHTML=pos.map(([n,c])=>`<div class="ov-pr"><span title="${esc(n)}">${esc(n)}</span><div class="ov-tr"><i style="width:${c/mx*100}%"></i></div><span style="width:auto">${c}</span></div>`).join('')}
+  ccRender();
+}
+const WS_NEED=/mismatch|more than|less than|not found|duplicate|no biometric|no ot record|violation|review|flag|unverif|excluded|late|absent|invalid/i,WS_OK=/matched|\bvalid\b|\bok\b|clean|approved/i;
+function wsApply(){
+  try{const act=document.querySelector('.tab-panel.active');if(!act)return;
+  if(act.id==='ccPanel'){ccState.page=1;ccRefresh();return}
+  const f=wsGet();let tot=0,vis=0;
+  act.querySelectorAll('tbody tr').forEach(tr=>{if(tr.querySelector('td[colspan]')&&tr.cells.length===1)return;tot++;
+    const tx=tr.textContent.toLowerCase();let ok=!f.q||tx.includes(f.q);
+    if(ok&&(f.from||f.to)){const m=tr.textContent.match(/\b(\d{4})-(\d{2})-(\d{2})\b/)||null;let iso=m?m[0]:null;
+      if(!iso){const d=tr.textContent.match(/\b(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})\b/);if(d)iso=`${d[3]}-${d[2].padStart(2,'0')}-${d[1].padStart(2,'0')}`}
+      if(iso){if(f.from&&iso<f.from)ok=false;if(f.to&&iso>f.to)ok=false}}
+    if(ok&&f.st){const need=WS_NEED.test(tr.textContent),good=WS_OK.test(tr.textContent)&&!need;if(f.st==='review'&&!need)ok=false;if(f.st==='valid'&&!good)ok=false}
+    tr.classList.toggle('ws-hide',!ok);if(ok)vis++});
+  el('wsCount').textContent=tot?`${vis.toLocaleString()} of ${tot.toLocaleString()} rows`:'';}catch(e){}
+}
+function wsVis(){try{const act=document.querySelector('.tab-panel.active');if(!act||act.id==='ccPanel')return;const n=[...act.querySelectorAll('tbody tr')].filter(tr=>!(tr.querySelector('td[colspan]')&&tr.cells.length===1)).length;el('wsBar').hidden=n===0}catch(e){}}
+function wsOnSwitch(name){if(name!=='command')wsVis();['wsQ','wsFrom','wsTo','wsSt'].forEach(i=>el(i).value='');wsApply();el('wsMenu').hidden=true}
+function wsCsv(){const rows=ccFiltered();const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+  const c=[['Staff ID','Name','Position','Date','Recorded OT','Calculated OT','Status'].map(q).join(',')].concat(rows.map(r=>[r.id,r.name,r.pos,r.date,r.rec,r.calc,r.over?'Recorded above calculated':'Recorded below calculated'].map(q).join(',')));
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+c.join('\n')],{type:'text/csv'}));a.download='outstanding-discrepancies.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+function wsMenu(){const act=document.querySelector('.tab-panel.active'),m=el('wsMenu');
+  const all=[...act.querySelectorAll('button')].filter(b=>b.getAttribute('role')!=='tab'&&!b.closest('.ws-bar'));
+  const lab=b=>b.textContent.replace(/[\u2193\u00a0]/g,' ').replace(/\s+/g,' ').trim();
+  const ex=all.filter(b=>/download|export|excel|zip/i.test(b.textContent)),ver=all.filter(b=>!ex.includes(b)&&/validate|verify|analy[sz]e|check/i.test(b.textContent));
+  m.innerHTML='';const add=(txt,fn,dis)=>{const b=document.createElement('button');b.type='button';b.textContent=txt;if(dis)b.setAttribute('aria-disabled','true');b.onclick=()=>{if(dis)return;fn();m.hidden=true;el('wsAct').setAttribute('aria-expanded','false')};m.appendChild(b)};
+  const sec=t=>{const s=document.createElement('small');s.textContent=t;m.appendChild(s)};
+  if(act.id==='ccPanel'){sec('Export');add('Outstanding discrepancies (CSV)',wsCsv,!ccFiltered().length);sec('Verify');[['validator','Open Overtime'],['biometric','Open Biometric Validation'],['claim','Open Claims']].forEach(x=>add(x[1],()=>switchTab(x[0])))}
+  else{if(ver.length){sec('Verify');ver.forEach(b=>add(lab(b),()=>b.click(),b.disabled))}if(ex.length){sec('Export');ex.forEach(b=>add(lab(b),()=>b.click(),b.disabled))}if(!ver.length&&!ex.length){sec('No actions on this page yet');}}
+}
+(function(){
+  const on=(i,ev,fn)=>el(i).addEventListener(ev,fn);
+  ['wsQ','wsFrom','wsTo','wsSt'].forEach(i=>on(i,i==='wsQ'?'input':'change',wsApply));
+  on('wsClear','click',()=>{wsOnSwitch()});
+  on('wsAct','click',e=>{e.stopPropagation();const m=el('wsMenu');if(m.hidden){wsMenu();m.hidden=false}else m.hidden=true;el('wsAct').setAttribute('aria-expanded',String(!m.hidden))});
+  document.addEventListener('click',e=>{if(!e.target.closest('.ws-mw')){el('wsMenu').hidden=true}});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')el('wsMenu').hidden=true});
+  on('anBatch','change',()=>{try{ccAnalysis()}catch(e){}});
+  on('ccSize','change',e=>{ccState.size=+e.target.value;ccState.page=1;ccRender()});
+  on('ccPrev','click',()=>{ccState.page--;ccRender()});on('ccNext','click',()=>{ccState.page++;ccRender()});
+  on('navToggle','click',()=>{const mn=document.querySelector('main');mn.classList.toggle('nav-collapsed');el('navToggle').setAttribute('aria-label',mn.classList.contains('nav-collapsed')?'Expand sidebar':'Collapse sidebar')});
+  document.querySelectorAll('.app-tab').forEach(b=>{const l=b.querySelector('.tab-label');if(l){b.title=l.textContent;b.setAttribute('aria-label',l.textContent)}});
+  document.querySelectorAll('.tab-panel .btn-primary,.tab-panel .btn-secondary').forEach(b=>{if(!b.children.length){const t=b.textContent.replace(/^[\s\u25A3\u21E9\u2193\u2B07\u{1F441}\u{1F4C4}\u{1F4E5}\u{1F4CA}\u2699\u26A1\uFE0F]+/u,'');if(t!==b.textContent)b.textContent=t}});
+  window.addEventListener('load',()=>{try{ccRefresh()}catch(e){}});
+  let tm;new MutationObserver(()=>{clearTimeout(tm);tm=setTimeout(()=>{const act=document.querySelector('.tab-panel.active');if(act&&act.id!=='ccPanel')wsVis();if(act&&act.id!=='ccPanel'&&(el('wsQ').value||el('wsFrom').value||el('wsTo').value||el('wsSt').value))wsApply()},150)}).observe(document.querySelector('main'),{childList:true,subtree:true});
+})();
+document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.go)));
+el('tabCommand').addEventListener('click',()=>{switchTab('command');});
 document.querySelector('.app-tabs').addEventListener('keydown', e => {
   if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
   const current = TAB_ORDER.findIndex(key => el(TAB_BTN_ID[key]).classList.contains('active'));
@@ -4528,6 +4916,9 @@ let otHistoryEmployeeKeys = new Set();
 let otHistoryEmployeeNames = new Map();
 
 async function refreshOtHistoryCache() {
+  try { return await _refreshOtHistoryCacheInner(); } finally { try { ccRefresh(); } catch (e) {} }
+}
+async function _refreshOtHistoryCacheInner() {
   let batches = [], records = [];
   try {
     [batches, records] = await Promise.all([idbGetAllBatches(), idbGetAllRecords()]);

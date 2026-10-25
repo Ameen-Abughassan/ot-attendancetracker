@@ -1056,6 +1056,18 @@ header h1{color:#fff !important}
 
 /* Intro banners scroll with the page (not frozen) */
 main .tab-panel>.panel-intro,main .tab-panel>.panel-intro:first-child{position:static !important;top:auto !important}
+
+/* Sidebar reaches the bottom of the screen */
+main>.app-tabs{contain:size !important;height:calc(100vh - 110px);max-height:none !important}
+
+/* Wider, roomier header aligned with the page content */
+header{padding:28px 34px !important}
+header .header-row{max-width:1560px;width:100%;margin:0 auto;gap:20px}
+header .brand-text{flex:1;min-width:0}
+header h1{font-size:30px !important;letter-spacing:-.02em !important}
+header p{display:block !important;color:#b8c6de !important;max-width:760px;font-size:13px !important;margin:6px 0 0 !important;line-height:1.5}
+header .brand-mark{width:64px;height:64px;flex:none}
+@media(max-width:720px){header{padding:18px 16px !important}header p{display:none !important}header h1{font-size:20px !important}}
 </style>
 </head>
 <body class="auth-locked">
@@ -4298,6 +4310,8 @@ function wsMenu(){const act=document.querySelector('.tab-panel.active'),m=el('ws
   on('navToggle','click',()=>{const mn=document.querySelector('main');mn.classList.toggle('nav-collapsed');el('navToggle').setAttribute('aria-label',mn.classList.contains('nav-collapsed')?'Expand sidebar':'Collapse sidebar')});
   document.querySelectorAll('.app-tab').forEach(b=>{const l=b.querySelector('.tab-label');if(l){b.title=l.textContent;b.setAttribute('aria-label',l.textContent)}});
   document.querySelectorAll('.tab-panel .btn-primary,.tab-panel .btn-secondary').forEach(b=>{if(!b.children.length){const t=b.textContent.replace(/^[\s\u25A3\u21E9\u2193\u2B07\u{1F441}\u{1F4C4}\u{1F4E5}\u{1F4CA}\u2699\u26A1\uFE0F]+/u,'');if(t!==b.textContent)b.textContent=t}});
+  const navFit=()=>{const n=document.querySelector('main>.app-tabs');if(!n)return;const st=parseFloat(getComputedStyle(n).top)||16,t=Math.max(n.getBoundingClientRect().top,st);n.style.height=Math.max(320,window.innerHeight-t-st)+'px'};
+  window.addEventListener('scroll',navFit,{passive:true});window.addEventListener('resize',navFit);navFit();
   window.addEventListener('load',()=>{try{ccRefresh()}catch(e){}});
   let tm;new MutationObserver(()=>{clearTimeout(tm);tm=setTimeout(()=>{const act=document.querySelector('.tab-panel.active');if(act&&act.id!=='ccPanel')wsVis();if(act&&act.id!=='ccPanel'&&(el('wsQ').value||el('wsFrom').value||el('wsTo').value||el('wsSt').value))wsApply()},150)}).observe(document.querySelector('main'),{childList:true,subtree:true});
 })();

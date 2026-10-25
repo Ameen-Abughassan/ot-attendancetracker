@@ -4116,7 +4116,7 @@ function renderEmployeePage(doc, e) {
     doc.addPage();
     y = 30;
   }
-  doc.setFillColor(236,253,245); doc.roundedRect(18,y,pageW-36,24,4,4,'F'); doc.setTextColor(22,101,52); doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.text('TOTAL PAID OVERTIME',26,y+9); doc.setFontSize(16); doc.text(minutesToTotalHHMM(e.totalMin),pageW-26,y+15,{align:'right'}); doc.setTextColor(100,116,139); doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.text(noteLines,18,y+36); doc.setDrawColor(224,231,239); doc.line(18,272,90,272); doc.setTextColor(23,43,77); doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.text('Resource Planning Team',18,278); const logoH2 = 12.5, logoW2 = logoH2 * RP_LOGO_ASPECT; doc.addImage(RP_LOGO_B64,'PNG',pageW-26-logoW2,273.5,logoW2,logoH2); doc.setTextColor(148,163,184); doc.setFontSize(7.5); doc.text(`Generated: ${new Date().toLocaleString()}`,18,286);
+  doc.setFillColor(236,253,245); doc.roundedRect(18,y,pageW-36,24,4,4,'F'); doc.setTextColor(22,101,52); doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.text('TOTAL ACCRUAL OVERTIME',26,y+9); doc.setFontSize(16); doc.text(minutesToTotalHHMM(e.totalMin),pageW-26,y+15,{align:'right'}); doc.setTextColor(100,116,139); doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.text(noteLines,18,y+36); doc.setDrawColor(224,231,239); doc.line(18,272,90,272); doc.setTextColor(23,43,77); doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.text('Resource Planning Team',18,278); const logoH2 = 12.5, logoW2 = logoH2 * RP_LOGO_ASPECT; doc.addImage(RP_LOGO_B64,'PNG',pageW-26-logoW2,273.5,logoW2,logoH2); doc.setTextColor(148,163,184); doc.setFontSize(7.5); doc.text(`Generated: ${new Date().toLocaleString()}`,18,286);
 }
 
 function generateAllPayrollPDF() {

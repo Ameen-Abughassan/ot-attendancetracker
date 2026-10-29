@@ -1840,11 +1840,13 @@ header .brand-mark{width:64px;height:64px;flex:none}
 
     <div class="payslip-table-card bvh-card bvl-card" id="bvlCard">
       <div class="bvh-title">Staff biometric lookup <span class="bvh-pill">from stored history</span></div>
-      <div class="bvh-sub">Search a Staff ID to check that person's biometric attendance for one date or for the whole stored period — straight from the saved data, with no need to upload the reports again.</div>
+      <div class="bvh-sub">Check one staff member by Staff ID, or all staff / all staff in a line, for a date range (From – To) or for the whole stored period — straight from the saved data, with no need to upload the reports again.</div>
       <form class="bvl-form" id="bvlForm" autocomplete="off">
-        <div class="bvl-field"><label for="bvlId">Staff ID</label><input id="bvlId" type="text" list="bvlIds" placeholder="e.g. 1004948" spellcheck="false" autocomplete="off"><datalist id="bvlIds"></datalist></div>
-        <div class="bvl-field"><label for="bvlMode">Show</label><select id="bvlMode"><option value="all">All records (entire stored range)</option><option value="date">A specific date</option></select></div>
-        <div class="bvl-field" id="bvlDateWrap" style="display:none"><label for="bvlDate">Date</label><input id="bvlDate" type="date"></div>
+        <div class="bvl-field"><label for="bvlScope">Search for</label><select id="bvlScope"><option value="one">One staff (Staff ID)</option><option value="all">All staff</option><option value="line">All staff in a line</option></select></div>
+        <div class="bvl-field" id="bvlIdWrap"><label for="bvlId">Staff ID</label><input id="bvlId" type="text" list="bvlIds" placeholder="e.g. 1004948" spellcheck="false" autocomplete="off"><datalist id="bvlIds"></datalist></div>
+        <div class="bvl-field" id="bvlLineWrap" style="display:none"><label for="bvlLine">Line</label><select id="bvlLine"><option value="">Select a line…</option></select></div>
+        <div class="bvl-field"><label for="bvlFrom">From date</label><input id="bvlFrom" type="date"></div>
+        <div class="bvl-field"><label for="bvlTo">To date</label><input id="bvlTo" type="date"></div>
         <div class="bvl-field bvl-btns"><button class="bvh-btn primary" id="bvlGo" type="submit">Search</button><button class="bvh-btn" id="bvlClear" type="button">Clear</button></div>
       </form>
       <div class="bvh-msg" id="bvlMsg"></div>
@@ -1853,6 +1855,7 @@ header .brand-mark{width:64px;height:64px;flex:none}
         <div class="bvl-tabs" role="tablist" aria-label="Result view">
           <button type="button" id="bvlTabAtt" class="on" role="tab">Attendance history</button>
           <button type="button" id="bvlTabRaw" role="tab">Raw punches</button>
+          <button type="button" id="bvlExport" style="margin-left:auto">Export to Excel</button>
         </div>
         <div class="bvl-tablewrap"><table id="bvlTable"><thead id="bvlHead"></thead><tbody id="bvlBody"></tbody></table></div>
         <p class="bvh-note" id="bvlNote"></p>
@@ -1955,6 +1958,30 @@ const POSITION_FIXED_MIN = {
   'P&R': 8*60+30, 'PARK AND RIDE ATTENDANT': 8*60+30, 'PARK AND RIDE ATTENDANTS': 8*60+30,
   'AOCC': 8*60+30, 'AIRPORT OCC': 8*60+30,
   'DS': 8*60+30, 'MASPO DEPOT SHUNTER': 8*60+30,
+  // INM (Infrastructure Maintenance) positions — fixed working hours per the INM position table.
+  // Keys are stored in normalized form (UPPERCASE, single spaces) so roster spellings like
+  // "MEP Plumbing  SUP" (double space) or mixed case still match.
+  'CIVIL LANDSCAPER': 9*60,
+  'CIVIL SUP': 9*60,
+  'CIVIL TEC': 9*60,
+  'ENGINEER': 8*60+30,
+  'INM-TES': 9*60,
+  'MEP ELECTRICAL SUP': 9*60,
+  'MEP ELECTRICAL TEC': 9*60,
+  'MEP ESC-ELEV SUP': 9*60,
+  'MEP ESC-ELEV TEC': 9*60,
+  'MEP FIRE SYSTEM SUP': 9*60,
+  'MEP FIRE SYSTEM TEC': 9*60,
+  'MEP FLRT ELECTRICAL': 9*60,
+  'MEP FLRT MECHANICAL': 9*60,
+  'MEP HVAC SUP': 9*60,
+  'MEP HVAC TEC': 9*60,
+  'MEP PASSAGE POST FLRT': 9*60,
+  'MEP PLUMBING SUP': 9*60,
+  'MEP PLUMBING TEC': 9*60,
+  'MEP-OCC-ELEC': 8*60+30,
+  'MEP-OCC-MECH': 8*60+30,
+  'WORK ORDER CLOSURE': 9*60,
 };
 
 function normalizePosition(raw) {
@@ -2346,6 +2373,25 @@ function computeWorkingMinFromActual(actual, dispatched) {
   return Math.round(dur);
 }
 
+// Raw sign-on -> sign-off span of a valid "HH:MM:SS - HH:MM:SS" Actual punch,
+// with NO anchoring to the Dispatched start. Used by the holiday rule, where
+// all time actually worked counts (an early arrival is real worked time, not
+// something to clip to the scheduled start). Handles overnight crossover.
+function computeRawSpanMinFromActual(actual) {
+  if (!isValidBiometric(actual)) return null;
+  const parts = actual.trim().split(/\s*-\s*/);
+  if (parts.length !== 2) return null;
+  const toMin = t => {
+    const m = t.trim().match(/^(\d{1,2}):(\d{2}):(\d{2})$/);
+    return m ? parseInt(m[1],10)*60 + parseInt(m[2],10) + parseInt(m[3],10)/60 : null;
+  };
+  const a = toMin(parts[0]), b = toMin(parts[1]);
+  if (a === null || b === null) return null;
+  let dur = b - a;
+  if (dur < 0) dur += 1440;
+  return Math.round(dur);
+}
+
 // --- locate day blocks & summary column ---------------------------------
 
 function locateStructure() {
@@ -2604,12 +2650,48 @@ async function bvhStaffPunches(idKey) {
   const db = await bvhOpen();
   return bvhReq(db.transaction('punches').objectStore('punches').index('byId').getAll(IDBKeyRange.only(idKey)));
 }
+// Staff directory (name + line) for the lookup. The biometric punches carry no line, so it is taken from
+// the roster currently loaded and from saved OT History (which stores line per record).
+function bvlStaffDirectory() {
+  const dir = new Map();
+  const put = (sap, name, line) => {
+    const k = normalizeEmployeeKey(sap); if (!k) return;
+    const e = dir.get(k) || { sap: String(sap), name: '', line: '' };
+    if (name && !e.name) e.name = String(name).trim();
+    if (line && !e.line) e.line = String(line).trim();
+    dir.set(k, e);
+  };
+  try {
+    if (typeof workbook !== 'undefined' && workbook && typeof blocks !== 'undefined' && blocks.length) {
+      const ws = workbook.Sheets[sheetName];
+      for (let r = dataStartRow; r <= dataEndRow; r++) { const nm = getVal(ws, r, 1); if (!nm) continue; put(getVal(ws, r, 0), nm, getVal(ws, r, 4)); }
+    }
+  } catch (e) { /* roster not readable — fall through to history */ }
+  try { otHistoryMap.forEach(rec => put(rec.sap, rec.name, rec.line)); } catch (e) {}
+  try { if (bvResult && bvResult.results) bvResult.results.forEach(pr => put(pr.id, pr.name, '')); } catch (e) {}
+  return dir;
+}
+function bvlRefreshLines() {
+  const sel = el('bvlLine'); if (!sel) return;
+  const prev = sel.value, lines = new Set();
+  bvlStaffDirectory().forEach(v => { if (v.line) lines.add(v.line); });
+  const arr = [...lines].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  sel.innerHTML = arr.length ? '<option value="">Select a line…</option>' + arr.map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join('')
+    : '<option value="">No line data — analyze a roster in the Overtime tab first</option>';
+  if (arr.includes(prev)) sel.value = prev;
+}
+async function bvhAllPunches(fromTs, toTs) {
+  const db = await bvhOpen();
+  const idx = db.transaction('punches').objectStore('punches').index('byTs');
+  const range = fromTs !== null && toTs !== null ? IDBKeyRange.bound(fromTs, toTs) : fromTs !== null ? IDBKeyRange.lowerBound(fromTs) : toTs !== null ? IDBKeyRange.upperBound(toTs) : undefined;
+  return bvhReq(idx.getAll(range));
+}
+const BVL_CAP = 1500;   // rows drawn on screen for All staff / Line searches (Export has everything)
 function bvlSync(st) {
   const empty = !st.total;
-  ['bvlId', 'bvlMode', 'bvlDate', 'bvlGo', 'bvlClear'].forEach(id => { const e = el(id); if (e) e.disabled = empty; });
+  ['bvlScope', 'bvlLine', 'bvlId', 'bvlFrom', 'bvlTo', 'bvlGo', 'bvlClear'].forEach(id => { const e = el(id); if (e) e.disabled = empty; });
   const dl = el('bvlIds'); if (dl) dl.innerHTML = st.ids.map(i => `<option value="${esc(i)}"></option>`).join('');
-  const dt = el('bvlDate');
-  if (dt && st.total) { dt.min = bvIsoTs(st.minTs).slice(0, 10); dt.max = bvIsoTs(st.maxTs).slice(0, 10); }
+  ['bvlFrom', 'bvlTo'].forEach(id => { const dt = el(id); if (dt && st.total) { dt.min = bvIsoTs(st.minTs).slice(0, 10); dt.max = bvIsoTs(st.maxTs).slice(0, 10); } });
   BVH.lastStats = st;
   if (empty) { bvlLast = null; el('bvlResult').style.display = 'none'; bvlMsg('The history is empty — process a biometric report first and it is saved here automatically.', 'warn'); }
   else if (bvlLast) bvlSearch();   // history changed while a result was on screen — refresh it from the stored data
@@ -2620,22 +2702,45 @@ async function bvlSearch() {
   if (!BVH.available) return;
   const seq = ++bvlSeq;
   bvlMsg('');
-  const rawId = el('bvlId').value.trim();
-  if (!rawId) { bvlMsg('Enter a Staff ID to search.', 'error'); return; }
-  const key = normalizeEmployeeKey(rawId);
-  if (!key) { bvlMsg('That does not look like a valid Staff ID.', 'error'); return; }
-  let dayKey = null;
-  if (el('bvlMode').value === 'date') {
-    const v = el('bvlDate').value;
-    if (!v) { bvlMsg('Select a date, or switch to “All records”.', 'error'); return; }
-    const [y, m, d] = v.split('-').map(Number); dayKey = Date.UTC(y, m - 1, d);
+  const scope = el('bvlScope').value, multi = scope !== 'one';
+  let rawId = '', key = null, idSet = null, dir = null, scopeLabel = '';
+  if (!multi) {
+    rawId = el('bvlId').value.trim();
+    if (!rawId) { bvlMsg('Enter a Staff ID to search.', 'error'); return; }
+    key = normalizeEmployeeKey(rawId);
+    if (!key) { bvlMsg('That does not look like a valid Staff ID.', 'error'); return; }
+    scopeLabel = 'Staff ID ' + rawId;
+  } else {
+    dir = bvlStaffDirectory();
+    if (scope === 'line') {
+      const ln = el('bvlLine').value;
+      if (!ln) { bvlMsg('Select a line, or switch to “All staff”.', 'error'); return; }
+      idSet = new Set([...dir].filter(([k, v]) => v.line === ln).map(([k]) => k));
+      if (!idSet.size) { bvlMsg(`No staff are recorded under line “${ln}”.`, 'warn'); return; }
+      scopeLabel = 'Line ' + ln;
+    } else scopeLabel = 'All staff';
   }
+  // Optional From / To range (both empty = the whole stored period; one empty = open-ended)
+  const dayOf = v => { const [y, m, d] = v.split('-').map(Number); return Date.UTC(y, m - 1, d); };
+  const fromKey = el('bvlFrom').value ? dayOf(el('bvlFrom').value) : null;
+  const toKey = el('bvlTo').value ? dayOf(el('bvlTo').value) : null;
+  if (fromKey !== null && toKey !== null && fromKey > toKey) { bvlMsg('The From date is after the To date — please correct the range.', 'error'); return; }
+  const filtered = fromKey !== null || toKey !== null;
+  const inRange = d => (fromKey === null || d >= fromKey) && (toKey === null || d <= toKey);
+  const rangeLabel = fromKey !== null && toKey !== null ? (fromKey === toKey ? `on ${bvFmtDate(fromKey)}` : `from ${bvFmtDate(fromKey)} to ${bvFmtDate(toKey)}`)
+    : fromKey !== null ? `from ${bvFmtDate(fromKey)} onwards` : toKey !== null ? `up to ${bvFmtDate(toKey)}` : '';
   el('bvlGo').disabled = true;
   try {
-    const [punches, batches] = await Promise.all([bvhStaffPunches(key), bvhBatches()]);
+    let [punches, batches] = await Promise.all([multi ? bvhAllPunches(fromKey !== null ? fromKey - BV_DAY : null, toKey !== null ? toKey + 2 * BV_DAY : null) : bvhStaffPunches(key), bvhBatches()]);
+    if (idSet) punches = punches.filter(p => idSet.has(p.id));
     if (seq !== bvlSeq) return;
     const stats = BVH.lastStats;
     const range = stats && stats.total ? `${bvFmtDate(stats.minTs)} → ${bvFmtDate(stats.maxTs)}` : '';
+    if (multi && !punches.length) {
+      bvlLast = null; el('bvlResult').style.display = 'none';
+      bvlMsg(`No stored biometric records for ${scopeLabel}${rangeLabel ? ' ' + rangeLabel : ''}. The history covers ${range || 'no dates yet'}.`, 'warn');
+      return;
+    }
     if (!punches.length) {
       bvlLast = null; el('bvlResult').style.display = 'none';
       bvlMsg(`No stored biometric records for Staff ID ${rawId}. Check the ID — the history holds ${stats ? stats.staff.toLocaleString() : 'some'} staff for ${range}.`, 'warn');
@@ -2644,14 +2749,14 @@ async function bvlSearch() {
     punches.sort((a, b) => a.ts - b.ts);
     // Pair the stored punches into attendance periods with the same rules as the Biometric Validation tab
     let S; try { S = (bvResult && bvResult.settings) || bvReadSettings(); } catch (e) { S = { ...BV_DEFAULTS }; }
-    const rows = punches.map(p => [key, '', bvIsoTs(p.ts), p.d === 'E' ? 'Sign-in' : 'Sign-out']);
+    const rows = punches.map(p => [p.id, (dir && dir.get(p.id) ? dir.get(p.id).name : ''), bvIsoTs(p.ts), p.d === 'E' ? 'Sign-in' : 'Sign-out']);
     const res = bvProcess(rows, { ts: 2, id: 0, name: 1, dir: 3, res: null, start: 0 }, 'ANY', S);
     const bmap = new Map(batches.map(b => [b.id, b]));
-    const byKey = new Map(punches.map(p => [p.ts + '|' + p.d, p]));
+    const byKey = new Map(punches.map(p => [p.id + '|' + p.ts + '|' + p.d, p]));
     const batchLabel = b => b ? `${b.file} · ${new Date(b.at).toLocaleDateString()}` : 'Imported backup';
     const srcOf = pr => {
       const ids = new Set();
-      [pr.firstEntryTs !== null ? byKey.get(pr.firstEntryTs + '|E') : null, pr.lastExitTs !== null ? byKey.get(pr.lastExitTs + '|X') : null].forEach(p => { if (p) ids.add(p.b); });
+      [pr.firstEntryTs !== null ? byKey.get(normalizeEmployeeKey(pr.id) + '|' + pr.firstEntryTs + '|E') : null, pr.lastExitTs !== null ? byKey.get(normalizeEmployeeKey(pr.id) + '|' + pr.lastExitTs + '|X') : null].forEach(p => { if (p) ids.add(p.b); });
       const arr = [...ids]; return !arr.length ? '—' : arr.length === 1 ? batchLabel(bmap.get(arr[0])) : 'Multiple uploads';
     };
     const maxShift = S.maxShiftH * BV_HOUR;
@@ -2661,22 +2766,25 @@ async function bvlSearch() {
         if (d.code === 'MISSING_ENTRY') return { sev: 'error', text: 'Sign-out recorded, but no sign-in was found in the stored data.' + (stats && pr.lastExitTs - stats.minTs < maxShift ? ` The stored history starts ${bvFmtDT(stats.minTs)}, so the sign-in may be earlier than the stored range.` : '') };
         return { sev: d.sev, text: d.text };
       });
-      return { ...pr, notes, source: srcOf(pr) };
-    }).sort((a, b) => b.attDay - a.attDay || ((b.firstEntryTs ?? b.lastExitTs) - (a.firstEntryTs ?? a.lastExitTs)));
-    let raw = punches.slice().sort((a, b) => b.ts - a.ts).map(p => ({ ts: p.ts, d: p.d, batch: batchLabel(bmap.get(p.b)), at: bmap.has(p.b) ? new Date(bmap.get(p.b).at).toLocaleString() : '—' }));
-    if (dayKey !== null) {
-      periods = periods.filter(p => p.attDay === dayKey);
-      const tsSet = new Set(); periods.forEach(p => { if (p.firstEntryTs !== null) tsSet.add(p.firstEntryTs); if (p.lastExitTs !== null) tsSet.add(p.lastExitTs); });
-      raw = raw.filter(p => bvDayKey(p.ts) === dayKey || tsSet.has(p.ts));
+      const di = dir ? dir.get(normalizeEmployeeKey(pr.id)) : null;
+      return { ...pr, notes, source: srcOf(pr), sname: pr.name || (di ? di.name : ''), line: di ? di.line : '' };
+    }).sort((a, b) => multi ? (String(a.id).localeCompare(String(b.id), undefined, { numeric: true }) || a.attDay - b.attDay || ((a.firstEntryTs ?? a.lastExitTs) - (b.firstEntryTs ?? b.lastExitTs)))
+      : (b.attDay - a.attDay || ((b.firstEntryTs ?? b.lastExitTs) - (a.firstEntryTs ?? a.lastExitTs))));
+    let raw = punches.slice().sort((a, b) => b.ts - a.ts).map(p => ({ id: p.id, sname: dir && dir.get(p.id) ? dir.get(p.id).name : '', line: dir && dir.get(p.id) ? dir.get(p.id).line : '', ts: p.ts, d: p.d, batch: batchLabel(bmap.get(p.b)), at: bmap.has(p.b) ? new Date(bmap.get(p.b).at).toLocaleString() : '—' }));
+    if (filtered) {
+      periods = periods.filter(p => inRange(p.attDay));
+      const tsSet = new Set(); periods.forEach(p => { const pk = normalizeEmployeeKey(p.id); if (p.firstEntryTs !== null) tsSet.add(pk + '|' + p.firstEntryTs); if (p.lastExitTs !== null) tsSet.add(pk + '|' + p.lastExitTs); });
+      raw = raw.filter(p => inRange(bvDayKey(p.ts)) || tsSet.has(p.id + '|' + p.ts));
       if (!periods.length && !raw.length) {
         bvlLast = null; el('bvlResult').style.display = 'none';
+        if (multi) { bvlMsg(`No biometric records stored for ${scopeLabel} ${rangeLabel}.`, 'warn'); return; }
         const days = new Set(res.results.map(p => p.attDay)).size, first = punches[0].ts, last = punches[punches.length - 1].ts;
-        bvlMsg(`No biometric record stored for Staff ID ${rawId} on ${bvFmtDate(dayKey)}. This staff member has ${days.toLocaleString()} attendance day${days === 1 ? '' : 's'} stored, from ${bvFmtDate(first)} to ${bvFmtDate(last)}` +
-          (stats && (dayKey < bvDayKey(stats.minTs) || dayKey > bvDayKey(stats.maxTs)) ? `; the selected date is outside the stored range (${range}).` : '.'), 'warn');
+        bvlMsg(`No biometric record stored for Staff ID ${rawId} ${rangeLabel}. This staff member has ${days.toLocaleString()} attendance day${days === 1 ? '' : 's'} stored, from ${bvFmtDate(first)} to ${bvFmtDate(last)}` +
+          (stats && ((toKey !== null && toKey < bvDayKey(stats.minTs)) || (fromKey !== null && fromKey > bvDayKey(stats.maxTs))) ? `; the selected range is outside the stored range (${range}).` : '.'), 'warn');
         return;
       }
     }
-    bvlLast = { rawId, dayKey, periods, raw, total: punches.length, first: punches[0].ts, last: punches[punches.length - 1].ts, range };
+    bvlLast = { rawId, multi, scopeLabel, nStaff: new Set(periods.map(p => p.id)).size, fromKey, toKey, filtered, rangeLabel, periods, raw, total: punches.length, first: punches.reduce((m, p) => Math.min(m, p.ts), Infinity), last: punches.reduce((m, p) => Math.max(m, p.ts), -Infinity), range };
     el('bvlResult').style.display = '';
     bvlRender();
   } catch (e) { bvlMsg('The lookup failed: ' + e.message, 'error'); }
@@ -2686,13 +2794,15 @@ function bvlRender() {
   const L = bvlLast; if (!L) return;
   const counts = {}; L.periods.forEach(p => { counts[p.status] = (counts[p.status] || 0) + 1; });
   const chips = Object.keys(counts).map(k => `<span class="bv-pill ${bvStatusClass(k)}">${esc(k)} · ${counts[k]}</span>`).join(' ');
-  el('bvlSummary').innerHTML = L.dayKey === null
+  el('bvlSummary').innerHTML = L.multi
+    ? `<strong>${esc(L.scopeLabel)}</strong> · ${L.nStaff.toLocaleString()} staff · ${L.periods.length.toLocaleString()} attendance day${L.periods.length === 1 ? '' : 's'} · ${esc(L.filtered ? L.rangeLabel : (bvFmtDate(L.first) + ' → ' + bvFmtDate(L.last)))} ${chips ? '<br>' + chips : ''}`
+    : !L.filtered
     ? `<strong>Staff ID ${esc(L.rawId)}</strong> · ${L.periods.length.toLocaleString()} attendance day${L.periods.length === 1 ? '' : 's'} · ${L.total.toLocaleString()} stored punches · ${esc(bvFmtDate(L.first))} → ${esc(bvFmtDate(L.last))} ${chips ? '<br>' + chips : ''}`
-    : `<strong>Staff ID ${esc(L.rawId)}</strong> on <strong>${esc(bvFmtDate(L.dayKey))}</strong> (${bvlWeekday(L.dayKey)}) · ${L.periods.length ? chips : '<span class="bv-pill review">No attendance period starts on this date</span>'} · ${L.raw.length} punch${L.raw.length === 1 ? '' : 'es'} shown`;
+    : `<strong>Staff ID ${esc(L.rawId)}</strong> <strong>${esc(L.rangeLabel)}</strong> · ${L.periods.length.toLocaleString()} attendance day${L.periods.length === 1 ? '' : 's'} ${L.periods.length ? '<br>' + chips : '<span class="bv-pill review">No attendance period starts in this range</span>'} · ${L.raw.length.toLocaleString()} punch${L.raw.length === 1 ? '' : 'es'} shown`;
   el('bvlTabAtt').classList.toggle('on', bvlView === 'att'); el('bvlTabRaw').classList.toggle('on', bvlView === 'raw');
   if (bvlView === 'att') {
-    el('bvlHead').innerHTML = '<tr><th>Attendance date</th><th>Clock-in</th><th>Clock-out</th><th>Duration</th><th>Status</th><th>Notes</th><th>Source upload</th></tr>';
-    el('bvlBody').innerHTML = L.periods.map(p => `<tr>
+    el('bvlHead').innerHTML = (L.multi ? '<tr><th>Staff ID</th><th>Name</th><th>Line</th>' : '<tr>') + '<th>Attendance date</th><th>Clock-in</th><th>Clock-out</th><th>Duration</th><th>Status</th><th>Notes</th><th>Source upload</th></tr>';
+    el('bvlBody').innerHTML = L.periods.slice(0, L.multi ? BVL_CAP : undefined).map(p => `<tr>${L.multi ? `<td class="num">${esc(p.id)}</td><td>${esc(p.sname || '—')}</td><td>${esc(p.line || '—')}</td>` : ''}
       <td class="num">${esc(bvFmtDate(p.attDay))} <span class="bvl-dim">${bvlWeekday(p.attDay)}</span></td>
       <td class="num">${p.firstEntryTs !== null ? esc(bvFmtDT(p.firstEntryTs)) : '—'}</td>
       <td class="num">${p.lastExitTs !== null ? esc(bvFmtDT(p.lastExitTs)) : '—'}</td>
@@ -2702,21 +2812,50 @@ function bvlRender() {
       <td class="bvl-dim">${esc(p.source)}</td></tr>`).join('') || '<tr><td colspan="7" class="empty-note">No attendance periods.</td></tr>';
     el('bvlNote').textContent = 'Clock-in / clock-out are the first Entry and last Exit of each attendance period, exactly as stored. Statuses apply your current Biometric Validation rules to the stored punches; the punches themselves are never changed. Staff names are not kept in the history.';
   } else {
-    el('bvlHead').innerHTML = '<tr><th>Date</th><th>Time</th><th>Direction</th><th>Source upload</th><th>Uploaded on</th></tr>';
-    el('bvlBody').innerHTML = L.raw.map(p => `<tr>
+    el('bvlHead').innerHTML = (L.multi ? '<tr><th>Staff ID</th><th>Name</th><th>Line</th>' : '<tr>') + '<th>Date</th><th>Time</th><th>Direction</th><th>Source upload</th><th>Uploaded on</th></tr>';
+    el('bvlBody').innerHTML = L.raw.slice(0, L.multi ? BVL_CAP : undefined).map(p => `<tr>${L.multi ? `<td class="num">${esc(p.id)}</td><td>${esc(p.sname || '—')}</td><td>${esc(p.line || '—')}</td>` : ''}
       <td class="num">${esc(bvFmtDate(p.ts))} <span class="bvl-dim">${bvlWeekday(p.ts)}</span></td>
       <td class="num">${esc(bvFmtTime(p.ts))}</td>
       <td>${p.d === 'E' ? 'Sign-in (Entry)' : 'Sign-out (Exit)'}</td>
       <td class="bvl-dim">${esc(p.batch)}</td><td class="bvl-dim">${esc(p.at)}</td></tr>`).join('');
     el('bvlNote').textContent = `Every stored punch for this staff member, one row each (${L.raw.length.toLocaleString()} shown). Each punch exists once in the history — re-uploading the same period never duplicates it.`;
   }
+  if (L.multi) {
+    const total = bvlView === 'att' ? L.periods.length : L.raw.length;
+    el('bvlNote').textContent += (total > BVL_CAP ? ` Showing the first ${BVL_CAP.toLocaleString()} of ${total.toLocaleString()} rows — narrow the date range or use Export to Excel for everything.` : '')
+      + ' Line (and name, where the biometric file has none) comes from the loaded roster and saved OT History; staff not found there show “—” and are left out of a line search.';
+  }
+}
+async function bvlExport() {
+  const L = bvlLast; if (!L) return;
+  try {
+    const wb = new ExcelJS.Workbook();
+    const lead = L.multi ? ['Staff ID', 'Name', 'Line'] : [];
+    const ws = wb.addWorksheet('Attendance');
+    ws.addRow(lead.concat(['Attendance date', 'Clock-in', 'Clock-out', 'Duration', 'Status', 'Notes', 'Source upload'])).font = { bold: true };
+    L.periods.forEach(p => ws.addRow((L.multi ? [p.id, p.sname || '', p.line || ''] : []).concat([
+      bvFmtDate(p.attDay), p.firstEntryTs !== null ? bvFmtDT(p.firstEntryTs) : '', p.lastExitTs !== null ? bvFmtDT(p.lastExitTs) : '',
+      p.elapsedMs !== null ? bvFmtDur(p.elapsedMs) : '', p.status, p.notes.map(n => n.text).join(' | '), p.source])));
+    ws.columns.forEach((c, i) => { c.width = i === lead.length + 5 ? 70 : 18; });
+    ws.views = [{ state: 'frozen', ySplit: 1 }];
+    const wr = wb.addWorksheet('Raw punches');
+    wr.addRow(lead.concat(['Date', 'Time', 'Direction', 'Source upload', 'Uploaded on'])).font = { bold: true };
+    L.raw.forEach(p => wr.addRow((L.multi ? [p.id, p.sname || '', p.line || ''] : []).concat([bvFmtDate(p.ts), bvFmtTime(p.ts), p.d === 'E' ? 'Sign-in (Entry)' : 'Sign-out (Exit)', p.batch, p.at])));
+    wr.columns.forEach(c => { c.width = 20; });
+    wr.views = [{ state: 'frozen', ySplit: 1 }];
+    const base = String(L.multi ? L.scopeLabel : L.rawId).replace(/[^\w\-]+/g, '_');
+    bvDownload(new Blob([await wb.xlsx.writeBuffer()], { type: XLSX_MIME }), `Biometric_Lookup_${base}.xlsx`);
+  } catch (e) { console.error(e); bvlMsg('Export failed: ' + e.message, 'error'); }
 }
 function bvlInit() {
   if (!el('bvlForm')) return;
   el('bvlForm').addEventListener('submit', e => { e.preventDefault(); bvlSearch(); });
-  el('bvlMode').addEventListener('change', () => { el('bvlDateWrap').style.display = el('bvlMode').value === 'date' ? '' : 'none'; if (bvlLast) bvlSearch(); });
-  el('bvlDate').addEventListener('change', () => { if (el('bvlMode').value === 'date') bvlSearch(); });
-  el('bvlClear').addEventListener('click', () => { el('bvlId').value = ''; el('bvlDate').value = ''; el('bvlMode').value = 'all'; el('bvlDateWrap').style.display = 'none'; bvlLast = null; el('bvlResult').style.display = 'none'; bvlMsg(''); el('bvlId').focus(); });
+  const bvlScopeUi = () => { const sc = el('bvlScope').value; el('bvlIdWrap').style.display = sc === 'one' ? '' : 'none'; el('bvlLineWrap').style.display = sc === 'line' ? '' : 'none'; if (sc === 'line') bvlRefreshLines(); };
+  el('bvlScope').addEventListener('change', bvlScopeUi);
+  // single-staff results refresh as soon as a date changes; All staff / Line searches wait for Search (they read a lot of data)
+  ['bvlFrom', 'bvlTo'].forEach(id => el(id).addEventListener('change', () => { if (bvlLast && !bvlLast.multi) bvlSearch(); }));
+  el('bvlExport').addEventListener('click', bvlExport);
+  el('bvlClear').addEventListener('click', () => { el('bvlId').value = ''; el('bvlFrom').value = ''; el('bvlTo').value = ''; el('bvlScope').value = 'one'; el('bvlIdWrap').style.display = ''; el('bvlLineWrap').style.display = 'none'; el('bvlLine').value = ''; bvlLast = null; el('bvlResult').style.display = 'none'; bvlMsg(''); el('bvlId').focus(); });
   el('bvlTabAtt').addEventListener('click', () => { bvlView = 'att'; bvlRender(); });
   el('bvlTabRaw').addEventListener('click', () => { bvlView = 'raw'; bvlRender(); });
 }
@@ -2755,13 +2894,13 @@ function otBvCrossCheck(idx, meta, sap, dateStr, dispatched) {
     adjacent = cand.length > 0;
   }
   if (cand.length > 1) {
-    cand = cand.slice().sort((a, b) => (BV_OK_STATUSES.has(b.status) - BV_OK_STATUSES.has(a.status)) ||
+    cand = cand.slice().sort((a, b) => (BV_USABLE_STATUSES.has(b.status) - BV_USABLE_STATUSES.has(a.status)) ||
       (dispStart !== null ? Math.abs(refTs(a) - dispStart) - Math.abs(refTs(b) - dispStart) : 0));
   }
   const p = cand[0];
   const exList = (idx.exById.get(key) || []);
   if (p) {
-    if (BV_OK_STATUSES.has(p.status)) {
+    if (BV_USABLE_STATUSES.has(p.status)) {
       return { kind: 'valid', p, adjacent, actual: bvFmtTime(p.firstEntryTs) + ' - ' + bvFmtTime(p.lastExitTs) };
     }
     const rej = exList.filter(e => e.day === p.attDay);
@@ -2955,6 +3094,15 @@ function runAnalysis() {
         } else if (workingMin === null) {
           reasonSkip = implausibleWorking ? 'Working Hrs > 14:00 — treated as invalid biometric' : 'Working Hrs unavailable';
         } else {
+          // Holiday: count the full raw sign-on -> sign-off span (early arrival
+          // included), not the dispatch-anchored working time used by other rules.
+          const rawSpan = computeRawSpanMinFromActual(actual);
+          if (rawSpan !== null) {
+            if (rawSpan > MAX_PLAUSIBLE_WORKING_MIN) { implausibleWorking = true; workingMin = null; reasonSkip = 'Working Hrs > 14:00 — treated as invalid biometric'; }
+            else workingMin = Math.min(rawSpan, MAX_OT_WORKING_MIN);
+          }
+        }
+        if (isValidBiometric(actual) && workingMin !== null) {
           const cap = dispatchedDurMin !== null ? dispatchedDurMin : workingMin;
           let calc = Math.min(workingMin, cap);
           if (calc < MIN_OT_MIN) calc = 0;
@@ -5643,6 +5791,9 @@ const BV_STATUS = {
   REVIEW: 'Needs Review',
 };
 const BV_OK_STATUSES = new Set([BV_STATUS.VALID, BV_STATUS.NIGHT]);
+// Statuses the OT cross-check may pay from. 'Multiple Records' is accepted (first Entry / last Exit hold a
+// valid working span); 'Needs Review', 'Missing Entry' and 'Missing Exit' stay excluded for manual review.
+const BV_USABLE_STATUSES = new Set([BV_STATUS.VALID, BV_STATUS.NIGHT, BV_STATUS.MULTI]);
 
 const bvPad = n => String(n).padStart(2, '0');
 function bvFmtDate(ms) { const d = new Date(ms); return bvPad(d.getUTCDate()) + '-' + bvPad(d.getUTCMonth() + 1) + '-' + d.getUTCFullYear(); }

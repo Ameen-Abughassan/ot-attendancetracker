@@ -6473,6 +6473,21 @@ function bvSniffDelimiter(text) {
   return Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0] || ',';
 }
 
+// A sheet's stored size ("dimension") can be wrong in files exported by some systems (e.g. it says 24,329 rows
+// while 62,000+ are really present). SheetJS then only hands back the declared rows. This measures the extent
+// from the cells that are actually there so nothing past the declared size is lost.
+function bvFullRange(ws) {
+  const declared = ws['!ref'] ? XLSX.utils.decode_range(ws['!ref']) : { s: { r: 0, c: 0 }, e: { r: 0, c: 0 } };
+  let maxR = declared.e.r, maxC = declared.e.c, extended = false;
+  for (const k in ws) {
+    if (k.charCodeAt(0) === 33) continue;               // '!ref', '!cols', '!merges' …
+    const a = XLSX.utils.decode_cell(k);
+    if (a.r > maxR) { maxR = a.r; extended = true; }
+    if (a.c > maxC) { maxC = a.c; extended = true; }
+  }
+  return { s: { r: 0, c: 0 }, e: { r: maxR, c: maxC }, extended, declaredRows: declared.e.r + 1, actualRows: maxR + 1 };
+}
+
 async function bvHandleFile(file) {
   const name = file.name || '';
   if (!/\.(xlsx|xls|csv)$/i.test(name)) {
@@ -6493,54 +6508,85 @@ async function bvHandleFile(file) {
     } else {
       wb = XLSX.read(new Uint8Array(buf), { type: 'array', cellDates: true });
     }
-    let chosen = null, anyRows = false;
+    let anyRows = false;
+    const refNotes = [], candidates = [];
+    const isCsv = /\.csv$/i.test(name);
+    // Read EVERY sheet and keep the ones with recognisable columns. (Previously the first readable sheet won, so a
+    // workbook whose first tab is a partial extract hid the full report on a later tab.)
     for (const sn of wb.SheetNames) {
       const ws = wb.Sheets[sn];
       if (!ws || !ws['!ref']) continue;
-      const rng = XLSX.utils.decode_range(ws['!ref']);
-      rng.s = { r: 0, c: 0 }; // index arrays from A1 so column letters stay true to the sheet
-      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null, range: rng });
+      const fr = bvFullRange(ws); // index arrays from A1 so column letters stay true to the sheet
+      if (fr.extended) refNotes.push(`${sn}: the sheet declared ${fr.declaredRows.toLocaleString()} rows but ${fr.actualRows.toLocaleString()} are present — all of them were read`);
+      let rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null, range: { s: fr.s, e: fr.e } });
       if (rows.length) anyRows = true;
       const mapping = bvDetectMapping(rows);
-      if (mapping && mapping.mode === 'inout' && !/\.csv$/i.test(name)) {
+      if (!mapping) continue;
+      if (mapping.mode === 'inout' && !isCsv) {
         // With cellDates:true, SheetJS can hand back Dates that are minutes (or a whole day, just after midnight)
         // off in some time zones. The attendance-report layout is therefore re-read as raw Excel serial numbers,
         // which are exact and independent of the computer's time zone.
         try {
           const wsRaw = XLSX.read(new Uint8Array(buf), { type: 'array', cellDates: false }).Sheets[sn];
-          const rngRaw = XLSX.utils.decode_range(wsRaw['!ref']);
-          rngRaw.s = { r: 0, c: 0 };
-          const rawRows = XLSX.utils.sheet_to_json(wsRaw, { header: 1, raw: true, defval: null, range: rngRaw });
-          if (rawRows.length === rows.length) { chosen = { sn, rows: rawRows, mapping }; break; }
+          const frR = bvFullRange(wsRaw);
+          const rawRows = XLSX.utils.sheet_to_json(wsRaw, { header: 1, raw: true, defval: null, range: { s: frR.s, e: frR.e } });
+          if (rawRows.length === rows.length) rows = rawRows;
         } catch (e) { console.warn('Raw re-read failed, using date objects', e); }
       }
-      if (mapping) { chosen = { sn, rows, mapping }; break; }
+      candidates.push({ sn, rows, mapping });
     }
     if (!anyRows) throw new Error('The file contains no data rows.');
-    if (!chosen) {
+    if (!candidates.length) {
       throw new Error('Required columns were not found. Supported layouts: (1) attendance report — staff ID (A), staff name (B), sign-in date (D), sign-in time (F), sign-out date (H), sign-out time (I); (2) transactions report — date/time (B), staff ID (C), staff name (D) and Entry/Exit status (I), or headers such as "Date and time", "Identifier", "User" and "Direction".');
     }
-    bvRows = chosen.rows; bvMapping = chosen.mapping; bvFileName = name; bvSheetName = chosen.sn;
-    const m = bvMapping;
-    const col = c => {
-      if (c === null || c === undefined) return null;
-      const h = m.headers && m.headers[c] !== undefined && m.headers[c] !== null ? ` “${esc(String(m.headers[c]).trim())}”` : '';
-      return `<strong>${XLSX.utils.encode_col(c)}</strong>${h}`;
+    const dataCount = c => Math.max(0, c.rows.length - c.mapping.start);
+    const sig = x => JSON.stringify([x.mode, x.ts, x.id, x.dir, x.inDate, x.inTime, x.outDate, x.outTime]);
+
+    // Load one sheet (plus any other sheet with exactly the same column layout) into the processor.
+    const applySheet = pickedSn => {
+      const base = candidates.find(c => c.sn === pickedSn) || candidates[0];
+      let rowsAll = base.rows;
+      const mergedSheets = [], skippedSheets = [];
+      for (const c of candidates) {
+        if (c.sn === base.sn) continue;
+        if (sig(c.mapping) === sig(base.mapping)) { const add = c.rows.slice(c.mapping.start); rowsAll = rowsAll.concat(add); mergedSheets.push(`${c.sn} (${add.length.toLocaleString()} rows)`); }
+        else skippedSheets.push(`${c.sn} (${dataCount(c).toLocaleString()} rows)`);
+      }
+      const unreadable = wb.SheetNames.filter(sn => wb.Sheets[sn] && wb.Sheets[sn]['!ref'] && !candidates.some(c => c.sn === sn));
+      bvRows = rowsAll; bvMapping = base.mapping; bvFileName = name; bvSheetName = base.sn;
+      const m = bvMapping;
+      const col = c => {
+        if (c === null || c === undefined) return null;
+        const h = m.headers && m.headers[c] !== undefined && m.headers[c] !== null ? ` “${esc(String(m.headers[c]).trim())}”` : '';
+        return `<strong>${XLSX.utils.encode_col(c)}</strong>${h}`;
+      };
+      const dataRows = Math.max(0, bvRows.length - m.start);
+      if (!dataRows) throw new Error('The file has column headers but no data rows.');
+      const picker = candidates.length > 1
+        ? `<br>Sheet to read: <select id="bvSheetPick" style="padding:3px 6px;border-radius:6px;border:1px solid #cdd8e8;font:inherit">${candidates.map(c => `<option value="${esc(c.sn)}"${c.sn === base.sn ? ' selected' : ''}>${esc(c.sn)} — ${dataCount(c).toLocaleString()} rows</option>`).join('')}</select> <span style="opacity:.75">(the sheet with the most rows is chosen by default — change it if you want a different one)</span>`
+        : '';
+      el('bvBanner').className = 'claim-master-banner ready';
+      el('bvBanner').innerHTML =
+        `Loaded <strong>${esc(name)}</strong>${wb.SheetNames.length > 1 ? ` · sheet “${esc(base.sn)}”` : ''} · ${dataRows.toLocaleString()} data rows<br>` +
+        (m.mode === 'inout'
+          ? `Attendance-report layout · Columns used → Staff ID: ${col(m.id)} · Name: ${m.name !== null ? col(m.name) : '—'} · Sign-in date: ${col(m.inDate)} · Sign-in time: ${col(m.inTime)} · Sign-out date: ${col(m.outDate)} · Sign-out time: ${col(m.outTime)}`
+          : `Columns used → Date/time: ${col(m.ts)} · Staff ID: ${col(m.id)} · Name: ${m.name !== null ? col(m.name) : '—'} · Entry/Exit status: ${col(m.dir)}`) +
+        (m.res !== null && m.res !== undefined ? ` · Result: ${col(m.res)}` : '') +
+        (m.notes.length ? `<br>⚠ ${m.notes.map(esc).join(' ')}` : '') +
+        picker +
+        (mergedSheets.length ? `<br>Also read ${mergedSheets.length} more sheet${mergedSheets.length === 1 ? '' : 's'} with the same layout: ${esc(mergedSheets.join(', '))}. Row numbers in the exceptions list continue across sheets.` : '') +
+        (skippedSheets.length ? `<br><span style="opacity:.85">Other sheet${skippedSheets.length === 1 ? '' : 's'} not included (different layout): ${esc(skippedSheets.join(', '))}</span>` : '') +
+        (unreadable.length ? `<br>⚠ Not readable (no recognisable columns): ${esc(unreadable.join(', '))}` : '') +
+        (refNotes.length ? `<br>⚠ ${refNotes.map(esc).join('<br>⚠ ')}` : '');
+      const pick = el('bvSheetPick');
+      if (pick) pick.addEventListener('change', () => { const v = pick.value; bvReset(); try { applySheet(v); } catch (e) { bvSetStatus('Could not read that sheet: ' + e.message, 'error'); } });
+      el('bvFilename').textContent = name;
+      el('bvFilename').style.display = 'block';
+      el('bvProcessBtn').disabled = false;
+      bvSetStatus(`File loaded — ${dataRows.toLocaleString()} rows. Review the settings if needed, then click “Process Biometric Report”.`, 'ok');
     };
-    const dataRows = Math.max(0, bvRows.length - m.start);
-    if (!dataRows) throw new Error('The file has column headers but no data rows.');
-    el('bvBanner').className = 'claim-master-banner ready';
-    el('bvBanner').innerHTML =
-      `Loaded <strong>${esc(name)}</strong>${wb.SheetNames.length > 1 ? ` · sheet “${esc(chosen.sn)}”` : ''} · ${dataRows.toLocaleString()} data rows<br>` +
-      (m.mode === 'inout'
-        ? `Attendance-report layout · Columns used → Staff ID: ${col(m.id)} · Name: ${m.name !== null ? col(m.name) : '—'} · Sign-in date: ${col(m.inDate)} · Sign-in time: ${col(m.inTime)} · Sign-out date: ${col(m.outDate)} · Sign-out time: ${col(m.outTime)}`
-        : `Columns used → Date/time: ${col(m.ts)} · Staff ID: ${col(m.id)} · Name: ${m.name !== null ? col(m.name) : '—'} · Entry/Exit status: ${col(m.dir)}`) +
-      (m.res !== null && m.res !== undefined ? ` · Result: ${col(m.res)}` : '') +
-      (m.notes.length ? `<br>⚠ ${m.notes.map(esc).join(' ')}` : '');
-    el('bvFilename').textContent = name;
-    el('bvFilename').style.display = 'block';
-    el('bvProcessBtn').disabled = false;
-    bvSetStatus(`File loaded — ${dataRows.toLocaleString()} rows. Review the settings if needed, then click “Process Biometric Report”.`, 'ok');
+    // default: the readable sheet that holds the most data
+    applySheet(candidates.reduce((best, c) => dataCount(c) > dataCount(best) ? c : best, candidates[0]).sn);
   } catch (err) {
     console.error(err);
     bvReset();

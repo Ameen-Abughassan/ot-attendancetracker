@@ -1299,7 +1299,7 @@ header .brand-mark{width:64px;height:64px;flex:none}
           <div class="rule-number">04</div>
           <div class="tag">WR override</div>
           <h3>Rest-day call-in</h3>
-          <p>Planned <code>WR</code> or Dispatched <code>RD/RDOT/OT</code> requires an actual RD/RDOT/OT duty before OT is payable.</p>
+          <p>Planned <code>WR</code> or Dispatched <code>RD/RDOT/OT/ROT</code> requires an actual RD/RDOT/OT/ROT duty before OT is payable. <code>OT</code>/<code>ROT</code> is recognised anywhere in the Dispatched cell — alone, after a shift letter (E/L/N), or inside a longer code such as <code>EROTTCC</code> — but not in ordinary words like NOTE or LOT.</p>
         </div>
       </div>
     </div>
@@ -2301,6 +2301,31 @@ function minutesToHHMM(min) {
 }
 
 // Parses "SHIFT\nHH:MM - HH:MM" -> {start, end} in minutes-of-day, or null.
+// Does the Dispatched cell carry an OT / ROT overtime code ANYWHERE in it?
+// The cell is split into tokens at spaces, dashes, slashes etc., and each token is tested as a CODE rather than
+// by raw substring, so that "OT"/"ROT" are found whether they stand alone (OT, ROT, "L ROT", "N OT"),
+// follow a shift letter E/L/N (EOT, LROT), are glued to an area/position code (EROTTCC, OT3A2, ROTGSM),
+// or follow a digit (3A1OT) — while ordinary words that merely contain the letters (NOTE, LOT, OTHER, ROTA,
+// ROTATION, PILOT, PHOTO …) are not mistaken for an overtime code.
+const OT_NOT_A_CODE = new Set(['NOT','NOTE','NOTES','NOTED','NOTICE','NOTIFY','NOTIFIED','NOTHING','NOTABLE','LOT','LOTS','LOTUS',
+  'OTHER','OTHERS','OTHERWISE','ROTA','ROTAS','ROTATE','ROTATED','ROTATING','ROTATION','ROTATIONS','ROTOR','ROTTEN']);
+const OT_NOT_A_CODE_PREFIX = ['NOTE','NOTIC','NOTIF','NOTH','NOTA','NOTO','OTHER','ROTAT','ROTOR','LOTUS','LOTT','LOTI'];
+function dispatchHasOtCode(text) {
+  if (typeof text !== 'string' || !text.trim()) return false;
+  const tokens = text.toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean);
+  for (const tok of tokens) {
+    if (!/OT/.test(tok)) continue;
+    const bare = /^[ELN]/.test(tok) ? tok.slice(1) : tok;            // drop an optional shift-type letter (E/L/N)
+    if (OT_NOT_A_CODE.has(tok) || OT_NOT_A_CODE.has(bare)) continue;
+    if (OT_NOT_A_CODE_PREFIX.some(w => tok.startsWith(w) || bare.startsWith(w))) continue;
+    // [shift letter]? + OT|ROT + anything (area / position code), e.g. OT, ROT, EOT, EROTTCC, OT3A2
+    if (/^[ELN]?R?OT[A-Z0-9]*$/.test(tok)) return true;
+    // OT / ROT glued after a digit and not followed by a letter, e.g. 3A1OT, 3A2ROT
+    if (/\d(R?OT)(?![A-Z])/.test(tok)) return true;
+  }
+  return false;
+}
+
 function parseDispatchedTimes(text) {
   if (typeof text !== 'string' || text.indexOf('\n') === -1) return null;
   const after = text.split('\n')[1];
@@ -3044,10 +3069,11 @@ function runAnalysis() {
       const dispatchedDurMin = parseDispatchedDuration(dispatched);
       // RD/RDOT/OT requirement — scoped to the WR-override rule (Rule 2) only.
       // Extended dispatch (Rule 1) is untouched by this and keeps its original logic.
-      // "OT" is captured the same way as RD/RDOT, but as a stand-alone code (OT, OT-L,
-      // OT3A2 ...) so it doesn't fire on words that merely contain the letters "OT".
+      // "OT"/"ROT" is captured by dispatchHasOtCode(): token-based, wherever it sits in the cell
+      // (alone, after a shift letter E/L/N, inside a longer code such as EROTTCC) without firing on
+      // ordinary words that merely contain the letters "OT".
       const hasRD = typeof dispatched === 'string' &&
-        (dispatched.toUpperCase().includes('RD') || /(^|[^A-Z])OT(?![A-Z])/.test(dispatched.toUpperCase()));
+        (dispatched.toUpperCase().includes('RD') || dispatchHasOtCode(dispatched));
 
       // Ramadan: only Religion "IS" on a roster date inside the configured period,
       // AND only when Dispatched was actually extended beyond Planned (mirrors
@@ -3786,7 +3812,7 @@ async function buildCorrectedWorkbook(a) {
           priority: 2,
           type: 'expression',
           formulae: [
-            `AND(MOD(COLUMN()-${firstDispatchedCol},${period})=0,UPPER(TRIM(INDEX($1:$1048576,ROW(),COLUMN()-1)))="WR",OR(ISNUMBER(SEARCH("RD",INDEX($1:$1048576,ROW(),COLUMN()))),ISNUMBER(SEARCH("RDOT",INDEX($1:$1048576,ROW(),COLUMN()))),ISNUMBER(SEARCH(" OT"," "&INDEX($1:$1048576,ROW(),COLUMN())))))`
+            `AND(MOD(COLUMN()-${firstDispatchedCol},${period})=0,UPPER(TRIM(INDEX($1:$1048576,ROW(),COLUMN()-1)))="WR",OR(ISNUMBER(SEARCH("RD",INDEX($1:$1048576,ROW(),COLUMN()))),ISNUMBER(SEARCH("RDOT",INDEX($1:$1048576,ROW(),COLUMN()))),ISNUMBER(SEARCH(" OT"," "&INDEX($1:$1048576,ROW(),COLUMN()))),ISNUMBER(SEARCH("ROT",INDEX($1:$1048576,ROW(),COLUMN())))))`
           ],
           style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFFC7CE' } } },
         },

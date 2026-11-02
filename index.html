@@ -1926,7 +1926,7 @@ header .brand-mark{width:64px;height:64px;flex:none}
   </section>
 
   <footer>
-    RD/RDOT/OT requirement applies to the WR override rule only (Rule 2): triggers on Planned = WR or on Dispatched showing RD/RDOT/OT, but only pays OT when Dispatched actually contains RD, RDOT or a stand-alone OT code. Extended dispatch (Rule 1) is unaffected by RD/RDOT. Fixed working baseline is position-specific (8:30 for most positions, 10:30 for Train Ambassador, 9:30 for Station Agent, 9:00 for Station Ambassador). Working Hrs above 14:00 are treated as an invalid biometric and disqualify that day from any OT, under either rule. Working time from a valid Actual punch is measured from the Dispatched cell's own scheduled start time (not the Actual sign-on stamp) through to the Actual sign-off. Working Hrs used for OT calculation is capped at 12:00 regardless of what Actual or the file's own Working Hrs implies. Calculated OT under 30 minutes is not payable and is corrected to 0:00. A valid biometric Actual record must match <code style="font-family:var(--mono)">HH:MM:SS - HH:MM:SS</code>; whenever Actual is valid, the worked duration is always computed directly from it (correctly handling overnight shifts) rather than trusting the source file's own Working Hrs column, which has shown itself unreliable for overnight shifts (N/A, or even an incorrect 0:00). The file's own Working Hrs is only used as a fallback when Actual itself is missing or malformed.
+    RD/RDOT/OT requirement applies to the WR override rule only (Rule 2): triggers on Planned = WR or on Dispatched showing RD/RDOT/OT, but only pays OT when Dispatched actually contains RD, RDOT or a stand-alone OT code. Exception: Planned = WR with a real duty dispatched (shift code with times), no RD/RDOT/OT code, and a duty longer than the position's fixed working hours is treated as extension duty — worked time (capped at the dispatched duration) beyond the fixed hours is paid as Extended Duty. Extended dispatch (Rule 1) is unaffected by RD/RDOT. Fixed working baseline is position-specific (8:30 for most positions, 10:30 for Train Ambassador, 9:30 for Station Agent, 9:00 for Station Ambassador). Working Hrs above 14:00 are treated as an invalid biometric and disqualify that day from any OT, under either rule. Working time from a valid Actual punch is measured from the Dispatched cell's own scheduled start time (not the Actual sign-on stamp) through to the Actual sign-off. Working Hrs used for OT calculation is capped at 12:00 regardless of what Actual or the file's own Working Hrs implies. Calculated OT under 30 minutes is not payable and is corrected to 0:00. A valid biometric Actual record must match <code style="font-family:var(--mono)">HH:MM:SS - HH:MM:SS</code>; whenever Actual is valid, the worked duration is always computed directly from it (correctly handling overnight shifts) rather than trusting the source file's own Working Hrs column, which has shown itself unreliable for overnight shifts (N/A, or even an incorrect 0:00). The file's own Working Hrs is only used as a fallback when Actual itself is missing or malformed.
   </footer>
 </main>
 
@@ -3113,7 +3113,13 @@ function runAnalysis() {
       } else if (isWrOverrideCase) {
         // Rule 2: rest-day call-in — only payable when the Dispatched code shows
         // an actual rest-day duty (RD, RDOT or OT); anything else on a WR day is left alone.
-        if (!hasRD) {
+        // Planned = WR with a real duty dispatched (a shift code with times) but no RD/RDOT/OT code:
+        // treated as extension duty (paid as "Extended Duty") ONLY when the dispatched duty is longer than the
+        // position's normal (fixed) working hours. Like Rule 1, the extension is what is worked beyond the
+        // fixed hours — capped at the dispatched duration. A duty not longer than the fixed hours is no extension.
+        const wrFixedMin = getFixedMinutesForPosition(position);
+        const wrExtensionDuty = !hasRD && planned === 'WR' && dispatchedDurMin !== null && dispatchedDurMin > wrFixedMin;
+        if (!hasRD && !wrExtensionDuty) {
           reasonSkip = 'No RD/RDOT/OT code in Dispatched';
         } else if (!isValidBiometric(actual)) {
           reasonSkip = 'No valid biometric Actual record';
@@ -3122,9 +3128,10 @@ function runAnalysis() {
         } else {
           const cap = dispatchedDurMin !== null ? dispatchedDurMin : workingMin;
           let calc = Math.min(workingMin, cap);
+          if (wrExtensionDuty) calc = Math.max(0, calc - wrFixedMin);
           if (calc < MIN_OT_MIN) calc = 0;
           correctedMin = calc;
-          ruleApplied = 'WR override';
+          ruleApplied = wrExtensionDuty ? 'Extended dispatch' : 'WR override';
           if (otMin === null || Math.abs(calc - otMin) > 1) changed = true;
         }
       } else if (ramadanExtended) {
@@ -3200,7 +3207,7 @@ function runAnalysis() {
         // visible trace of why. Now anything reasonSkip was set for shows
         // up here, tagged with which rule it would have applied under.
         const ruleContext = eidActive ? holidayLabel
-          : isWrOverrideCase ? 'WR override'
+          : isWrOverrideCase ? ((planned === 'WR' && !hasRD && dispatchedDurMin !== null && dispatchedDurMin > getFixedMinutesForPosition(position)) ? 'Extended dispatch' : 'WR override')
           : ramadanExtended ? 'Ramadan (IS)'
           : 'Extended dispatch';
         skipRec = { sap, name, position, date: block.dateVal, reason: reasonSkip, rule: ruleContext };

@@ -725,6 +725,11 @@ body.auth-locked #authScreen{display:flex;}
   .auth-hero p{font-size:14px;}
 }
 
+/* ---- HR Advisor role: only Biometric Validation + Under Time are reachable ---- */
+body.role-hr #tabCommand,body.role-hr #tabValidator,body.role-hr #tabPayslip,body.role-hr #tabClaim,
+body.role-hr #ccPanel,body.role-hr #validatorPanel,body.role-hr #payslipPanel,body.role-hr #claimPanel,
+body.role-hr .quick-tile[data-goto="tabValidator"],body.role-hr .quick-tile[data-goto="tabClaim"],body.role-hr .quick-tile[data-goto="tabPayslip"]{display:none !important;}
+#utbCard .bvl-field input,#utbCard .bvl-field select{width:100%;}
 /* ---- hooks for the existing login script (ids / state classes it already toggles) ---- */
 .auth-card.shake{animation:authShake .4s ease;}
 .auth-field.has-error .auth-input input{border-color:#e53e3e;box-shadow:0 0 0 4px rgba(229,62,62,.10);}
@@ -1586,6 +1591,9 @@ header .brand-mark{width:64px;height:64px;flex:none}
       <div id="utbInfo" class="utb-info"></div>
 
       <div class="utb-controls">
+        <div class="bvl-field"><label for="utbScope">Search for</label><select id="utbScope"><option value="one">One staff (Staff ID)</option><option value="all">All staff</option><option value="line">All staff in a line</option></select></div>
+        <div class="bvl-field" id="utbIdWrap"><label for="utbStaff">Staff ID</label><input type="text" id="utbStaff" list="utbStaffIds" placeholder="e.g. 1004948" spellcheck="false" autocomplete="off"><datalist id="utbStaffIds"></datalist></div>
+        <div class="bvl-field" id="utbLineWrap" style="display:none"><label for="utbLine">Line</label><select id="utbLine"><option value="">Select a line…</option></select></div>
         <div class="control-field">
           <label for="utbPeriodMode">Period type</label>
           <select id="utbPeriodMode">
@@ -1604,11 +1612,6 @@ header .brand-mark{width:64px;height:64px;flex:none}
         <div class="control-field utb-month" style="display:none">
           <label for="utbMonth">Month</label>
           <input type="month" id="utbMonth">
-        </div>
-        <div class="control-field">
-          <label for="utbStaff">Staff ID (blank = all staff)</label>
-          <input type="text" id="utbStaff" list="utbStaffIds" placeholder="e.g. 1001" autocomplete="off">
-          <datalist id="utbStaffIds"></datalist>
         </div>
         <div class="control-field">
           <label for="utbShow">Show</label>
@@ -4360,6 +4363,9 @@ const TAB_ORDER = ['command','validator','biometric','undertime','payslip','clai
 const TAB_PANEL_ID = { command:'ccPanel', validator:'validatorPanel', payslip:'payslipPanel', undertime:'undertimePanel', claim:'claimPanel', biometric:'bvPanel' };
 const TAB_BTN_ID = { command:'tabCommand', validator:'tabValidator', payslip:'tabPayslip', undertime:'tabUndertime', claim:'tabClaim', biometric:'tabBiometric' };
 function switchTab(name){
+  // Role gate: a restricted role (HR Advisor) can only ever land on its permitted tabs, whatever calls this.
+  const _role = window.OTATS_ROLE;
+  if (_role && _role.allowedTabs && !_role.allowedTabs.includes(name)) name = _role.defaultTab;
   TAB_ORDER.forEach(key => {
     const active = key === name;
     el(TAB_PANEL_ID[key]).classList.toggle('active', active);
@@ -7252,9 +7258,18 @@ function utbReadCriteria() {
     if (fromMs > toMs) throw new Error('The start date is after the end date.');
     label = `${utbFmtDate(fromMs)} → ${utbFmtDate(toMs)}`;
   }
-  const raw = el('utbStaff').value.trim();
-  const staffKey = raw ? normalizeEmployeeKey(raw) : '';
-  return { fromMs, toMs, label, staffKey, staffRaw: raw };
+  const scope = el('utbScope').value;
+  let raw = '', staffKey = '', line = '';
+  if (scope === 'one') {
+    raw = el('utbStaff').value.trim();
+    if (!raw) throw new Error('Enter a Staff ID to search.');
+    staffKey = normalizeEmployeeKey(raw);
+    if (!staffKey) throw new Error('That does not look like a valid Staff ID.');
+  } else if (scope === 'line') {
+    line = el('utbLine').value;
+    if (!line) throw new Error('Select a line, or switch to “All staff”.');
+  }
+  return { fromMs, toMs, label, staffKey, staffRaw: raw, scope, line, idSet: null };
 }
 
 async function utbGenerate() {
@@ -7266,6 +7281,13 @@ async function utbGenerate() {
   try {
     const sch = await utbLoadSchedule();
     const sched = sch.rows;
+    if (crit.scope === 'line') {
+      const ids = new Set();
+      (sched || []).forEach(s => { if (String(s.line || '').trim() === crit.line) ids.add(s.id); });
+      try { bvlStaffDirectory().forEach((v, k) => { if (v.line === crit.line) ids.add(k); }); } catch (e) { /* directory unavailable */ }
+      if (!ids.size) { utbSetStatus(`No staff are recorded under line “${crit.line}”.`, 'error'); el('utbResults').style.display = 'none'; el('utbExport').disabled = true; return; }
+      crit.idSet = ids;
+    }
     const data = await utbLoadPeriods(crit.fromMs, crit.toMs);
     if (seq !== UTB.seq) return;
     if (data.coverMin === null) { utbSetStatus('No biometric data is stored yet. Process a biometric report in the Biometric Validation tab first — it is saved automatically.', 'error'); el('utbResults').style.display = 'none'; el('utbExport').disabled = true; return; }
@@ -7275,6 +7297,7 @@ async function utbGenerate() {
     data.periods.forEach(p => {
       if (p.attDay < crit.fromMs || p.attDay > crit.toMs) return;
       if (crit.staffKey && p.idKey !== crit.staffKey) return;
+      if (crit.idSet && !crit.idSet.has(p.idKey)) return;
       const k = p.idKey + '|' + p.attDay;
       if (!idx.has(k)) idx.set(k, []);
       idx.get(k).push(p);
@@ -7285,6 +7308,7 @@ async function utbGenerate() {
     (sched || []).forEach(s => {
       if (s.dateMs < crit.fromMs || s.dateMs > crit.toMs) return;
       if (crit.staffKey && s.id !== crit.staffKey) return;
+      if (crit.idSet && !crit.idSet.has(s.id)) return;
       const k = s.id + '|' + s.dateMs;
       if (seenSched.has(k)) return;                           // never duplicate a staff/day record
       seenSched.add(k);
@@ -7309,9 +7333,9 @@ async function utbGenerate() {
     utbRenderAll();
 
     if (!rows.length) {
-      utbSetStatus(crit.staffKey ? `No schedule or biometric records found for Staff ID ${crit.staffRaw} in ${crit.label}.` : `No scheduled duties found in ${crit.label}.` + (sched && sched.length ? '' : utbScheduleHint(sch.counts)), 'error');
+      utbSetStatus(crit.staffKey ? `No schedule or biometric records found for Staff ID ${crit.staffRaw} in ${crit.label}.` : `No scheduled duties found ${crit.scope === 'line' ? 'for line ' + crit.line + ' ' : ''}in ${crit.label}.` + (sched && sched.length ? '' : utbScheduleHint(sch.counts)), 'error');
     } else {
-      let msg = `${rows.length} record${rows.length === 1 ? '' : 's'} for ${crit.staffKey ? 'Staff ID ' + crit.staffRaw : 'all staff'} · ${crit.label}.`;
+      let msg = `${rows.length} record${rows.length === 1 ? '' : 's'} for ${crit.staffKey ? 'Staff ID ' + crit.staffRaw : crit.scope === 'line' ? 'line ' + crit.line : 'all staff'} · ${crit.label}.`;
       if (!UTB.meta.schedLoaded) msg += ' No scheduled duty times were found, so actual times are shown but undertime cannot be calculated.' + utbScheduleHint(sch.counts);
       else { const ns = rows.filter(r => r.kind === 'noschedule').length; if (ns) msg += ` ${ns} day(s) with biometric punches have no scheduled duty on file.` + (crit.staffKey ? utbScheduleHint(sch.counts) : ''); }
       if (unlisted) msg += ` ${unlisted} biometric day(s) with no scheduled duty (rest day / leave / OT) are not listed; search a specific Staff ID to see them.`;
@@ -7399,6 +7423,7 @@ async function utbRefreshInfo() {
       el('utbStaffIds').innerHTML = [...ids].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true })).map(i => `<option value="${esc(i)}"></option>`).join('');
     }
   } catch (e) { parts.push('<span class="warn">Could not read the biometric history: ' + esc(e.message) + '</span>'); }
+  try { utbRefreshLines(sch); } catch (e) { /* line list is optional */ }
   const c = sch && sch.counts;
   if (c && (c.ot || c.stored || c.live)) {
     const bits = [];
@@ -7410,6 +7435,21 @@ async function utbRefreshInfo() {
   if (c && c.otTotal && !c.otWithDisp) parts.push('<span class="warn">OT History has no Dispatch times yet — re-save the OT report to OT History.</span>');
   box.innerHTML = parts.join('');
 }
+function utbRefreshLines(sch) {
+  const sel = el('utbLine'); if (!sel) return;
+  const prev = sel.value, lines = new Set();
+  if (sch) sch.rows.forEach(s => { const l = String(s.line || '').trim(); if (l) lines.add(l); });
+  try { bvlStaffDirectory().forEach(v => { if (v.line) lines.add(v.line); }); } catch (e) { /* directory unavailable */ }
+  const arr = [...lines].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  sel.innerHTML = arr.length ? '<option value="">Select a line…</option>' + arr.map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join('')
+    : '<option value="">No line data — save the OT report to OT History or load the attendance report first</option>';
+  if (arr.includes(prev)) sel.value = prev;
+}
+function utbToggleScope() {
+  const sc = el('utbScope').value;
+  el('utbIdWrap').style.display = sc === 'one' ? '' : 'none';
+  el('utbLineWrap').style.display = sc === 'line' ? '' : 'none';
+}
 function utbTogglePeriod() {
   const month = el('utbPeriodMode').value === 'month';
   document.querySelectorAll('#utbCard .utb-range').forEach(e => e.style.display = month ? 'none' : '');
@@ -7419,6 +7459,7 @@ function utbReset() {
   ++UTB.seq;
   el('utbPeriodMode').value = 'range'; utbTogglePeriod();
   ['utbStart', 'utbEnd', 'utbMonth', 'utbStaff'].forEach(i => el(i).value = '');
+  el('utbScope').value = 'one'; el('utbLine').value = ''; utbToggleScope();
   el('utbShow').value = 'all';
   UTB.rows = []; UTB.view = []; UTB.meta = null;
   el('utbResults').style.display = 'none'; el('utbBody').innerHTML = ''; el('utbExport').disabled = true;
@@ -7468,7 +7509,7 @@ async function utbExport() {
     const m = UTB.meta;
     sum.getCell('A1').value = 'Undertime from Biometric Records — Summary'; sum.getCell('A1').font = { bold: true, size: 14, color: { argb: 'FF172B4D' } };
     const info = [
-      ['Period', m.crit.label], ['Staff', m.crit.staffKey ? m.crit.staffRaw : 'All staff'],
+      ['Period', m.crit.label], ['Staff', m.crit.staffKey ? m.crit.staffRaw : (m.crit.scope === 'line' ? 'Line ' + m.crit.line : 'All staff')],
       ['View exported', el('utbShow').selectedOptions[0].textContent], ['Generated', new Date().toLocaleString()],
       ['Biometric data covers', utbFmtDate(m.coverMin) + ' → ' + utbFmtDate(m.coverMax)],
     ];
@@ -7502,7 +7543,7 @@ async function utbExport() {
     const buf = await wb.xlsx.writeBuffer();
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
-    a.download = 'Undertime_Biometric_' + (m.crit.staffKey ? m.crit.staffRaw.replace(/[^\w\-]+/g, '_') : 'AllStaff') + '_' + m.crit.label.replace(/[^\w]+/g, '-').replace(/^-|-$/g, '') + '.xlsx';
+    a.download = 'Undertime_Biometric_' + (m.crit.staffKey ? m.crit.staffRaw.replace(/[^\w\-]+/g, '_') : (m.crit.scope === 'line' ? 'Line_' + String(m.crit.line).replace(/[^\w\-]+/g, '_') : 'AllStaff')) + '_' + m.crit.label.replace(/[^\w]+/g, '-').replace(/^-|-$/g, '') + '.xlsx';
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   } catch (err) {
     console.error(err); utbSetStatus('Failed to build the Excel file: ' + err.message, 'error');
@@ -7512,6 +7553,7 @@ async function utbExport() {
 (function utbInit() {
   if (!el('utbCard')) return;
   el('utbPeriodMode').addEventListener('change', utbTogglePeriod);
+  el('utbScope').addEventListener('change', utbToggleScope);
   el('utbGo').addEventListener('click', utbGenerate);
   el('utbReset').addEventListener('click', utbReset);
   el('utbExport').addEventListener('click', utbExport);
@@ -7748,7 +7790,7 @@ const SB = (function () {
           dateCfgApply(d, c.start_date, c.end_date); pulled++;                                                          // someone else changed it → here
         }
       }
-      if (rows.length) {
+      if (rows.length && !out.readOnlyOt) {
         const w = await client.from('ot_date_config').upsert(rows, { onConflict: 'key' });
         if (w.error) throw fail('Could not save the dates to the cloud', w.error);
         // clear "pending" only for settings that still hold exactly what was sent (an edit made meanwhile stays pending)
@@ -7908,6 +7950,7 @@ const SB = (function () {
       const localIds = new Set(localBatches.map(b => b.batchId));
       let pushed = 0, pulled = 0, removed = 0;
       for (const lb of localBatches) {
+        if (out.readOnlyOt) break;   // HR Advisor: read-only on OT history (also enforced by the database policies)
         const id = lb.batchId;
         if (cloud.has(id) && pushedSet.has(id)) continue;                                                   // confirmed complete in the cloud
         if (!cloud.has(id) && pushedSet.has(id)) { await _origOtDelete(id); pushedSet.delete(id); removed++; continue; }   // deleted on another device
@@ -8101,8 +8144,24 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
     // Stored as a salted PBKDF2 hash, not plain text. A short numeric password is easy to guess and anyone
     // who has this file can bypass the check — it is a placeholder, not security.
     // To remove it: set interimAccount to null (or set loginUrl for server mode).
+    // HR Advisor (restricted role: Biometric Validation + Under Time only). Password is stored as a salted PBKDF2 hash.
+    // This built-in entry is only the no-server fallback and is NOT secure; in Supabase mode the role comes from
+    // the user's app_metadata.role = 'hr_advisor' and is enforced by database policies (see hr_advisor_setup.sql).
+    extraAccounts: [
+      { user: 'hr_advisor', name: 'HR Advisor', role: 'HR Advisor', roleKey: 'hr_advisor', iter: 600000, salt: 'ppuenfOjN7buMmnCm+pHBQ==', hash: 'LFfnxgBCaiQIfs39QRigvAx4vn1G/MJnOT3qZKKFOZw=' },
+    ],
+    hrAdvisorEmail: 'hr_advisor@flow.local',   // Supabase sign-in email behind the username "hr_advisor" (create this user in Supabase)
     interimAccount: { user: 'admin', name: 'Admin', iter: 600000, salt: 'MplHPIA9BaN46JHhoXl1kA==', hash: 'yKIetmQz6P99rvBQmJT4hQllSUrd/29eAhqIOnWMbwo=' },
   };
+
+  // ---- roles -------------------------------------------------------------------------------
+  // '' = full access (Administrator and every existing role, unchanged). 'hr_advisor' = restricted.
+  const ROLE_HR = 'hr_advisor', HR_TABS = ['biometric', 'undertime'];
+  const ALL_TABS = ['command', 'validator', 'biometric', 'undertime', 'payslip', 'claim'];
+  const TAB_BTN = { command: 'tabCommand', validator: 'tabValidator', biometric: 'tabBiometric', undertime: 'tabUndertime', payslip: 'tabPayslip', claim: 'tabClaim' };
+  const TAB_PANEL = { command: 'ccPanel', validator: 'validatorPanel', biometric: 'bvPanel', undertime: 'undertimePanel', payslip: 'payslipPanel', claim: 'claimPanel' };
+  const roleKeyOf = r => String(r || '').trim().toLowerCase().replace(/[\s-]+/g, '_') === ROLE_HR ? ROLE_HR : '';
+  window.OTATS_ROLE = { key: '', allowedTabs: null, defaultTab: 'command' };
 
   const LS_ACCOUNT = 'otats.localAccess.v1', LS_LOCK = 'otats.authLock.v1';
   const SS_SESSION = 'otats.session.v1', SS_TOKEN = 'otats.token.v1';
@@ -8225,7 +8284,7 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
   }
   async function sbLogin(u, p) {
     let res;
-    try { res = await window.SB.client.auth.signInWithPassword({ email: u, password: p }); }
+    try { res = await window.SB.client.auth.signInWithPassword({ email: (/^hr_advisor$/i.test(u) && AUTH_CONFIG.hrAdvisorEmail) ? AUTH_CONFIG.hrAdvisorEmail : u, password: p }); }
     catch (e) { throw new AuthError('Cannot reach the sign-in service. Check your connection and try again.'); }
     if (res.error) {
       const st = res.error.status;
@@ -8247,20 +8306,44 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
     return { name: u, role: 'Local access' };
   }
   async function localLogin(u, p) {
-    const acc = AUTH_CONFIG.interimAccount || readJSON(LS, LS_ACCOUNT);
-    if (!acc) throw new AuthError('No local login exists on this device. Please set one up.');
+    const accs = AUTH_CONFIG.interimAccount ? [AUTH_CONFIG.interimAccount].concat(AUTH_CONFIG.extraAccounts || []) : [readJSON(LS, LS_ACCOUNT)].filter(Boolean);
+    if (!accs.length) throw new AuthError('No local login exists on this device. Please set one up.');
+    const acc = accs.find(a => a.user === u.toLowerCase()) || accs[0];
     if (!cryptoOk()) throw new AuthError('Secure hashing is unavailable in this browser context. Use the server sign-in instead.');
     const hash = await derive(p, unb64(acc.salt), acc.iter);   // always derive: constant effort for right/wrong username
     const ok = safeEqual(hash, unb64(acc.hash)) && u.toLowerCase() === acc.user;
     if (!ok) throw new AuthError('Incorrect username or password. Please check your details and try again.', { credential: true, field: 'pass' });
-    return { name: acc.name, role: AUTH_CONFIG.interimAccount ? 'Interim access' : 'Local access' };
+    return { name: acc.name, role: acc.role || (AUTH_CONFIG.interimAccount ? 'Interim access' : 'Local access'), roleKey: acc.roleKey || '' };
   }
 
   // ---- session ------------------------------------------------------------------------------------------
   function initials(n) { const parts = String(n).replace(/@.*$/, '').split(/[\s._-]+/).filter(Boolean); return ((parts[0] || '?')[0] + (parts[1] ? parts[1][0] : (parts[0] || '')[1] || '')).toUpperCase(); }
+  let activeRoleKey = null;
+  function applyRole(rk) {
+    const hr = rk === ROLE_HR;
+    document.body.classList.toggle('role-hr', hr);
+    window.OTATS_ROLE.key = rk;
+    window.OTATS_ROLE.allowedTabs = hr ? HR_TABS.slice() : null;
+    window.OTATS_ROLE.defaultTab = hr ? 'biometric' : 'command';
+    if (!hr) return;
+    ALL_TABS.filter(k => !HR_TABS.includes(k)).forEach(k => {
+      const b = $(TAB_BTN[k]), pn = $(TAB_PANEL[k]);
+      if (b) { b.setAttribute('aria-hidden', 'true'); b.tabIndex = -1; b.disabled = true; }
+      if (pn) { pn.setAttribute('aria-hidden', 'true'); pn.setAttribute('inert', ''); pn.classList.remove('active'); }
+    });
+    document.querySelectorAll('.nav-grp').forEach(g => { if (/^main$/i.test(g.textContent.trim())) g.style.display = 'none'; });
+    if (typeof window.switchTab === 'function') window.switchTab('biometric');
+  }
   function unlock(user) {
+    const rk = user.roleKey || roleKeyOf(user.role);
+    // Different role than the one already loaded in this page (e.g. after an idle lock): reload so no data from the
+    // previous user's session stays in memory.
+    if (activeRoleKey !== null && activeRoleKey !== rk) { try { location.reload(); } catch (e) {} return; }
+    activeRoleKey = rk;
+    user = Object.assign({}, user, { roleKey: rk });
     currentUser = user;
-    $('userName').textContent = user.name; $('userRole').textContent = user.role || (serverMode ? 'Signed in' : 'Local access');
+    applyRole(rk);
+    $('userName').textContent = user.name; $('userRole').textContent = rk === ROLE_HR ? 'HR Advisor' : (user.role || (serverMode ? 'Signed in' : 'Local access'));
     $('userAvatar').textContent = initials(user.name);
     $('welcomeKicker').textContent = 'Signed in as ' + user.name;
     document.body.classList.remove('auth-locked');
@@ -8268,7 +8351,7 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
     $('authPass').value = ''; $('authConfirm').value = '';
     lastActive = Date.now(); startIdleWatch();
     window.scrollTo(0, 0);
-    if (sbMode) { try { window.SB.onSignedIn(); } catch (e) { console.warn('Cloud sync could not start', e); } }
+    if (sbMode) { try { window.SB.readOnlyOt = (rk === ROLE_HR); window.SB.onSignedIn(); } catch (e) { console.warn('Cloud sync could not start', e); } }
   }
   function showLogin(message, info) {
     document.body.classList.add('auth-locked');
@@ -8364,12 +8447,15 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
     const saved = readJSON(SS, SS_SESSION);
     const fresh = saved && saved.mode === (sbMode ? 'sb' : (serverMode ? 'server' : 'local')) && (Date.now() - saved.at) < Math.max(1, AUTH_CONFIG.idleTimeoutMin || 480) * 60000;
     if (fresh) {
-      let valid = true;
-      if (sbMode) { try { valid = !!(await window.SB.getSession()); } catch (e) { valid = false; } }
+      let valid = true, sbSession = null;
+      if (sbMode) { try { sbSession = await window.SB.getSession(); valid = !!sbSession; } catch (e) { valid = false; } }
       if (serverMode && AUTH_CONFIG.sessionCheckUrl) {
         try { valid = (await fetch(AUTH_CONFIG.sessionCheckUrl, { credentials: AUTH_CONFIG.sendCookies ? 'include' : 'same-origin' })).ok; } catch (e) { valid = false; }
       }
-      if (valid) { unlock({ name: saved.name, role: saved.role }); return; }
+      if (valid) {
+        if (sbSession) { const am = (sbSession.user && sbSession.user.app_metadata) || {}; saved.role = am.role || 'Signed in'; }   // role comes from the signed session
+        unlock({ name: saved.name, role: saved.role }); return;
+      }
       clearSession();
     }
     showLogin();

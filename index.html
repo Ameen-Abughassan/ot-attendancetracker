@@ -252,7 +252,7 @@
   .payslip-table-head{padding:16px 18px;border-bottom:1px solid #e8edf3;display:flex;justify-content:space-between;align-items:center}.payslip-table-head h3{margin:0;font-size:15px;color:#172b4d}.payslip-table-head span{font-family:var(--mono);font-size:11px;color:#64748b}
   .pay-empty{padding:45px;text-align:center;color:#94a3b8;font-size:13px}
   .pay-total{font-weight:800;color:#166534;font-family:var(--mono)}
-  @media(max-width:900px){.payslip-controls{grid-template-columns:1fr}.pay-summary{grid-template-columns:1fr 1fr}.payslip-intro{flex-direction:column}}
+  @media(max-width:900px){#nsControls{grid-template-columns:1fr}.payslip-controls{grid-template-columns:1fr}.pay-summary{grid-template-columns:1fr 1fr}.payslip-intro{flex-direction:column}}
   @media(max-width:720px){.app-tabs{width:100%}.app-tab{flex:1;padding:10px 8px}.pay-summary{grid-template-columns:1fr}}
 
 
@@ -564,7 +564,7 @@ header .eyebrow:before{background:#fff;box-shadow:none;}
    (no lift), matching the reference's plain tab row instead of a grouped bar */
 .app-tabs{background:transparent;border:0;box-shadow:none;padding:0;gap:10px;flex-wrap:wrap;}
 .app-tab{border:2px solid var(--line-strong);border-radius:8px;padding:10px 20px 10px 10px;}
-#tabValidator,#tabPayslip,#tabUndertime,#tabClaim{
+#tabValidator,#tabPayslip,#tabUndertime,#tabClaim,#tabNightShift{
   --tab-accent:#667eea;--tab-accent-soft:#eef1fd;--tab-accent-shadow:rgba(102,126,234,.35);
 }
 .app-tab:hover{transform:none;border-color:var(--tab-accent);color:var(--ink);}
@@ -1225,6 +1225,10 @@ header .brand-mark{width:64px;height:64px;flex:none}
       <span class="tab-ico-wrap" aria-hidden="true"><svg class="tab-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 14"></polyline></svg></span>
       <span class="tab-label">Undertime</span>
     </button>
+    <button class="app-tab" id="tabNightShift" data-tab="nightshift" type="button" role="tab" aria-selected="false" aria-controls="nightShiftPanel">
+      <span class="tab-ico-wrap" aria-hidden="true"><svg class="tab-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.7 8.7 0 1 0 20.5 14.2Z"></path><path d="M16 3v4M14 5h4"></path></svg></span>
+      <span class="tab-label">Night Shift Allowance</span>
+    </button>
     <button class="app-tab" id="tabPayslip" data-tab="payslip" type="button" role="tab" aria-selected="false" aria-controls="payslipPanel">
       <span class="tab-ico-wrap" aria-hidden="true"><svg class="tab-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></span>
       <span class="tab-label">Payslips</span>
@@ -1659,6 +1663,34 @@ header .brand-mark{width:64px;height:64px;flex:none}
       </div>
     </div>
   </section>
+
+    <section class="tab-panel" id="nightShiftPanel" role="tabpanel" aria-labelledby="tabNightShift">
+      <div class="payslip-intro">
+        <div><div class="eyebrow" style="color:#2563eb;margin-bottom:7px">Attendance · Night Work</div>
+          <h2>Night Shift Allowance Report</h2>
+          <p>Identify scheduled night duties from the Dispatch Duty code (N) or a scheduled start around 23:00, then compare the duty window with actual biometric punches. Overnight punch-outs on the following calendar day are included.</p>
+        </div><div class="pdf-mark" style="background:linear-gradient(135deg,#3730a3,#6366f1)">N</div>
+      </div>
+      <div class="payslip-controls" id="nsControls">
+        <div class="control-field"><label for="nsStaff">Staff ID (leave blank for all staff)</label><input id="nsStaff" type="text" placeholder="Enter Staff ID" list="nsStaffIds" autocomplete="off"><datalist id="nsStaffIds"></datalist></div>
+        <div class="control-field"><label for="nsFrom">From date</label><input id="nsFrom" type="date"></div>
+        <div class="control-field"><label for="nsTo">To date</label><input id="nsTo" type="date"></div>
+        <div class="payslip-actions">
+          <button class="btn-primary" id="nsGenerate" type="button">⌕&nbsp; Generate report</button>
+          <button class="btn-secondary" id="nsReset" type="button">↺&nbsp; Reset filters</button>
+          <button class="btn-secondary" id="nsExport" type="button" disabled>↓&nbsp; Export to Excel</button>
+        </div>
+      </div>
+      <div id="nsStatus" class="status" style="margin:10px 0 14px"></div>
+      <div id="nsResults" style="display:none">
+        <div class="pay-summary" id="nsSummary"></div>
+        <div class="payslip-table-card"><div class="payslip-table-head"><h3>Night Shift Attendance Details</h3><span id="nsMeta"></span></div>
+          <div class="table-wrap" style="border:0;border-radius:0;max-height:560px"><table><thead><tr>
+            <th>Staff ID</th><th>Staff Name</th><th>Position</th><th>Location / Line</th><th>Duty Date</th><th>Dispatch Duty</th><th>Scheduled Start</th><th>Scheduled End</th><th>Actual Punch-In</th><th>Actual Punch-Out</th><th>Night Shift Hours</th><th>Attendance Status</th>
+          </tr></thead><tbody id="nsBody"><tr><td colspan="12" class="pay-empty">Generate a report to view night shifts.</td></tr></tbody></table></div>
+        </div>
+      </div>
+    </section>
 
   <section class="tab-panel" id="claimPanel" role="tabpanel" aria-labelledby="tabClaim">
     <div class="payslip-intro">
@@ -4357,11 +4389,12 @@ async function downloadPayrollExcel() {
 el('tabValidator').addEventListener('click',()=>switchTab('validator'));
 el('tabPayslip').addEventListener('click',()=>switchTab('payslip'));
 el('tabUndertime').addEventListener('click',()=>switchTab('undertime'));
+el('tabNightShift').addEventListener('click',()=>switchTab('nightshift'));
 el('tabClaim').addEventListener('click',()=>switchTab('claim'));
 el('tabBiometric').addEventListener('click',()=>switchTab('biometric'));
-const TAB_ORDER = ['command','validator','biometric','undertime','payslip','claim'];
-const TAB_PANEL_ID = { command:'ccPanel', validator:'validatorPanel', payslip:'payslipPanel', undertime:'undertimePanel', claim:'claimPanel', biometric:'bvPanel' };
-const TAB_BTN_ID = { command:'tabCommand', validator:'tabValidator', payslip:'tabPayslip', undertime:'tabUndertime', claim:'tabClaim', biometric:'tabBiometric' };
+const TAB_ORDER = ['command','validator','biometric','undertime','nightshift','payslip','claim'];
+const TAB_PANEL_ID = { command:'ccPanel', validator:'validatorPanel', payslip:'payslipPanel', undertime:'undertimePanel', nightshift:'nightShiftPanel', claim:'claimPanel', biometric:'bvPanel' };
+const TAB_BTN_ID = { command:'tabCommand', validator:'tabValidator', payslip:'tabPayslip', undertime:'tabUndertime', nightshift:'tabNightShift', claim:'tabClaim', biometric:'tabBiometric' };
 function switchTab(name){
   // Role gate: a restricted role (HR Advisor) can only ever land on its permitted tabs, whatever calls this.
   const _role = window.OTATS_ROLE;
@@ -7022,7 +7055,7 @@ function utbOtSchedule() {
     if (isUtAllocationExcluded(disp.split('\n')[0].trim())) return;  // leave, training, RDOT … — not a normal scheduled duty
     let end = dt.end; if (end <= dt.start) end += 1440;
     rows.push({ id: key.slice(0, sep), sap: v.sap, name: v.name || '', position: v.position || '', line: v.line || '', dateMs,
-      dutyStartMin: dt.start, dutyEndMin: end, fixedMin: getFixedMinutesForPosition(v.position), reportUnderMin: null, source: 'OT History (Dispatch)' });
+      dutyStartMin: dt.start, dutyEndMin: end, dispatched: disp, fixedMin: getFixedMinutesForPosition(v.position), reportUnderMin: null, source: 'OT History (Dispatch)' });
   });
   return { rows, total, withDisp };
 }
@@ -7034,7 +7067,7 @@ async function utbLoadSchedule() {
   const put = s => m.set(s.id + '|' + s.dateMs, s);
   let stored = []; try { stored = await attLoadRows(); } catch (e) { stored = []; }
   stored.forEach(r => put({ id: r.id, sap: r.sap || r.id, name: r.name || '', position: r.position || '', line: r.line || '', dateMs: r.dateMs,
-    dutyStartMin: r.dutyStartMin, dutyEndMin: r.dutyEndMin, fixedMin: r.fixedMin, reportUnderMin: r.reportUnderMin ?? null, source: 'Attendance report' }));
+    dutyStartMin: r.dutyStartMin, dutyEndMin: r.dutyEndMin, dispatched: r.dispatched || '', fixedMin: r.fixedMin, reportUnderMin: r.reportUnderMin ?? null, source: 'Attendance report' }));
   const live = utbBuildLiveSchedule() || [];
   live.forEach(put);
   const ot = utbOtSchedule();
@@ -7146,7 +7179,7 @@ function utbBuildLiveSchedule() {
     }
     list.push({
       id: normalizeEmployeeKey(sap), sap, name: `${getVal(ws, r, 1) || ''} ${getVal(ws, r, 2) || ''}`.trim(),
-      position, line: getVal(ws, r, 6) || '', dateMs, dutyStartMin, dutyEndMin, fixedMin, reportUnderMin, source: 'Attendance report',
+      position, line: getVal(ws, r, 6) || '', dateMs, dutyStartMin, dutyEndMin, dispatched: String(dispatched || ''), fixedMin, reportUnderMin, source: 'Attendance report',
     });
   }
   UTB.sched = list; UTB.schedWb = utWorkbook; UTB.schedSheet = utSheetName;
@@ -7566,6 +7599,85 @@ async function utbExport() {
   const _refreshOt = refreshOtHistoryCache;
   refreshOtHistoryCache = async function () { const r = await _refreshOt.apply(this, arguments); try { utbRefreshInfo(); } catch (e) {} return r; };
   utbRefreshInfo();
+})();
+
+
+
+/* ==========================================================================
+   NIGHT SHIFT ALLOWANCE REPORT — uses the same saved schedules and biometric
+   history as the Biometric Undertime report. It does not invent an allowance
+   rate; it reports matched attendance and actual hours inside the night duty.
+   ========================================================================== */
+const NS = { rows: [] };
+function nsDate(ms){ return utbFmtDate(ms); }
+function nsTime(ts, dayMs){ return utbPunchClock(ts, dayMs); }
+function nsIsNight(s){
+  const dispatch = String(s.dispatched || '').trim();
+  const code = dispatch.split(/\r?\n/)[0].trim();
+  // Recognise an N shift code/token, but do not treat ordinary words (e.g. NOTE) as night duty.
+  const hasNCode = /(^|[^A-Z])N(?:$|[^A-Z]|[0-9_-])/i.test(code) || /^N[0-9_-]/i.test(code);
+  const start = Number(s.dutyStartMin);
+  const startsAround2300 = Number.isFinite(start) && (start >= 22*60 || start <= 30);
+  return hasNCode || startsAround2300;
+}
+function nsStatus(msg, kind){ const e=el('nsStatus'); e.textContent=msg||''; e.className='status'+(kind?' '+kind:''); }
+function nsOverlapMinutes(a,b,c,d){ return Math.max(0, Math.min(b,d)-Math.max(a,c)); }
+function nsRender(rows){
+  const body=el('nsBody');
+  body.innerHTML=rows.length?rows.map(r=>`<tr><td class="num">${esc(r.id)}</td><td class="name">${esc(r.name)}</td><td>${esc(r.position)}</td><td>${esc(r.line)}</td><td class="num">${esc(nsDate(r.dateMs))}</td><td>${esc(r.dispatch)}</td><td class="num">${esc(utbClock(r.start))}</td><td class="num">${esc(utbClock(r.end))}</td><td class="num">${esc(r.inText)}</td><td class="num">${esc(r.outText)}</td><td class="calc">${esc(minutesToTotalHHMM(r.nightMin))}</td><td><span class="ut-tag ${r.status==='Matched'?'ok':r.status==='Incomplete'?'early':'under'}">${esc(r.status)}</span></td></tr>`).join(''):`<tr><td colspan="12" class="pay-empty">No night-shift duties match the selected filters.</td></tr>`;
+  const matched=rows.filter(r=>r.status==='Matched').length, missing=rows.filter(r=>r.status!=='Matched').length, mins=rows.reduce((n,r)=>n+r.nightMin,0);
+  el('nsSummary').innerHTML=`<div class="pay-stat"><div class="v">${rows.length}</div><div class="k">Night-shift duties identified</div></div><div class="pay-stat"><div class="v">${matched}</div><div class="k">Matched biometric records</div></div><div class="pay-stat"><div class="v">${minutesToTotalHHMM(mins)}</div><div class="k">Actual hours within scheduled night duties</div></div>`;
+  el('nsMeta').textContent=`${rows.length.toLocaleString()} records · ${missing} missing/incomplete`;
+  el('nsResults').style.display='block'; el('nsExport').disabled=!rows.length;
+}
+async function nsGenerate(){
+  const btn=el('nsGenerate'); btn.disabled=true; NS.rows=[]; el('nsResults').style.display='none';
+  try{
+    const from=parseIsoDate(el('nsFrom').value), to=parseIsoDate(el('nsTo').value);
+    if(from===null||to===null) throw new Error('Select both a start date and an end date.');
+    if(from>to) throw new Error('The start date is after the end date.');
+    const staffRaw=el('nsStaff').value.trim(), staffKey=staffRaw?normalizeEmployeeKey(staffRaw):'';
+    if(staffRaw&&!staffKey) throw new Error('Enter a valid Staff ID.');
+    nsStatus('Loading scheduled duties and biometric history…');
+    const schedule=await utbLoadSchedule();
+    const candidates=(schedule.rows||[]).filter(s=>s.dateMs>=from&&s.dateMs<=to&&(!staffKey||s.id===staffKey)&&nsIsNight(s));
+    const data=await utbLoadPeriods(from,to);
+    const periods=data.periods||[];
+    const rows=[];
+    candidates.forEach(s=>{
+      const startTs=s.dateMs+s.dutyStartMin*60000, endTs=s.dateMs+s.dutyEndMin*60000;
+      const matches=periods.filter(p=>p.idKey===s.id&&p.firstEntryTs!==null&&p.lastExitTs!==null&&p.lastExitTs>=startTs-6*3600000&&p.firstEntryTs<=endTs+6*3600000)
+        .sort((a,b)=>Math.abs(a.firstEntryTs-startTs)-Math.abs(b.firstEntryTs-startTs));
+      const p=matches[0]||null;
+      let nightMin=0,status='Missing';
+      if(p&&p.firstEntryTs!==null&&p.lastExitTs!==null){ nightMin=Math.floor(nsOverlapMinutes(p.firstEntryTs,p.lastExitTs,startTs,endTs)/60000); status='Matched'; }
+      else if(p&&(p.firstEntryTs!==null||p.lastExitTs!==null)) status='Incomplete';
+      rows.push({id:s.id,name:s.name||(data.names&&data.names.get(s.id))||'',position:s.position||'',line:s.line||'',dateMs:s.dateMs,dispatch:s.dispatched||'',start:s.dutyStartMin,end:s.dutyEndMin,inText:p&&p.firstEntryTs!==null?nsTime(p.firstEntryTs,s.dateMs):'',outText:p&&p.lastExitTs!==null?nsTime(p.lastExitTs,s.dateMs):'',nightMin,status});
+    });
+    // Prevent duplicate staff/duty rows if schedule sources overlap.
+    const unique=new Map(); rows.forEach(r=>unique.set(r.id+'|'+r.dateMs+'|'+r.start+'|'+r.end,r));
+    NS.rows=[...unique.values()].sort((a,b)=>a.dateMs-b.dateMs||a.id.localeCompare(b.id));
+    nsRender(NS.rows); nsStatus(`Report generated. ${NS.rows.length} night-shift duties identified.`, 'ok');
+  }catch(err){nsStatus(err.message||String(err),'error');}
+  finally{btn.disabled=false;}
+}
+async function nsExport(){
+  if(!NS.rows.length)return;
+  if(typeof ExcelJS==='undefined'){nsStatus('Excel export library is unavailable.','error');return;}
+  const wb=new ExcelJS.Workbook(),ws=wb.addWorksheet('Night Shift Allowance');
+  ws.columns=[['Staff ID',16],['Staff Name',26],['Position',22],['Location / Line',18],['Duty Date',14],['Dispatch Duty',24],['Scheduled Start',16],['Scheduled End',16],['Actual Punch-In',18],['Actual Punch-Out',18],['Night Shift Hours',18],['Attendance Status',20]].map(([header,width])=>({header,key:header,width}));
+  NS.rows.forEach(r=>ws.addRow({'Staff ID':r.id,'Staff Name':r.name,'Position':r.position,'Location / Line':r.line,'Duty Date':nsDate(r.dateMs),'Dispatch Duty':r.dispatch,'Scheduled Start':utbClock(r.start),'Scheduled End':utbClock(r.end),'Actual Punch-In':r.inText,'Actual Punch-Out':r.outText,'Night Shift Hours':minutesToTotalHHMM(r.nightMin),'Attendance Status':r.status}));
+  ws.getRow(1).eachCell(c=>{c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF3730A3'}};}); ws.views=[{state:'frozen',ySplit:1}]; ws.autoFilter='A1:L'+ws.rowCount;
+  const buf=await wb.xlsx.writeBuffer(),a=document.createElement('a');a.href=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));a.download='Night_Shift_Allowance_Report.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+}
+(function nsInit(){
+  if(!el('nsGenerate'))return;
+  const today=new Date(),iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  el('nsFrom').value=iso(new Date(today.getFullYear(),today.getMonth(),1));el('nsTo').value=iso(today);
+  try{const ids=new Set();(typeof bvlStaffDirectory==='function'?bvlStaffDirectory():new Map()).forEach((v,k)=>ids.add(k));el('nsStaffIds').innerHTML=[...ids].sort().map(x=>`<option value="${esc(x)}">`).join('');}catch(e){}
+  el('nsGenerate').addEventListener('click',nsGenerate);
+  el('nsReset').addEventListener('click',()=>{el('nsStaff').value='';el('nsFrom').value=iso(new Date(today.getFullYear(),today.getMonth(),1));el('nsTo').value=iso(today);NS.rows=[];el('nsResults').style.display='none';el('nsExport').disabled=true;nsStatus('Filters reset.');});
+  el('nsExport').addEventListener('click',nsExport);
 })();
 
 </script>
@@ -8156,10 +8268,10 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
 
   // ---- roles -------------------------------------------------------------------------------
   // '' = full access (Administrator and every existing role, unchanged). 'hr_advisor' = restricted.
-  const ROLE_HR = 'hr_advisor', HR_TABS = ['biometric', 'undertime'];
-  const ALL_TABS = ['command', 'validator', 'biometric', 'undertime', 'payslip', 'claim'];
-  const TAB_BTN = { command: 'tabCommand', validator: 'tabValidator', biometric: 'tabBiometric', undertime: 'tabUndertime', payslip: 'tabPayslip', claim: 'tabClaim' };
-  const TAB_PANEL = { command: 'ccPanel', validator: 'validatorPanel', biometric: 'bvPanel', undertime: 'undertimePanel', payslip: 'payslipPanel', claim: 'claimPanel' };
+  const ROLE_HR = 'hr_advisor', HR_TABS = ['biometric', 'undertime', 'nightshift'];
+  const ALL_TABS = ['command', 'validator', 'biometric', 'undertime', 'nightshift', 'payslip', 'claim'];
+  const TAB_BTN = { command: 'tabCommand', validator: 'tabValidator', biometric: 'tabBiometric', undertime: 'tabUndertime', nightshift: 'tabNightShift', payslip: 'tabPayslip', claim: 'tabClaim' };
+  const TAB_PANEL = { command: 'ccPanel', validator: 'validatorPanel', biometric: 'bvPanel', undertime: 'undertimePanel', nightshift: 'nightShiftPanel', payslip: 'payslipPanel', claim: 'claimPanel' };
   const roleKeyOf = r => String(r || '').trim().toLowerCase().replace(/[\s-]+/g, '_') === ROLE_HR ? ROLE_HR : '';
   window.OTATS_ROLE = { key: '', allowedTabs: null, defaultTab: 'command' };
 

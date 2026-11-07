@@ -252,7 +252,7 @@
   .payslip-table-head{padding:16px 18px;border-bottom:1px solid #e8edf3;display:flex;justify-content:space-between;align-items:center}.payslip-table-head h3{margin:0;font-size:15px;color:#172b4d}.payslip-table-head span{font-family:var(--mono);font-size:11px;color:#64748b}
   .pay-empty{padding:45px;text-align:center;color:#94a3b8;font-size:13px}
   .pay-total{font-weight:800;color:#166534;font-family:var(--mono)}
-  @media(max-width:900px){.payslip-controls{grid-template-columns:1fr}.pay-summary{grid-template-columns:1fr 1fr}.payslip-intro{flex-direction:column}}
+  @media(max-width:900px){#nsControls{grid-template-columns:1fr}.payslip-controls{grid-template-columns:1fr}.pay-summary{grid-template-columns:1fr 1fr}.payslip-intro{flex-direction:column}}
   @media(max-width:720px){.app-tabs{width:100%}.app-tab{flex:1;padding:10px 8px}.pay-summary{grid-template-columns:1fr}}
 
 
@@ -487,7 +487,6 @@ header .eyebrow{
 #tabValidator{--tab-accent:#2563eb;--tab-accent-soft:#eff6ff;--tab-accent-shadow:rgba(37,99,235,.5);}
 #tabPayslip{--tab-accent:#6d5ce7;--tab-accent-soft:#f2efff;--tab-accent-shadow:rgba(109,92,231,.5);}
 #tabUndertime{--tab-accent:#d97706;--tab-accent-soft:#fff7ed;--tab-accent-shadow:rgba(217,119,6,.5);}
-#tabNight{--tab-accent:#4338ca;--tab-accent-soft:#eef2ff;--tab-accent-shadow:rgba(67,56,202,.5);}
 #tabClaim{--tab-accent:#7c3aed;--tab-accent-soft:#f5f3ff;--tab-accent-shadow:rgba(124,58,237,.5);}
 
 @media(max-width:980px){.trust-badge{display:none;}}
@@ -565,7 +564,8 @@ header .eyebrow:before{background:#fff;box-shadow:none;}
    (no lift), matching the reference's plain tab row instead of a grouped bar */
 .app-tabs{background:transparent;border:0;box-shadow:none;padding:0;gap:10px;flex-wrap:wrap;}
 .app-tab{border:2px solid var(--line-strong);border-radius:8px;padding:10px 20px 10px 10px;}
-#tabValidator,#tabPayslip,#tabUndertime,#tabNight,#tabClaim{
+#tabNight{--tab-accent:#4338ca;--tab-accent-soft:#eef2ff;--tab-accent-shadow:rgba(67,56,202,.5);}
+#tabValidator,#tabPayslip,#tabUndertime,#tabClaim,#tabNight,#tabFatigue{
   --tab-accent:#667eea;--tab-accent-soft:#eef1fd;--tab-accent-shadow:rgba(102,126,234,.35);
 }
 .app-tab:hover{transform:none;border-color:var(--tab-accent);color:var(--ink);}
@@ -727,8 +727,8 @@ body.auth-locked #authScreen{display:flex;}
 }
 
 /* ---- HR Advisor role: only Biometric Validation + Under Time are reachable ---- */
-body.role-hr #tabCommand,body.role-hr #tabValidator,body.role-hr #tabPayslip,body.role-hr #tabClaim,body.role-hr #tabNight,
-body.role-hr #ccPanel,body.role-hr #validatorPanel,body.role-hr #payslipPanel,body.role-hr #claimPanel,body.role-hr #nightPanel,
+body.role-hr #tabCommand,body.role-hr #tabValidator,body.role-hr #tabPayslip,body.role-hr #tabClaim,body.role-hr #tabFatigue,
+body.role-hr #ccPanel,body.role-hr #validatorPanel,body.role-hr #payslipPanel,body.role-hr #claimPanel,body.role-hr #fatiguePanel,
 body.role-hr .quick-tile[data-goto="tabValidator"],body.role-hr .quick-tile[data-goto="tabClaim"],body.role-hr .quick-tile[data-goto="tabPayslip"]{display:none !important;}
 #utbCard .bvl-field input,#utbCard .bvl-field select,#nsCard .bvl-field input,#nsCard .bvl-field select{width:100%;}
 #nsTable td.utb-remark{white-space:normal;min-width:260px;max-width:420px;font-size:12px;color:#475569;line-height:1.4}
@@ -1076,6 +1076,66 @@ header h1{font-size:30px !important;letter-spacing:-.02em !important}
 header p{display:block !important;color:#b8c6de !important;max-width:760px;font-size:13px !important;margin:6px 0 0 !important;line-height:1.5}
 header .brand-mark{width:64px;height:64px;flex:none}
 @media(max-width:720px){header{padding:18px 16px !important}header p{display:none !important}header h1{font-size:20px !important}}
+/* ---- Fatigue Risk Indicator ---- */
+#tabFatigue{--tab-accent:#d97706;--tab-accent-soft:#fef3c7;--tab-accent-shadow:rgba(217,119,6,.35);}
+.fr-info{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12.5px;color:#475569;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;margin-bottom:14px}
+.fr-info .warn{color:#b45309;font-weight:600}
+.fr-settings{border:1px solid #e2e8f0;border-radius:10px;background:#fff;margin-bottom:14px}
+.fr-settings>summary{cursor:pointer;padding:11px 14px;font-weight:700;font-size:13.5px;color:#334155}
+.fr-settings-body{padding:4px 14px 14px}
+.fr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px 14px}
+.fr-grid label,.fr-codes label{display:block;font-size:11.5px;font-weight:700;color:#475569;margin-bottom:3px}
+.fr-grid input,.fr-grid select,.fr-codes textarea{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:8px;padding:7px 9px;font:inherit;font-size:13px;background:#fff}
+.fr-grid h4{grid-column:1/-1;margin:8px 0 0;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#b45309}
+.fr-codes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:14px}
+.fr-codes small{display:block;color:#64748b;font-size:11px;margin-top:2px}
+.fr-exp-sel{border:1px solid #cbd5e1;border-radius:8px;padding:9px 10px;font:inherit;font-size:13px;background:#fff}
+.fr-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:12px;margin-bottom:12px}
+.fr-cards-sm{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.fr-sub{font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#64748b;margin:4px 0 8px}
+.fr-card{text-align:left;border:1px solid #e2e8f0;border-left:5px solid #94a3b8;background:#fff;border-radius:10px;padding:12px 14px;cursor:pointer;font:inherit;transition:box-shadow .15s,transform .15s}
+.fr-card:hover{box-shadow:0 6px 16px rgba(15,23,42,.1);transform:translateY(-1px)}
+.fr-card.on{outline:2px solid #4338ca;outline-offset:1px}
+.fr-card .n{font-size:26px;font-weight:800;line-height:1.1;color:#0f172a}
+.fr-card .l{font-size:12px;color:#475569;margin-top:3px}
+.fr-card.high{border-left-color:#dc2626}.fr-card.warn{border-left-color:#f59e0b}.fr-card.ok{border-left-color:#16a34a}.fr-card.gap{border-left-color:#6366f1}
+.fr-card.high .n{color:#b91c1c}.fr-card.warn .n{color:#b45309}
+.fr-two{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:14px;margin:14px 0}
+.fr-tabs{display:inline-flex;gap:4px}.fr-tab{border:1px solid #cbd5e1;background:#fff;border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer}
+.fr-tab.on{background:#4338ca;border-color:#4338ca;color:#fff}
+.fr-break{padding:6px 16px 14px;max-height:330px;overflow:auto}
+.fr-brow{display:grid;grid-template-columns:minmax(110px,1.1fr) 2fr 70px;gap:10px;align-items:center;padding:5px 0;cursor:pointer;font-size:12.5px;border-radius:6px}
+.fr-brow:hover{background:#f8fafc}
+.fr-bar{display:flex;height:14px;border-radius:7px;overflow:hidden;background:#e2e8f0}
+.fr-bar i{display:block;height:100%}.fr-bar .h{background:#dc2626}.fr-bar .w{background:#f59e0b}.fr-bar .g{background:#6366f1}.fr-bar .o{background:#86efac}
+.fr-bname{font-weight:600;color:#334155;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fr-bnum{text-align:right;color:#64748b;font-variant-numeric:tabular-nums}
+.fr-trend{padding:8px 14px 0}.fr-trend svg{width:100%;height:auto;display:block}
+.fr-legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11.5px;color:#475569;padding:2px 16px 6px}.fr-legend b{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.fr-persist{padding:0 16px 14px;font-size:12px;color:#475569}.fr-persist table{width:100%;border-collapse:collapse;margin-top:6px}.fr-persist th,.fr-persist td{text-align:left;padding:4px 6px;border-bottom:1px solid #eef2f7}
+.fr-chip{margin:0 0 10px;font-size:12.5px;background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;padding:7px 12px;border-radius:999px;display:inline-flex;gap:10px;align-items:center}
+.fr-chip button{border:0;background:none;color:#3730a3;font-weight:800;cursor:pointer}
+.fr-pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11.5px;font-weight:700;white-space:nowrap}
+.fr-pill.high{background:#fee2e2;color:#b91c1c}.fr-pill.warn{background:#fef3c7;color:#b45309}.fr-pill.ok{background:#dcfce7;color:#15803d}.fr-pill.gap{background:#e0e7ff;color:#3730a3}
+#frTable td{vertical-align:top}#frTable tbody tr.fr-main{cursor:pointer}#frTable tbody tr.fr-main:hover td{background:#f8fafc}
+#frTable td.fr-ind{white-space:normal;min-width:240px;max-width:380px;font-size:12px;line-height:1.45}
+.fr-tag{display:inline-block;margin:1px 3px 1px 0;padding:1px 7px;border-radius:5px;font-size:11px;font-weight:600}
+.fr-tag.high{background:#fee2e2;color:#b91c1c}.fr-tag.warn{background:#fef3c7;color:#92400e}.fr-tag.gap{background:#e0e7ff;color:#3730a3}
+#frTable tr.fr-detail td{background:#fafafa;white-space:normal;padding:14px 18px}
+.fr-d-ind{margin:0 0 10px;padding:0;list-style:none;font-size:12.5px}.fr-d-ind li{padding:4px 0}
+.fr-d-note{font-size:12px;color:#64748b;margin:4px 0}
+.fr-log{max-height:260px;overflow:auto;border:1px solid #e2e8f0;border-radius:8px;margin-top:8px;background:#fff}
+.fr-log table{width:100%;border-collapse:collapse;font-size:11.5px}.fr-log th,.fr-log td{padding:4px 8px;text-align:left;border-bottom:1px solid #f1f5f9;white-space:nowrap}
+.fr-log th{position:sticky;top:0;background:#f1f5f9}
+.fr-log tr.k-REST td{background:#f0fdf4}.fr-log tr.k-WR_WORKED td{background:#fff1f2}.fr-log tr.k-LEAVE td{background:#f8fafc;color:#64748b}.fr-log tr.k-NODATA td,.fr-log tr.k-UNKNOWN td,.fr-log tr.k-UNCLASSIFIED td{background:#eef2ff}
+.fr-act{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;padding-top:10px;border-top:1px dashed #e2e8f0}
+.fr-act select,.fr-act input{border:1px solid #cbd5e1;border-radius:8px;padding:6px 9px;font:inherit;font-size:12.5px}.fr-act input{flex:1;min-width:200px}
+.fr-ast{font-size:11.5px;font-weight:700}.fr-ast.Outstanding{color:#b45309}.fr-ast.Reviewed{color:#4338ca}.fr-ast.Addressed{color:#15803d}.fr-ast.none{color:#94a3b8;font-weight:500}
+
+#frTable td.fr-disp{white-space:normal;min-width:150px;max-width:230px;font-size:11.5px;color:#475569;line-height:1.45}
+
+#frTable td.fr-over,#frHrsTable td.fr-over{color:#b91c1c;font-weight:700;background:#fef2f2}
+#frTable td small{color:#64748b;font-weight:500}
 </style>
 </head>
 <body class="auth-locked">
@@ -1231,6 +1291,10 @@ header .brand-mark{width:64px;height:64px;flex:none}
     <button class="app-tab" id="tabNight" data-tab="night" type="button" role="tab" aria-selected="false" aria-controls="nightPanel">
       <span class="tab-ico-wrap" aria-hidden="true"><svg class="tab-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg></span>
       <span class="tab-label">Night Shift</span>
+    </button>
+    <button class="app-tab" id="tabFatigue" data-tab="fatigue" type="button" role="tab" aria-selected="false" aria-controls="fatiguePanel">
+      <span class="tab-ico-wrap" aria-hidden="true"><svg class="tab-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 20h20L12 3z"></path><line x1="12" y1="10" x2="12" y2="14"></line><line x1="12" y1="17.5" x2="12" y2="17.6"></line></svg></span>
+      <span class="tab-label">Fatigue Risk</span>
     </button>
     <button class="app-tab" id="tabPayslip" data-tab="payslip" type="button" role="tab" aria-selected="false" aria-controls="payslipPanel">
       <span class="tab-ico-wrap" aria-hidden="true"><svg class="tab-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></span>
@@ -1667,6 +1731,7 @@ header .brand-mark{width:64px;height:64px;flex:none}
     </div>
   </section>
 
+
   <section class="tab-panel" id="nightPanel" role="tabpanel" aria-labelledby="tabNight">
     <div id="nsCard">
       <div class="payslip-intro" style="margin-bottom:16px">
@@ -1734,6 +1799,120 @@ header .brand-mark{width:64px;height:64px;flex:none}
           </div>
           <div id="nsCap" style="display:none;padding:10px 18px;font-size:12px;color:#64748b;border-top:1px solid #eef2f7"></div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tab-panel" id="fatiguePanel" role="tabpanel" aria-labelledby="tabFatigue">
+    <div id="frCard">
+      <div class="payslip-intro" style="margin-bottom:16px">
+        <div>
+          <div class="eyebrow" style="color:#b45309;margin-bottom:7px">Workforce Welfare · Fatigue</div>
+          <h2>Fatigue Risk Indicator</h2>
+          <p>Monitors working hours, consecutive working days, weekly rest (WR), night-shift rotation, rest between duties, shift transitions, overtime and rest-day call-ins from the roster / dispatch data and the stored biometric history. Overnight duties count once, on the day they start. A “week” follows the roster pattern — 5 on / 2 off (three times) then 6 on / 2 off, OCC always 6 on / 2 off — so night weeks and rest are counted per work block plus its rest days, and work on a rest day counts as overtime. Monthly limits are checked on actual (biometric) hours, normal hours and overtime separately: normal hours over the monthly limit, and normal + overtime over the total limit. Where roster or attendance data is missing the employee is shown as <b>Incomplete Data</b>, never as compliant. This tab only reads existing data — it does not change any other calculation.</p>
+        </div>
+        <div class="pdf-mark" style="background:linear-gradient(135deg,#d97706,#f59e0b)">FR</div>
+      </div>
+
+      <div id="frInfo" class="fr-info"></div>
+
+      <details class="fr-settings" id="frSettings">
+        <summary>⚙&nbsp; Thresholds &amp; rules (all configurable — saved in this browser)</summary>
+        <div class="fr-settings-body">
+          <div class="fr-grid" id="frSettingsGrid"></div>
+          <div class="fr-codes">
+            <div style="grid-column:1/-1"><label for="frCfgShift">Shift-timing reference (department, working hours, break, handover) — one per line: <code>Abbreviation | Full name | Department | Total hours | Break (h) | Handover (min)</code></label><textarea id="frCfgShift" rows="9" spellcheck="false"></textarea><small>From Shift_Timing_for_all_Positions01.xlsx. Productive hours = attendance − break − handover. Department comes from this list first, then from the mapping below. A position missing here has nothing deducted.</small></div>
+            <div><label for="frCfgRest">Weekly-rest codes (WR)</label><textarea id="frCfgRest" rows="2" spellcheck="false"></textarea><small>Comma separated. A trailing * matches a prefix.</small></div>
+            <div><label for="frCfgWorkedRest">Rest-day call-in codes</label><textarea id="frCfgWorkedRest" rows="2" spellcheck="false"></textarea><small>Worked on a rest day (e.g. RDOT*, W RD).</small></div>
+            <div><label for="frCfgLeave">Leave / absence codes</label><textarea id="frCfgLeave" rows="2" spellcheck="false"></textarea><small>Not working days; they do not reset the run unless set below.</small></div>
+            <div><label for="frCfgWork">Other working-day codes (no times)</label><textarea id="frCfgWork" rows="2" spellcheck="false"></textarea><small>Counted as working days without hours.</small></div>
+            <div><label for="frCfgTrain">Training codes (not duty)</label><textarea id="frCfgTrain" rows="2" spellcheck="false"></textarea><small>Ignored for hours, runs, nights and rest. A trailing * matches a prefix.</small></div>
+            <div style="grid-column:1/-1"><label for="frCfgDept">Department mapping — one per line: <code>Position = Department</code> (* allowed)</label><textarea id="frCfgDept" rows="5" spellcheck="false"></textarea><small>The roster has no Department column, so Department comes from this mapping. Unmapped positions show as “Unassigned”.</small></div>
+          </div>
+          <div class="utb-actions" style="margin-top:12px">
+            <button class="btn-primary" id="frSaveCfg" type="button">Save settings</button>
+            <button class="btn-secondary" id="frResetCfg" type="button">Restore defaults</button>
+            <span id="frCfgMsg" style="font-size:12px;color:#64748b"></span>
+          </div>
+        </div>
+      </details>
+
+      <div class="utb-controls">
+        <div class="control-field"><label for="frPeriodMode">Period</label>
+          <select id="frPeriodMode"><option value="recent">Latest days of roster data</option><option value="custom">Custom date range</option></select></div>
+        <div class="control-field fr-recent"><label for="frRecent">Days</label>
+          <select id="frRecent"><option value="14">Last 14 days</option><option value="30" selected>Last 30 days</option><option value="60">Last 60 days</option><option value="90">Last 90 days</option></select></div>
+        <div class="control-field fr-custom" style="display:none"><label for="frStart">Start date</label><input type="date" id="frStart"></div>
+        <div class="control-field fr-custom" style="display:none"><label for="frEnd">End date</label><input type="date" id="frEnd"></div>
+        <div class="control-field"><label for="frStaff">Staff ID</label><input type="text" id="frStaff" placeholder="e.g. 1004948" spellcheck="false" autocomplete="off"></div>
+        <div class="control-field"><label for="frName">Employee name</label><input type="text" id="frName" placeholder="contains…" spellcheck="false" autocomplete="off"></div>
+        <div class="control-field"><label for="frDept">Department</label><select id="frDept"><option value="">All departments</option></select></div>
+        <div class="control-field"><label for="frLine">Operational line</label><select id="frLine"><option value="">All lines</option></select></div>
+        <div class="control-field"><label for="frPos">Position</label><select id="frPos"><option value="">All positions</option></select></div>
+        <div class="control-field"><label for="frRisk">Risk category</label>
+          <select id="frRisk"><option value="">All categories</option><option value="High Risk">High Risk</option><option value="Warning">Warning</option><option value="Normal">Normal</option><option value="Incomplete Data">Incomplete Data</option></select></div>
+      </div>
+
+      <div class="utb-actions">
+        <button class="btn-primary" id="frGo" type="button">⌕&nbsp; Generate dashboard</button>
+        <button class="btn-secondary" id="frReset" type="button">↺&nbsp; Reset filters</button>
+        <select id="frExportScope" class="fr-exp-sel" title="What to export">
+          <option value="view">Export: current filtered view</option>
+          <option value="all">Export: all employees</option>
+          <option value="atrisk">Export: all at-risk (High + Warning)</option>
+          <option value="high">Export: High Risk only</option>
+          <option value="warn">Export: approaching thresholds (Warning)</option>
+          <option value="hours">Export: working-hour exceedances only</option>
+        </select>
+        <button class="btn-secondary" id="frExport" type="button" disabled>↓&nbsp; Export to Excel</button>
+      </div>
+
+      <div id="frStatus" class="status" style="margin:14px 0"></div>
+
+      <div id="frResults" style="display:none">
+        <div class="fr-cards" id="frCards"></div>
+        <div class="fr-sub">Additional indicators</div>
+        <div class="fr-cards fr-cards-sm" id="frCards2"></div>
+
+        <div class="fr-two">
+          <div class="payslip-table-card">
+            <div class="payslip-table-head"><h3>Fatigue-risk cases by group</h3>
+              <span class="fr-tabs"><button type="button" class="fr-tab on" data-dim="dept">Department</button><button type="button" class="fr-tab" data-dim="position">Position</button><button type="button" class="fr-tab" data-dim="line">Line</button></span></div>
+            <div id="frBreak" class="fr-break"></div>
+          </div>
+          <div class="payslip-table-card">
+            <div class="payslip-table-head"><h3>Trend over the period</h3><span id="frTrendMeta"></span></div>
+            <div id="frTrend" class="fr-trend"></div>
+            <div id="frPersist" class="fr-persist"></div>
+          </div>
+        </div>
+
+        <div class="payslip-table-card" style="margin-bottom:14px">
+          <div class="payslip-table-head"><h3>Monthly working-hour exceedances <small style="font-weight:500;color:#64748b">· actual hours</small></h3><span id="frHrsMeta"></span></div>
+          <div class="table-wrap" style="border:0;border-radius:0;max-height:340px"><table id="frHrsTable"><thead><tr>
+            <th>Staff ID</th><th>Employee</th><th>Department</th><th>Line</th><th>Month</th><th>Normal hrs</th><th>Overtime hrs</th><th>Combined hrs</th><th>Alert</th></tr></thead><tbody id="frHrsBody"></tbody></table></div>
+          <div id="frHrsCap" style="display:none;padding:10px 18px;font-size:12px;color:#64748b;border-top:1px solid #eef2f7"></div>
+        </div>
+        <div id="frChip" class="fr-chip" style="display:none"></div>
+        <div class="payslip-table-card">
+          <div class="payslip-table-head"><h3 id="frTitle">Employee-level report</h3><span id="frMeta"></span></div>
+          <div class="table-wrap" style="border:0;border-radius:0;max-height:600px">
+            <table id="frTable">
+              <thead><tr>
+                <th>Staff ID</th><th>Employee</th><th>Department</th><th>Line</th><th>Position</th><th>Period</th>
+                <th>Actual hrs<br><small>productive</small></th><th>Sched. hrs<br><small>productive</small></th><th>Normal hrs<br><small>peak month</small></th><th>Overtime hrs</th><th>Combined hrs</th><th>Max consec. days</th><th>WR days<br><small>actual / sched.</small></th>
+                <th>Night wks<br><small>consecutive</small></th><th>Latest night duty</th><th>Actual dispatch duties<br><small>code × days</small></th><th>Fatigue indicators</th><th>Risk</th><th>Action</th>
+              </tr></thead>
+              <tbody id="frBody"></tbody>
+            </table>
+          </div>
+          <div id="frCap" style="display:none;padding:10px 18px;font-size:12px;color:#64748b;border-top:1px solid #eef2f7"></div>
+        </div>
+
+        <details class="fr-settings" style="margin-top:14px"><summary>Duty codes found in the period and how they were classified</summary>
+          <div class="fr-settings-body"><div id="frCodes"></div></div></details>
+        <details class="fr-settings" style="margin-top:10px"><summary>Report history (summaries saved in this browser)</summary>
+          <div class="fr-settings-body"><div id="frHist"></div></div></details>
       </div>
     </div>
   </section>
@@ -4435,12 +4614,13 @@ async function downloadPayrollExcel() {
 el('tabValidator').addEventListener('click',()=>switchTab('validator'));
 el('tabPayslip').addEventListener('click',()=>switchTab('payslip'));
 el('tabUndertime').addEventListener('click',()=>switchTab('undertime'));
+el('tabNight').addEventListener('click',()=>switchTab('night'));
+el('tabFatigue').addEventListener('click',()=>switchTab('fatigue'));
 el('tabClaim').addEventListener('click',()=>switchTab('claim'));
 el('tabBiometric').addEventListener('click',()=>switchTab('biometric'));
-el('tabNight').addEventListener('click',()=>switchTab('night'));
-const TAB_ORDER = ['command','validator','biometric','undertime','night','payslip','claim'];
-const TAB_PANEL_ID = { command:'ccPanel', validator:'validatorPanel', payslip:'payslipPanel', undertime:'undertimePanel', night:'nightPanel', claim:'claimPanel', biometric:'bvPanel' };
-const TAB_BTN_ID = { command:'tabCommand', validator:'tabValidator', payslip:'tabPayslip', undertime:'tabUndertime', night:'tabNight', claim:'tabClaim', biometric:'tabBiometric' };
+const TAB_ORDER = ['command','validator','biometric','undertime','night','fatigue','payslip','claim'];
+const TAB_PANEL_ID = { command:'ccPanel', validator:'validatorPanel', payslip:'payslipPanel', undertime:'undertimePanel', night:'nightPanel', fatigue:'fatiguePanel', claim:'claimPanel', biometric:'bvPanel' };
+const TAB_BTN_ID = { command:'tabCommand', validator:'tabValidator', payslip:'tabPayslip', undertime:'tabUndertime', night:'tabNight', fatigue:'tabFatigue', claim:'tabClaim', biometric:'tabBiometric' };
 function switchTab(name){
   // Role gate: a restricted role (HR Advisor) can only ever land on its permitted tabs, whatever calls this.
   const _role = window.OTATS_ROLE;
@@ -7101,7 +7281,7 @@ function utbOtSchedule() {
     if (isUtAllocationExcluded(disp.split('\n')[0].trim())) return;  // leave, training, RDOT … — not a normal scheduled duty
     let end = dt.end; if (end <= dt.start) end += 1440;
     rows.push({ id: key.slice(0, sep), sap: v.sap, name: v.name || '', position: v.position || '', line: v.line || '', dateMs,
-      dutyStartMin: dt.start, dutyEndMin: end, fixedMin: getFixedMinutesForPosition(v.position), reportUnderMin: null, source: 'OT History (Dispatch)' });
+      dutyStartMin: dt.start, dutyEndMin: end, dispatched: disp, fixedMin: getFixedMinutesForPosition(v.position), reportUnderMin: null, source: 'OT History (Dispatch)' });
   });
   return { rows, total, withDisp };
 }
@@ -7113,7 +7293,7 @@ async function utbLoadSchedule() {
   const put = s => m.set(s.id + '|' + s.dateMs, s);
   let stored = []; try { stored = await attLoadRows(); } catch (e) { stored = []; }
   stored.forEach(r => put({ id: r.id, sap: r.sap || r.id, name: r.name || '', position: r.position || '', line: r.line || '', dateMs: r.dateMs,
-    dutyStartMin: r.dutyStartMin, dutyEndMin: r.dutyEndMin, fixedMin: r.fixedMin, reportUnderMin: r.reportUnderMin ?? null, source: 'Attendance report' }));
+    dutyStartMin: r.dutyStartMin, dutyEndMin: r.dutyEndMin, dispatched: r.dispatched || '', fixedMin: r.fixedMin, reportUnderMin: r.reportUnderMin ?? null, source: 'Attendance report' }));
   const live = utbBuildLiveSchedule() || [];
   live.forEach(put);
   const ot = utbOtSchedule();
@@ -7225,8 +7405,7 @@ function utbBuildLiveSchedule() {
     }
     list.push({
       id: normalizeEmployeeKey(sap), sap, name: `${getVal(ws, r, 1) || ''} ${getVal(ws, r, 2) || ''}`.trim(),
-      position, line: getVal(ws, r, 6) || '', dateMs, dutyStartMin, dutyEndMin, fixedMin, reportUnderMin, source: 'Attendance report',
-      duty: (typeof dispatched === 'string' ? dispatched : '').split('\n')[0].trim(),
+      position, line: getVal(ws, r, 6) || '', dateMs, dutyStartMin, dutyEndMin, dispatched: String(dispatched || ''), fixedMin, reportUnderMin, source: 'Attendance report',
     });
   }
   UTB.sched = list; UTB.schedWb = utWorkbook; UTB.schedSheet = utSheetName;
@@ -7648,6 +7827,9 @@ async function utbExport() {
   utbRefreshInfo();
 })();
 
+
+
+
 </script>
 <script>
 /* ============================================================================
@@ -7675,44 +7857,23 @@ function nsClassify(duty, startMin, endMin) {
   return { night: hasN || near23, hasN, near23, reasons, suspect: hasN && !near23 && !nightLike };
 }
 
-// Dispatch cells look like "N1\n23:00 - 07:30"; the first line is the Dispatch Duty.
-function nsOtSchedule() {
-  const rows = [];
-  let combined; try { combined = getCombinedMasterLookup(); } catch (e) { return rows; }
-  combined.map.forEach((v, key) => {
-    const sep = key.lastIndexOf('||'); const dateMs = Number(key.slice(sep + 2));
-    if (sep < 0 || !isFinite(dateMs)) return;
-    const disp = typeof v.dispatched === 'string' ? v.dispatched : '';
-    const dt = parseDispatchedTimes(disp); if (!dt) return;
-    const duty = disp.split('\n')[0].trim();
-    if (isUtAllocationExcluded(duty)) return;
-    let end = dt.end; if (end <= dt.start) end += 1440;
-    rows.push({ id: key.slice(0, sep), sap: v.sap, name: v.name || '', position: v.position || '', line: v.line || '', dateMs,
-      dutyStartMin: dt.start, dutyEndMin: end, duty, source: 'OT History (Dispatch)' });
-  });
-  return rows;
-}
-
+// Schedules come from the app's merged schedule (OT History Dispatch > attendance report). The Dispatch cell looks like
+// "N1\n23:00 - 07:30"; its first line is the Dispatch Duty.
 async function nsLoadSchedule() {
-  const m = new Map();
-  const put = s => m.set(s.id + '|' + s.dateMs, s);              // one record per staff + duty date
-  let stored = []; try { stored = await attLoadRows(); } catch (e) { stored = []; }
-  stored.forEach(r => { if (r.dutyStartMin === null || r.dutyStartMin === undefined) return;
-    put({ id: r.id, sap: r.sap || r.id, name: r.name || '', position: r.position || '', line: r.line || '', dateMs: r.dateMs,
-      dutyStartMin: r.dutyStartMin, dutyEndMin: r.dutyEndMin, duty: r.duty || '', source: 'Attendance report' }); });
-  let live = []; try { live = utbBuildLiveSchedule() || []; } catch (e) { live = []; }
-  live.forEach(s => put({ id: s.id, sap: s.sap, name: s.name, position: s.position, line: s.line, dateMs: s.dateMs,
-    dutyStartMin: s.dutyStartMin, dutyEndMin: s.dutyEndMin, duty: s.duty || '', source: 'Attendance report' }));
-  const ot = nsOtSchedule();
-  ot.forEach(o => {
-    const a = m.get(o.id + '|' + o.dateMs);
-    if (a) { if (!o.name) o.name = a.name; if (!o.position) o.position = a.position; if (!o.line) o.line = a.line; }
-    put(o);
+  let sch = { rows: [], counts: {} };
+  try { sch = await utbLoadSchedule(); } catch (e) { sch = { rows: [], counts: {} }; }
+  const seen = new Set(), all = [];
+  (sch.rows || []).forEach(s => {
+    if (s.dutyStartMin === null || s.dutyStartMin === undefined) return;
+    const k = s.id + '|' + s.dateMs; if (seen.has(k)) return; seen.add(k);          // one record per staff + duty date
+    let end = s.dutyEndMin; if (end === null || end === undefined || end <= s.dutyStartMin) end = (end === null || end === undefined ? s.dutyStartMin : end) + 1440;
+    const duty = String(s.dispatched || '').split(/\r?\n/)[0].trim();
+    all.push({ id: s.id, sap: s.sap || s.id, name: s.name || '', position: s.position || '', line: s.line || '', dateMs: s.dateMs,
+      dutyStartMin: s.dutyStartMin, dutyEndMin: end, duty, source: s.source || '', cls: nsClassify(duty, s.dutyStartMin, end) });
   });
-  const all = [...m.values()];
-  all.forEach(s => { s.cls = nsClassify(s.duty, s.dutyStartMin, s.dutyEndMin); });
+  const c = sch.counts || {};
   return { rows: all, night: all.filter(s => s.cls.night),
-    counts: { stored: stored.length, live: live.length, ot: ot.length, noLabel: all.filter(s => !s.duty).length } };
+    counts: { stored: c.stored || 0, live: c.live || 0, ot: c.ot || 0, noLabel: all.filter(s => !s.duty).length } };
 }
 
 function nsOverlapMin(per, sch) {
@@ -7806,7 +7967,7 @@ async function nsGenerate() {
       nsSetStatus(nightRows.length ? `No night duties found for ${who} in ${crit.label}.` : 'No night duties were found in the saved schedules. Save the OT report to OT History (Dispatch column) or load the attendance report in the Undertime tab first.', 'error');
     } else {
       let msg = `${rows.length} night duty record${rows.length === 1 ? '' : 's'} for ${who} · ${crit.label}.`;
-      if (sch.counts.noLabel) msg += ` ${sch.counts.noLabel.toLocaleString()} stored schedule row(s) have no duty label, so only the ≈23:00 start rule can identify them — re-load the attendance report or re-save the OT report to enable letter-N detection.`;
+      if (sch.counts.noLabel) msg += ` ${sch.counts.noLabel.toLocaleString()} stored schedule row(s) have no duty label, so only the ≈23:00 start rule can identify them — re-save the OT report to OT History to enable letter-N detection.`;
       nsSetStatus(msg, 'ok');
     }
   } catch (err) {
@@ -7952,10 +8113,14 @@ function nsTogglePeriod() {
   document.querySelectorAll('#nsCard .ns-range').forEach(e => e.style.display = month ? 'none' : '');
   document.querySelectorAll('#nsCard .ns-month').forEach(e => e.style.display = month ? '' : 'none');
 }
+function nsDefaultDates() {
+  const t = new Date(), iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  el('nsStart').value = iso(new Date(t.getFullYear(), t.getMonth(), 1)); el('nsEnd').value = iso(t);
+}
 function nsReset() {
   ++NS.seq;
   el('nsPeriodMode').value = 'range'; nsTogglePeriod();
-  ['nsStart', 'nsEnd', 'nsMonth', 'nsStaff'].forEach(i => el(i).value = '');
+  ['nsMonth', 'nsStaff'].forEach(i => el(i).value = ''); nsDefaultDates();
   el('nsScope').value = 'all'; el('nsLine').value = ''; nsToggleScope();
   el('nsShow').value = 'all'; el('nsGrace').value = '0';
   NS.rows = []; NS.view = []; NS.meta = null;
@@ -8052,7 +8217,900 @@ async function nsExport() {
   el('utFileInput').addEventListener('change', () => setTimeout(nsRefreshInfo, 700));
   el('utDropzone').addEventListener('drop', () => setTimeout(nsRefreshInfo, 700));
   try { const _r = refreshOtHistoryCache; refreshOtHistoryCache = async function () { const x = await _r.apply(this, arguments); try { nsRefreshInfo(); } catch (e) {} return x; }; } catch (e) { /* optional */ }
-  nsToggleScope(); nsRefreshInfo();
+  nsDefaultDates(); nsToggleScope(); nsRefreshInfo();
+})();
+</script>
+
+<script>
+/* ============================================================================
+   FATIGUE RISK INDICATOR
+   Read-only module. It reads the roster / dispatch data already held by the app
+   (OT History + loaded roster + attendance schedules) and the stored biometric
+   history, and never writes to or alters any of them. Settings, action tracking
+   and the report history are kept in this browser's localStorage only.
+   ============================================================================ */
+const FR_DAY = 86400000;
+const FR_DEFAULTS = {
+  // consecutive working days
+  maxConsec: 13, warnConsecFrom: 10, leaveResets: true,
+  // weekly rest
+  nightGrouping: 'block', reqRestRun: 2, patternMaxOn: 6,
+  weekStart: 0, reqWR: 1, wrGapWarn: 8,
+  // working-hour limits (placeholders — set to company policy)
+  dailyHrs: 12, weeklyHrs: 60, weeklyWindow: 7, normalMonthHrs: 192, totalMonthHrs: 240, monthFallback: false, warnPct: 90, extRepeat: 3,
+  // night shifts
+  nightWeekMin: 3, nightFlagWeeks: 2, nightPriorityWeeks: 3, nightRecoveryDays: 7,
+  // rest between duties / transitions / overtime / rest-day call-ins
+  minRestHrs: 11, recWarn: 1, recHigh: 3, transWarn: 1, transHigh: 3,
+  otWindow: 14, otWarnDays: 5, otHighDays: 8, wrWorkedWarn: 1, wrWorkedHigh: 2,
+  // data handling
+  lookbackDays: 28, minWorkedMin: 60, earlyFromHr: 3, earlyBeforeHr: 8, lateFromHr: 14,
+  restCodes: 'WR',
+  workedRestCodes: 'RDOT*, W RD',
+  leaveCodes: 'AL, SICK, TOIL, TOIL 2025, CL, CF AL, UA, PL, UL',
+  wrPunches: 'ignore',
+  shiftRef: [
+    'DM | OCC Duty Manager | OCC | 8.5 | 0 | 30', 'TCC | TCC Controller | OCC | 8.5 | 0 | 30', 'TC | Traffic Controller | OCC | 8.5 | 0 | 30',
+    'DC | Depot Controller | OCC | 8.5 | 0 | 30', 'SC | Station Controller | OCC | 8.5 | 0 | 30', 'EFC | Engr and Fault Controller | OCC | 8.5 | 0 | 30',
+    'LTSS | Lead Train Staff Supervisor | Train Staff | 8.5 | 0 | 30', 'TSS | Train Staff Supervisor | Train Staff | 8.5 | 0 | 30',
+    'SATR | Station Agent Train Rescue | Train Staff | 8.5 | 0 | 30', 'TA | Train Ambassador | Train Staff | 10.5 | 1 | 30',
+    'GSM | Group Station Master | Station Staff | 8.5 | 0 | 30', 'LSS | Lead Station Supervisor | Station Staff | 8.5 | 0 | 30',
+    'SS | Station Supervisor | Station Staff | 8.5 | 0 | 30', 'SA | Station Agent | Station Staff | 9.5 | 1 | 30',
+    'SAMB | Station Ambassador | Station Staff | 9 | 1 | 0', 'P&R | Park & Ride Attendant | Station Staff | 8.5 | 0 | 30', 'AOCC | Airport OCC | Station Staff | 8.5 | 0 | 30',
+  ].join('\n'),
+  trainingCodes: 'TRG*',
+  trgMode: 'days',
+  workCodes: '',
+  deptMap: [
+    'CIVIL LANDSCAPER = INM (Infrastructure Maintenance)', 'CIVIL SUP = INM (Infrastructure Maintenance)', 'CIVIL TEC = INM (Infrastructure Maintenance)',
+    'ENGINEER = INM (Infrastructure Maintenance)', 'INM-TES = INM (Infrastructure Maintenance)', 'MEP* = INM (Infrastructure Maintenance)',
+    'WORK ORDER CLOSURE = INM (Infrastructure Maintenance)',
+  ].join('\n'),
+};
+function frCfgLoad() {
+  let s = null; try { s = JSON.parse(localStorage.getItem('frCfgV1') || 'null'); } catch (e) { s = null; }
+  return Object.assign({}, FR_DEFAULTS, s && typeof s === 'object' ? s : {});
+}
+function frCfgSave(c) { try { localStorage.setItem('frCfgV1', JSON.stringify(c)); return true; } catch (e) { return false; } }
+
+// ---- duty code handling -----------------------------------------------------------------
+function frNormCode(raw) { return String(raw == null ? '' : raw).split(/\r?\n/)[0].trim().toUpperCase().replace(/\s+/g, ' '); }
+function frList(s) { return String(s || '').split(/[,\n;]+/).map(x => x.trim().toUpperCase().replace(/\s+/g, ' ')).filter(Boolean); }
+function frMatcher(list) {
+  const exact = new Set(), pre = [];
+  list.forEach(c => { if (c.endsWith('*')) pre.push(c.slice(0, -1)); else exact.add(c); });
+  return code => !!code && (exact.has(code) || pre.some(p => code.startsWith(p)));
+}
+function frCompile(cfg) {
+  const rest = frMatcher(frList(cfg.restCodes)), worked = frMatcher(frList(cfg.workedRestCodes)),
+        leave = frMatcher(frList(cfg.leaveCodes)), work = frMatcher(frList(cfg.workCodes)), training = frMatcher(frList(cfg.trainingCodes));
+  const dept = [];
+  String(cfg.deptMap || '').split(/\n/).forEach(line => {
+    const i = line.lastIndexOf('='); if (i < 1) return;
+    const k = line.slice(0, i).trim().toUpperCase().replace(/\s+/g, ' '), v = line.slice(i + 1).trim();
+    if (k && v) dept.push({ m: frMatcher([k]), v });
+  });
+  const ref = new Map();
+  String(cfg.shiftRef || '').split(/\n/).forEach(line => {
+    const p = line.split('|').map(x => x.trim()); if (p.length < 6) return;
+    const total = Number(p[3]), brk = Number(p[4]), hand = Number(p[5]); if (!isFinite(total) || total <= 0) return;
+    const rec = { abbr: p[0], name: p[1], dept: p[2], totalMin: Math.round(total * 60), breakMin: Math.round((isFinite(brk) ? brk : 0) * 60), handMin: Math.round(isFinite(hand) ? hand : 0) };
+    [p[0], p[1]].forEach(k => { const a = frPosKey(k); ref.set(a, rec); ref.set(frPosKey(String(k).replace(/&/g, 'AND')), rec); });
+  });
+  return { rest, worked, leave, work, training, dept, ref };
+}
+function frPosKey(raw) { return String(raw == null ? '' : raw).trim().toUpperCase().replace(/\s+/g, ' '); }
+// working-hours reference of a position (matches the abbreviation, the full name, or "Full Name (ABBR)")
+function frRefOf(position, comp) {
+  const raw = frPosKey(position); if (!raw) return null;
+  const m = raw.match(/\(([^)]+)\)\s*$/);
+  return comp.ref.get(raw) || (m && comp.ref.get(frPosKey(m[1]))) || comp.ref.get(frPosKey(raw.replace(/&/g, 'AND'))) || comp.ref.get(frPosKey(raw.replace(/\(.*\)\s*$/, ''))) || null;
+}
+function frDeptOf(position, comp) {
+  const rf = frRefOf(position, comp); if (rf) return rf.dept;
+  const p = (typeof normalizePosition === 'function') ? normalizePosition(position) : String(position || '').trim().toUpperCase();
+  const raw = String(position || '').trim().toUpperCase().replace(/\s+/g, ' ');
+  for (const d of comp.dept) if (d.m(p) || d.m(raw)) return d.v;
+  return 'Unassigned';
+}
+// kind: DUTY | WR_WORKED | WORK | REST | LEAVE | UNKNOWN | UNCLASSIFIED
+function frKindOf(dispatched, comp, times) {
+  const code = frNormCode(dispatched);
+  if (comp.training(code)) return 'TRAINING';          // training is not duty: ignored for hours, runs, nights and rest
+  if (times) return (comp.rest(code) || comp.worked(code)) ? 'WR_WORKED' : 'DUTY';
+  if (!code) return 'UNKNOWN';
+  if (comp.rest(code)) return 'REST';
+  if (comp.worked(code)) return 'WR_WORKED';
+  if (comp.leave(code)) return 'LEAVE';
+  if (comp.work(code)) return 'WORK';
+  return 'UNCLASSIFIED';
+}
+const FR_WORKING = new Set(['DUTY', 'WR_WORKED', 'WORK', 'WORKED_UNROSTERED']);
+const FR_GAPKIND = new Set(['UNKNOWN', 'UNCLASSIFIED', 'NODATA']);
+
+// Shift class of a duty from its scheduled start (or first punch). Night = code with N on a night-like
+// start, or a start from 22:00 to 02:59 (≈23:00 rule). Early / Day / Late by configurable hours.
+function frShiftClass(code, startMin, endMin, cfg) {
+  const s = ((startMin % 1440) + 1440) % 1440, c = String(code || '').toUpperCase();
+  const nightLike = s >= 18 * 60 || s < cfg.earlyFromHr * 60 || endMin > 1440;
+  if ((c.indexOf('N') !== -1 && nightLike) || s >= 22 * 60 || s < cfg.earlyFromHr * 60) return 'Night';
+  if (s < cfg.earlyBeforeHr * 60) return 'Early';
+  if (s >= cfg.lateFromHr * 60) return 'Late';
+  return 'Day';
+}
+
+// ---- week helpers -----------------------------------------------------------------------
+function frWeekIdx(ms, ws) { return Math.floor((Math.round(ms / FR_DAY) + 4 - ws) / 7); }
+function frWeekStartMs(idx, ws) { return (idx * 7 - 4 + ws) * FR_DAY; }
+
+// ---- assemble per-staff day records from the app's sources ---------------------------------
+// otRows: {id,sap,name,line,position,dateMs,dispatched,otMin}; schedRows: {id,name,line,position,dateMs,dispatched,dutyStartMin,dutyEndMin}
+// periods: biometric periods {idKey,attDay,firstEntryTs,lastExitTs}
+function frAssemble(otRows, schedRows, periods, comp, cover, cfg) {
+  const staff = new Map();
+  const get = (id, r) => {
+    let s = staff.get(id);
+    if (!s) { s = { id, sap: r.sap || id, name: '', line: '', position: '', days: new Map() }; staff.set(id, s); }
+    if (!s.name && r.name) s.name = r.name; if (!s.line && r.line) s.line = String(r.line).trim(); if (!s.position && r.position) s.position = String(r.position).trim();
+    return s;
+  };
+  const mk = (ms, dispatched, timesObj, otMin, src) => {
+    const kind = frKindOf(dispatched, comp, timesObj);
+    const d = { ms, code: frNormCode(dispatched), kind, sMin: null, eMin: null, schedMin: null, otMin: otMin > 0 ? otMin : 0, bio: null, src };
+    if (timesObj) { d.sMin = timesObj.start; d.eMin = timesObj.end <= timesObj.start ? timesObj.end + 1440 : timesObj.end; d.schedMin = d.eMin - d.sMin; }
+    return d;
+  };
+  otRows.forEach(r => {
+    const s = get(r.id, r); const times = (typeof parseDispatchedTimes === 'function') ? parseDispatchedTimes(typeof r.dispatched === 'string' ? r.dispatched : '') : null;
+    s.days.set(r.dateMs, mk(r.dateMs, r.dispatched, times, r.otMin, 'Roster'));
+  });
+  schedRows.forEach(r => {
+    const s = get(r.id, r); const cur = s.days.get(r.dateMs);
+    if (cur && cur.sMin !== null) return;
+    let times = (typeof parseDispatchedTimes === 'function') ? parseDispatchedTimes(typeof r.dispatched === 'string' ? r.dispatched : '') : null;
+    if (!times && r.dutyStartMin !== null && r.dutyStartMin !== undefined) times = { start: r.dutyStartMin, end: r.dutyEndMin > 1440 ? r.dutyEndMin - 1440 : r.dutyEndMin };
+    if (!times) return;
+    const d = mk(r.dateMs, r.dispatched, times, cur ? cur.otMin : 0, 'Attendance schedule');
+    if (cur && (cur.kind === 'REST' || cur.kind === 'LEAVE')) return;     // roster says rest/leave: keep that
+    if (!cur || cur.kind === 'UNKNOWN' || cur.kind === 'UNCLASSIFIED' || cur.kind === 'DUTY') s.days.set(r.dateMs, d);
+  });
+  // biometric
+  const byKey = new Map();
+  periods.forEach(p => { const k = p.idKey + '|' + p.attDay; (byKey.get(k) || byKey.set(k, []).get(k)).push(p); });
+  const covered = ms => cover && cover.min !== null && ms >= cover.min && ms <= cover.max;
+  staff.forEach(s => {
+    s.days.forEach(d => {
+      d.covered = covered(d.ms);
+      const c = (byKey.get(s.id + '|' + d.ms) || []).filter(p => p.firstEntryTs !== null && p.lastExitTs !== null && p.lastExitTs > p.firstEntryTs);
+      if (c.length) {
+        const sc = p => { if (d.sMin === null) return p.lastExitTs - p.firstEntryTs; const a = d.ms + d.sMin * 60000, b = d.ms + d.eMin * 60000; return Math.max(0, Math.min(p.lastExitTs, b) - Math.max(p.firstEntryTs, a)); };
+        const p = c.slice().sort((a, b) => sc(b) - sc(a))[0];
+        d.bio = { inTs: p.firstEntryTs, outTs: p.lastExitTs, mins: Math.floor((p.lastExitTs - p.firstEntryTs) / 60000) };
+      }
+    });
+  });
+  // punches on a scheduled rest day / roster-less day
+  periods.forEach(p => {
+    const s = staff.get(p.idKey); if (!s) return;
+    if (p.firstEntryTs === null || p.lastExitTs === null || p.lastExitTs <= p.firstEntryTs) return;
+    const mins = Math.floor((p.lastExitTs - p.firstEntryTs) / 60000); if (mins < cfg.minWorkedMin) return;
+    const cur = s.days.get(p.attDay), bio = { inTs: p.firstEntryTs, outTs: p.lastExitTs, mins };
+    if (!cur) s.days.set(p.attDay, { ms: p.attDay, code: '', kind: 'WORKED_UNROSTERED', sMin: null, eMin: null, schedMin: null, otMin: 0, bio, src: 'Biometric only', covered: true });
+    else if (cur.kind === 'REST') {
+      // The Dispatch code decides: a day dispatched as WR stays a rest day even when punches exist (they are shown as a note).
+      // Setting wrPunches = 'worked' treats those punches as rest-day work instead.
+      if (cfg.wrPunches === 'worked') { cur.kind = 'WR_WORKED'; cur.bio = cur.bio || bio; cur.wasRest = true; cur.src += ' + biometric'; }
+      else cur.bio = cur.bio || bio;
+    }
+    else if ((cur.kind === 'UNKNOWN' || cur.kind === 'UNCLASSIFIED') && !cur.bio) { cur.bio = bio; cur.kind = cur.kind === 'UNCLASSIFIED' ? cur.kind : 'WORKED_UNROSTERED'; }
+  });
+  return staff;
+}
+
+// ---- per-staff analysis ---------------------------------------------------------------------
+function frHrs0(m) { return Math.floor(m / 60) + ':' + String(Math.round(m % 60)).padStart(2, '0'); }
+function frFmt(ms) { return typeof utbFmtDate === 'function' ? utbFmtDate(ms) : new Date(ms).toISOString().slice(0, 10); }
+function frAnalyse(st, ctx) {
+  const cfg = ctx.cfg, from = ctx.fromMs, to = ctx.toMs, ext0 = ctx.ext0, ws = cfg.weekStart;
+  const out = {
+    id: st.id, name: st.name, line: st.line, position: st.position, dept: ctx.deptOf(st.position),
+    ind: [], flags: new Set(), notes: [], days: [], risk: 'Normal',
+  };
+  const days = [];
+  for (let ms = ext0; ms <= to; ms += FR_DAY) days.push(st.days.get(ms) || { ms, code: '', kind: 'NODATA', sMin: null, eMin: null, schedMin: null, otMin: 0, bio: null, src: '' });
+  const inP = d => d.ms >= from && d.ms <= to;
+  const add = (key, label, level, value, detail) => { out.ind.push({ key, label, level, value, detail }); out.flags.add(key); };
+
+  // per-day derived values
+  // Productive hours = attendance minus the position's break and handover (department working-hours reference). The deduction
+  // is the full break + handover for a full shift, and pro-rata when the attendance is shorter than the shift.
+  const ref = ctx.refOf ? ctx.refOf(st.position) : null; out.ref = ref;
+  const dedOf = g => ref && g > 0 ? Math.round((ref.breakMin + ref.handMin) * Math.min(1, g / ref.totalMin)) : 0;
+  const noShow = [];
+  days.forEach(d => {
+    if ((d.kind === 'DUTY' || d.kind === 'WR_WORKED' || d.kind === 'WORKED_UNROSTERED') && d.bio) {
+      // attendance that holds no productive time (e.g. only a handover) does not make a day a worked day
+      const prod = d.bio.mins - dedOf(d.bio.mins);
+      if (prod < cfg.minWorkedMin && d.ms >= ext0) { d.origKind = d.kind; d.kind = 'NOSHOW'; noShow.push(d); }
+    }
+    d.working = FR_WORKING.has(d.kind); d.gap = FR_GAPKIND.has(d.kind); d.leaveLike = d.kind === 'LEAVE' || d.kind === 'NOSHOW';
+    d.grossAct = d.bio ? d.bio.mins : null; d.dedAct = d.bio ? dedOf(d.bio.mins) : 0; d.actMin = d.bio ? Math.max(0, d.bio.mins - d.dedAct) : null;
+    d.dedSch = d.schedMin !== null ? dedOf(d.schedMin) : 0; d.schMin = d.schedMin !== null ? Math.max(0, d.schedMin - d.dedSch) : null;
+    let basis = 'none', mins = 0;
+    if (d.bio && d.working) { basis = 'actual'; mins = d.actMin; }
+    else if (d.working && d.schMin !== null) { basis = 'scheduled'; mins = d.schMin; }
+    d.basis = basis; d.hrsMin = mins;
+    if (d.kind === 'WR_WORKED') { d.restOT = true; if (!d.otMin) d.otMin = mins; }   // work on a rest day is overtime
+    if (d.sMin !== null) { d.startTs = d.ms + d.sMin * 60000; d.endTs = d.ms + d.eMin * 60000; }
+    if (d.bio) { d.startTs = d.bio.inTs; d.endTs = d.bio.outTs; }
+    if ((d.working || d.kind === 'NOSHOW') && d.startTs !== undefined) {
+      const sm = d.bio ? Math.round((d.bio.inTs - d.ms) / 60000) : d.sMin, em = d.bio ? Math.round((d.bio.outTs - d.ms) / 60000) : d.eMin;
+      d.cls = frShiftClass(d.code, d.sMin !== null ? d.sMin : sm, d.sMin !== null ? d.eMin : em, cfg);
+      d.isNight = d.cls === 'Night';
+    }
+  });
+
+  // 1. consecutive working days (only a qualifying WR resets the count)
+  let run = 0, runStart = null, maxRun = 0, maxStart = null, maxEnd = null, truncated = false;
+  const streakAt = new Map();
+  days.forEach((d, i) => {
+    if (d.kind === 'REST') run = 0;
+    else if (d.working) {
+      if (run === 0) runStart = d.ms; run++;
+      if (d.ms >= from && run > maxRun) { maxRun = run; maxStart = runStart; maxEnd = d.ms; truncated = (runStart === ext0); }
+    } else if (d.leaveLike && cfg.leaveResets) run = 0;
+    streakAt.set(d.ms, run); d.run = run;
+  });
+  out.maxConsec = maxRun; out.curConsec = run; out.maxConsecRange = maxRun ? [maxStart, maxEnd] : null;
+  if (maxRun > cfg.maxConsec) add('consec_high', 'Consecutive working days', 'high', `${maxRun} days`, `${maxRun} consecutive working days without a WR (${frFmt(maxStart)} → ${frFmt(maxEnd)}); limit is ${cfg.maxConsec}.`);
+  else if (maxRun >= cfg.warnConsecFrom) add('consec_warn', 'Consecutive working days', 'warn', `${maxRun} days`, `${maxRun} consecutive working days without a WR (${frFmt(maxStart)} → ${frFmt(maxEnd)}), approaching the ${cfg.maxConsec}-day limit.`);
+  if (truncated && maxRun >= cfg.warnConsecFrom) out.notes.push(`Roster before ${frFmt(ext0)} was not available, so the ${maxRun}-day run may be longer.`);
+
+  // data gaps inside the reporting period
+  const gapDays = days.filter(d => inP(d) && d.gap), codesBad = new Set();
+  days.forEach(d => { if (inP(d) && d.kind === 'UNCLASSIFIED') codesBad.add(d.code); });
+  out.gapDays = gapDays.length;
+  out.trgDays = days.filter(d => inP(d) && d.kind === 'TRAINING').length;
+  if (out.trgDays) out.notes.push(`${out.trgDays} training (${[...new Set(days.filter(d => inP(d) && d.kind === 'TRAINING').map(d => d.code))].join(', ')}) day(s) were ignored — training is not counted as duty.`);
+  if (gapDays.length) {
+    out.flags.add('data_gap');
+    const bits = [];
+    const nd = gapDays.filter(d => d.kind === 'NODATA').length, uk = gapDays.filter(d => d.kind === 'UNKNOWN').length, uc = gapDays.filter(d => d.kind === 'UNCLASSIFIED').length;
+    if (nd) bits.push(`${nd} day(s) with no roster record`); if (uk) bits.push(`${uk} day(s) with a blank dispatch`); if (uc) bits.push(`${uc} day(s) with an unclassified code (${[...codesBad].join(', ')})`);
+    out.dataGapText = bits.join('; ');
+  }
+
+  // 3. weekly rest
+  const weeks = new Map();
+  days.forEach(d => {
+    const w = frWeekIdx(d.ms, ws); let o = weeks.get(w);
+    if (!o) { const s0 = frWeekStartMs(w, ws); o = { w, start: s0, end: s0 + 6 * FR_DAY, rest: 0, worked: 0, leave: 0, gap: 0, duty: 0, night: 0, nightDates: [] }; weeks.set(w, o); }
+    if (d.kind === 'REST') o.rest++; if (d.kind === 'WR_WORKED') o.worked++; if (d.kind === 'LEAVE') o.leave++; if (d.gap) o.gap++;
+    if (d.working) o.duty++; if (d.isNight) { o.night++; o.nightDates.push(d.ms); }
+  });
+  const wl = [...weeks.values()].sort((a, b) => a.w - b.w);
+  let wrSched = 0, wrActual = 0, wrWorked = 0, wrConfirmed = 0; const wrWorkedList = [], restPunch = [];
+  days.forEach(d => {
+    if (!inP(d)) return;
+    if (d.kind === 'REST') { wrSched++; wrActual++; const pu = d.bio && d.bio.mins >= cfg.minWorkedMin; if (pu) restPunch.push(d); else if (d.covered) wrConfirmed++; }
+    if (d.kind === 'WR_WORKED') { wrSched++; wrWorked++; wrWorkedList.push(d); }
+  });
+  out.wrActual = wrActual; out.wrSched = wrSched; out.wrWorked = wrWorked; out.wrConfirmed = wrConfirmed; out.wrPunchDays = restPunch.length;
+  if (restPunch.length) { out.flags.add('wr_punches'); out.notes.push(`${restPunch.length} day(s) dispatched as WR have biometric punches (${restPunch.slice(0, 6).map(d => frFmt(d.ms)).join(', ')}${restPunch.length > 6 ? ' …' : ''}). They are counted as rest days because the Dispatch says WR; they are not treated as work or overtime.`); }
+  // roster blocks: a run of working days up to the next rest day(s), plus those rest days. Pattern: 5 on / 2 off (x3) then
+  // 6 on / 2 off; OCC staff 6 on / 2 off. A rest day that is worked ends the rest early, so the block after it starts sooner.
+  const blocks = []; let bk = null;
+  days.forEach(d => {
+    if (d.gap) { if (bk) { if (bk.restRun > 0) bk.nextGap = true; else bk.gapAfter = true; bk = null; } return; }   // no roster record: block boundary, never counted as work or rest
+    if (d.kind === 'REST') { if (bk) bk.restRun++; return; }
+    if (d.kind === 'LEAVE' && cfg.leaveResets) { if (bk) { bk.leaveAfter = true; bk = null; } return; }   // (a dispatched duty with no productive attendance still belongs to its roster block)   // leave is time off: closes the block
+    if (!bk || bk.restRun > 0) { if (bk) bk.nextGap = d.gap; bk = { start: d.ms, end: d.ms, work: 0, night: 0, nightDates: [], gap: 0, leave: 0, restRun: 0, nextGap: false, leaveAfter: false, gapAfter: false }; blocks.push(bk); }
+    bk.end = d.ms; if (d.working || d.kind === 'NOSHOW') bk.work++; if (d.isNight) { bk.night++; bk.nightDates.push(d.ms); } if (d.gap) bk.gap++; if (d.kind === 'LEAVE') bk.leave++;
+  });
+  const insuff = [], notAssessable = [];
+  if (cfg.nightGrouping === 'week') {
+  wl.forEach(o => {
+    if (o.end < from || o.start > to) return;
+    const full = o.start >= ext0 && o.end <= to;
+    if (!full) { notAssessable.push(o); return; }
+    if (o.gap > 0) { notAssessable.push(o); return; }
+    if (o.leave > 0) return;
+    if (o.rest < cfg.reqWR) insuff.push(o);
+  });
+  } else {
+    blocks.forEach((b, i) => {
+      if (b.end < from || b.start > to || b.work === 0) return;
+      const lastBlock = i === blocks.length - 1;
+      if (b.leaveAfter) return;                                                            // rest was given as leave
+      if (b.restRun === 0) { if (!lastBlock || b.end < to) notAssessable.push(b); return; }          // block ended without a rest day on record
+      if (lastBlock && b.end + (b.restRun + 1) * FR_DAY > to) { if (b.restRun < cfg.reqRestRun) notAssessable.push(b); return; }  // rest still running at the end of the period
+      if (b.nextGap) { notAssessable.push(b); return; }                                   // what follows the rest days is unknown, so the rest may be longer
+      if (b.restRun < cfg.reqRestRun) insuff.push(b);
+    });
+  }
+  out.insuffWeeks = insuff.length;
+  if (insuff.length) add('wr_insufficient', 'Insufficient weekly rest', 'high', `${insuff.length} ${cfg.nightGrouping === 'week' ? 'week(s)' : 'block(s)'}`,
+    cfg.nightGrouping === 'week'
+      ? `No qualifying WR in ${insuff.length} week(s) (required ${cfg.reqWR}): ` + insuff.map(o => `w/c ${frFmt(o.start)}` + (o.worked ? ` (WR scheduled but worked)` : '')).join(', ') + '.'
+      : `Fewer than ${cfg.reqRestRun} rest days after ${insuff.length} work block(s): ` + insuff.slice(0, 6).map(b => `${frFmt(b.start)}–${frFmt(b.end)} (${b.work} days on, ${b.restRun} rest day${b.restRun === 1 ? '' : 's'})`).join(', ') + (insuff.length > 6 ? ' …' : '') + '.');
+  // work run longer than the roster pattern allows (5/6 on) with no rest day in it
+  const longRuns = blocks.filter(b => b.work > cfg.patternMaxOn && b.end >= from && b.start <= to);
+  if (longRuns.length) { const w = longRuns.reduce((a, b) => b.work > a.work ? b : a); add('pattern_exceeded', 'Work run beyond roster pattern', 'warn', `${w.work} days`, `${w.work} working days in a row (${frFmt(w.start)} → ${frFmt(w.end)}) with no rest day; the roster pattern allows at most ${cfg.patternMaxOn} on.`); }
+  // spacing between WR days
+  const restDays = days.filter(d => d.kind === 'REST'); let worstInt = 0, worstA = null, worstB = null;
+  for (let i = 1; i < restDays.length; i++) {
+    const a = restDays[i - 1], b = restDays[i]; if (b.ms < from) continue;
+    const between = days.filter(d => d.ms > a.ms && d.ms < b.ms && (d.gap || d.leaveLike)).length; if (between) continue;   // unknown days or leave in between: not a rest-spacing issue
+    const gapD = Math.round((b.ms - a.ms) / FR_DAY); if (gapD > worstInt) { worstInt = gapD; worstA = a.ms; worstB = b.ms; }
+  }
+  out.maxWRInterval = worstInt;
+  if (!out.flags.has('wr_insufficient') && worstInt > cfg.wrGapWarn) add('wr_gap', 'Weekly rest spacing', 'warn', `${worstInt} days between WR`, `Longest interval between two WR days is ${worstInt} days (${frFmt(worstA)} → ${frFmt(worstB)}); warning above ${cfg.wrGapWarn}.`);
+  if (wrWorked >= cfg.wrWorkedWarn) add('wr_worked', 'Rest day worked (overtime)', wrWorked >= cfg.wrWorkedHigh ? 'high' : 'warn', `${wrWorked} day(s)`,
+    `Scheduled rest day worked — counts as overtime: ${wrWorkedList.map(d => frFmt(d.ms) + (d.code ? ' [' + d.code + ']' : '')).join(', ')}.`);
+  if (notAssessable.length) out.notes.push(`${notAssessable.length} ${cfg.nightGrouping === 'week' ? 'week(s)' : 'work block(s)'} could not be assessed for rest (partial period or incomplete roster).`);
+
+  // 1. hours
+  let totAct = 0, totGross = 0, totSch = 0, bioDays = 0, dutyDays = 0, noBioDuty = 0, extDays = [];
+  days.forEach(d => {
+    if (!inP(d)) return;
+    if (d.working) { dutyDays++; if (d.bio) { totAct += d.actMin; totGross += d.grossAct; bioDays++; } else if (d.kind !== 'WORK') noBioDuty++; }
+    if (d.schMin !== null && (d.kind === 'DUTY' || d.kind === 'WR_WORKED')) totSch += d.schMin;
+    if (d.working && d.hrsMin > cfg.dailyHrs * 60) extDays.push(d);
+  });
+  out.totActMin = totAct; out.totSchMin = totSch; out.totGrossMin = totGross; out.dedMin = totGross - totAct;
+  if (noShow.length) { const ns = noShow.filter(inP); if (ns.length) out.notes.push(`${ns.length} dispatched duty day(s) had no productive attendance after break/handover (under ${cfg.minWorkedMin} min) and were not counted as worked: ${ns.slice(0, 6).map(d => frFmt(d.ms) + ' [' + (d.code || '—') + '] ' + frHrs0(d.bio.mins)).join(', ')}${ns.length > 6 ? ' …' : ''}.`); out.noShowDays = ns.length; }
+  if (!ref && st.position && dutyDays) out.notes.push(`Position “${st.position}” is not in the shift-timing reference: no break or handover was deducted.`); out.bioDays = bioDays; out.dutyDays = dutyDays;
+  if (dutyDays && noBioDuty) out.notes.push(`${noBioDuty} of ${dutyDays} working day(s) have no biometric record — scheduled hours were used for those days.`);
+  const roll = (win) => {
+    let best = 0, bestEnd = null; const arr = []; let sum = 0; const ring = [];
+    days.forEach((d, i) => {
+      const m = d.working ? d.hrsMin : 0; ring.push(m); sum += m; if (ring.length > win) sum -= ring[ring.length - 1 - win];
+      arr.push(sum); if (d.ms >= from && sum > best) { best = sum; bestEnd = d.ms; }
+    });
+    return { best, bestEnd, arr };
+  };
+  const rw = roll(cfg.weeklyWindow);
+  out.maxWeekMin = rw.best;
+  const hrsLvl = (v, lim) => v > lim * 60 ? 'high' : v >= lim * 60 * cfg.warnPct / 100 ? 'warn' : null;
+  const fh = m => minutesToTotalHHMM(m);
+  const wl2 = hrsLvl(rw.best, cfg.weeklyHrs);
+  if (wl2) add('hours_week', `Working hours — ${cfg.weeklyWindow}-day window`, wl2, fh(rw.best), `${fh(rw.best)} h worked in the ${cfg.weeklyWindow} days ending ${frFmt(rw.bestEnd)} (limit ${cfg.weeklyHrs} h${wl2 === 'warn' ? ', approaching' : ''}).`);
+  // monthly working-hour limits (calendar month) from ACTUAL hours (first punch-in to last punch-out); normal hours and
+  // overtime are kept apart: normal = actual - overtime. Two independent limits: normal only, and normal + overtime.
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const mon = new Map(), mtdN = [], mtdT = [];
+  days.forEach((d, i) => {
+    const x = new Date(d.ms), key = x.getUTCFullYear() * 100 + x.getUTCMonth(); let m = mon.get(key);
+    if (!m) { const y = x.getUTCFullYear(), mo = x.getUTCMonth(); m = { key, label: MON[mo] + ' ' + y, start: Date.UTC(y, mo, 1), end: Date.UTC(y, mo + 1, 0), normal: 0, ot: 0, total: 0, counted: 0, missingBio: 0, wrMin: 0, dedMin: 0, noData: 0, lastMs: d.ms }; mon.set(key, m); }
+    m.lastMs = d.ms; if (d.kind === 'NODATA') m.noData++;
+    let act = 0;
+    if (d.working) { if (d.bio) act = d.actMin; else if (cfg.monthFallback && d.schMin !== null) act = d.schMin; else if (d.kind !== 'WORK') m.missingBio++; }
+    const ot = d.working && d.otMin > 0 ? (act > 0 ? Math.min(d.otMin, act) : d.otMin) : 0, nrm = Math.max(0, act - ot);
+    d.nrmMin = nrm; d.otCntMin = ot; m.normal += nrm; m.ot += ot; m.total += nrm + ot; if (nrm + ot > 0) m.counted++;
+    if (d.kind === 'REST' && d.bio && d.bio.mins >= cfg.minWorkedMin) m.wrMin += d.bio.mins;
+    if (d.working && d.bio) m.dedMin = (m.dedMin || 0) + d.dedAct;
+    mtdN[i] = m.normal; mtdT[i] = m.total;
+  });
+  const limN = cfg.normalMonthHrs * 60, limT = cfg.totalMonthHrs * 60;
+  out.months = [...mon.values()].filter(m => m.end >= from && m.start <= to).map(m => Object.assign(m, { partial: to < m.end, nOver: Math.max(0, m.normal - limN), tOver: Math.max(0, m.total - limT) }));
+  out.peak = out.months.reduce((b, m) => (!b || m.total > b.total) ? m : b, null);
+  out.hoursExceed = out.months.filter(m => m.nOver > 0 || m.tOver > 0);
+  const mLvl = (v, lim) => v > lim ? 'high' : v >= lim * cfg.warnPct / 100 ? 'warn' : null;
+  const monTxt = m => `${m.label}${m.partial ? ' (to ' + frFmt(m.lastMs) + ')' : ''}: normal ${fh(m.normal)}, overtime ${fh(m.ot)}, combined ${fh(m.total)}`;
+  const nW = out.months.reduce((b, m) => (!b || m.normal > b.normal) ? m : b, null), tW = out.peak;
+  const nL = nW ? mLvl(nW.normal, limN) : null, tL = tW ? mLvl(tW.total, limT) : null;
+  if (nL) add('hours_normal', 'Normal hours per month', nL, fh(nW.normal), nL === 'high'
+    ? `Normal (non-overtime) hours exceed ${cfg.normalMonthHrs} h: ` + out.months.filter(m => m.nOver > 0).map(m => `${monTxt(m)} — over by ${fh(m.nOver)}`).join('; ') + '.'
+    : `Normal hours are approaching the ${cfg.normalMonthHrs} h monthly limit — ${monTxt(nW)}.`);
+  if (tL) add('hours_total', 'Total hours incl. overtime per month', tL, fh(tW.total), tL === 'high'
+    ? `Total hours including overtime exceed ${cfg.totalMonthHrs} h: ` + out.months.filter(m => m.tOver > 0).map(m => `${monTxt(m)} — over by ${fh(m.tOver)}`).join('; ') + '.'
+    : `Total hours are approaching the ${cfg.totalMonthHrs} h monthly limit — ${monTxt(tW)}.`);
+  const missBio = out.months.reduce((n, m) => n + m.missingBio, 0), wrMin = out.months.reduce((n, m) => n + m.wrMin, 0);
+  if (missBio) out.notes.push(`${missBio} working day(s) have no biometric record and were not counted in the monthly hours (actual hours only), so monthly totals may be understated.`);
+  if (wrMin) out.notes.push(`${fh(wrMin)} h of punches on days dispatched as WR were not counted in the monthly hours.`);
+  if (extDays.length) {
+    const lvl = extDays.length >= cfg.extRepeat ? 'high' : 'warn';
+    add('hours_day', extDays.length >= cfg.extRepeat ? 'Repeated extended shifts' : 'Extended shift', lvl, `${extDays.length} day(s)`,
+      `Shifts longer than ${cfg.dailyHrs} h on ${extDays.slice(0, 8).map(d => frFmt(d.ms) + ' (' + fh(d.hrsMin) + ')').join(', ')}${extDays.length > 8 ? ' …' : ''}.`);
+  }
+
+  // 4. night-shift rotation
+  // night weeks are counted per roster block (work run + its rest days) so 5-on and 6-on weeks both count as one week;
+  // 'calendar week' grouping remains available in the settings.
+  const units = cfg.nightGrouping === 'week'
+    ? wl.map(o => ({ start: o.start, end: o.end, night: o.night, nightDates: o.nightDates, gap: o.gap, weeks: 1, complete: o.start >= ext0 && o.end <= to }))
+    : blocks.map(b => ({ start: b.start, end: b.end, night: b.night, nightDates: b.nightDates, gap: b.gap, weeks: Math.max(1, Math.ceil(b.work / 7)), complete: b.restRun > 0 || b.leaveAfter || b.gapAfter, brk: b.leaveAfter || b.gapAfter || b.nextGap }));
+  const runs = []; let cur = null;
+  units.forEach((u, i) => {
+    u.isN = u.night >= cfg.nightWeekMin;
+    if (u.isN) {
+      if (cur && cur.last === i - 1 && !(units[i - 1] && units[i - 1].brk)) { cur.last = i; cur.n += u.weeks; cur.units.push(u); } else { cur = { first: i, last: i, n: u.weeks, units: [u] }; runs.push(cur); }
+      u.runLen = cur.n;
+    } else if (!u.complete && i === units.length - 1) { /* trailing partial block: neither extends nor breaks */ }
+    else { cur = null; if (u.gap > 0 && u.end >= from) out.nightGap = true; }
+  });
+  const runEnd = r => r.units[r.units.length - 1].end;
+  const relevant = runs.filter(r => runEnd(r) >= from);
+  const maxNightRun = relevant.reduce((m, r) => Math.max(m, r.n), 0);
+  const lastRun = runs.length ? runs[runs.length - 1] : null;
+  out.nightWeeks = maxNightRun; out.nightCurrent = lastRun && lastRun.last >= units.length - 2 ? lastRun.n : 0;
+  const nightDays = days.filter(d => d.isNight);
+  out.latestNight = nightDays.length ? nightDays[nightDays.length - 1] : null;
+  out.nightDutyCount = nightDays.filter(inP).length;
+  const nRunTxt = r => `${frFmt(r.units[0].start)} → ${frFmt(runEnd(r))}`;
+  const blkTxt = r => ' Blocks counted: ' + r.units.map(u => `${frFmt(u.start)}–${frFmt(u.end)} (${u.night} night duties${u.weeks > 1 ? ', ' + u.weeks + ' wks' : ''}${u.end < from ? ', before the period' : ''})`).join('; ') + '.';
+  const worstRun = relevant.find(r => r.n === maxNightRun);
+  if (maxNightRun > cfg.nightPriorityWeeks) add('night_gt3', 'Night-shift weeks', 'high', `${maxNightRun} wks`, `PRIORITY — ${maxNightRun} consecutive weeks on night shifts (${nRunTxt(worstRun)}); more than ${cfg.nightPriorityWeeks} weeks.` + blkTxt(worstRun));
+  else if (maxNightRun > cfg.nightFlagWeeks) add('night_gt2', 'Night-shift weeks', 'high', `${maxNightRun} wks`, `${maxNightRun} consecutive weeks on night shifts (${nRunTxt(worstRun)}); the limit is ${cfg.nightFlagWeeks} weeks.` + blkTxt(worstRun));
+  else if (maxNightRun === cfg.nightFlagWeeks && maxNightRun > 0) add('night_warn', 'Night-shift weeks', 'warn', `${maxNightRun} wks`, `${maxNightRun} consecutive weeks on night shifts (${nRunTxt(worstRun)}) — at the ${cfg.nightFlagWeeks}-week limit; a third week would be flagged.` + blkTxt(worstRun));
+  if (maxNightRun > cfg.nightFlagWeeks) out.flags.add('night_gt2'); if (maxNightRun > cfg.nightPriorityWeeks) out.flags.add('night_gt3');
+  // recovery between night runs
+  for (let i = 1; i < runs.length; i++) {
+    const A = runs[i - 1], B = runs[i];
+    const lastA = Math.max(...A.units.flatMap(u => u.nightDates)), firstB = Math.min(...B.units.flatMap(u => u.nightDates));
+    if (!isFinite(lastA) || !isFinite(firstB) || firstB < from) continue;
+    const g = Math.round((firstB - lastA) / FR_DAY) - 1;
+    if (g < cfg.nightRecoveryDays) { add('night_rotation', 'Night-shift rotation / recovery', 'warn', `${g} day(s)`, `Only ${g} day(s) without night duty between night runs (last ${frFmt(lastA)}, next ${frFmt(firstB)}); minimum recovery ${cfg.nightRecoveryDays} days.`); break; }
+  }
+  const runAt = ms => { for (let i = units.length - 1; i >= 0; i--) if (units[i].start <= ms) return units[i].isN ? units[i].runLen : 0; return 0; };
+
+  // 2. short recovery intervals + shift transitions
+  const duties = days.filter(d => d.working && d.startTs !== undefined).sort((a, b) => a.startTs - b.startTs);
+  const shorts = [];
+  for (let i = 1; i < duties.length; i++) {
+    const p = duties[i - 1], c = duties[i]; if (!inP(c) || c.ms === p.ms) continue;
+    const gh = (c.startTs - p.endTs) / 3600000;
+    if (gh < cfg.minRestHrs) shorts.push({ a: p, b: c, gh });
+  }
+  if (shorts.length >= cfg.recWarn) add('short_recovery', 'Short recovery between duties', shorts.length >= cfg.recHigh ? 'high' : 'warn', `${shorts.length} time(s)`,
+    `Less than ${cfg.minRestHrs} h between duties: ` + shorts.slice(0, 6).map(x => `${frFmt(x.a.ms)}→${frFmt(x.b.ms)} (${x.gh < 0 ? 'overlap' : x.gh.toFixed(1) + ' h'})`).join(', ') + (shorts.length > 6 ? ' …' : '') + '.');
+  const trans = [];
+  for (let i = 1; i < days.length; i++) {
+    const p = days[i - 1], c = days[i]; if (!inP(c) || !p.cls || !c.cls || c.ms - p.ms !== FR_DAY) continue;
+    if (c.cls === 'Early' && (p.cls === 'Night' || p.cls === 'Late')) trans.push({ p, c });
+  }
+  if (trans.length >= cfg.transWarn) add('transitions', 'Fatiguing shift transitions', trans.length >= cfg.transHigh ? 'high' : 'warn', `${trans.length} time(s)`,
+    trans.slice(0, 6).map(t => `${t.p.cls}→Early on ${frFmt(t.c.ms)}`).join(', ') + (trans.length > 6 ? ' …' : '') + '.');
+  // overtime
+  const otD = days.map(d => ((d.otMin > 0 || d.kind === 'WR_WORKED') && d.ms >= ext0 ? 1 : 0)); let bestOt = 0, bestOtEnd = null, sOt = 0;
+  days.forEach((d, i) => { sOt += otD[i]; if (i >= cfg.otWindow) sOt -= otD[i - cfg.otWindow]; if (d.ms >= from && sOt > bestOt) { bestOt = sOt; bestOtEnd = d.ms; } });
+  out.otDays = days.filter(d => inP(d) && (d.otMin > 0 || d.kind === 'WR_WORKED')).length; out.restOtDays = wrWorked; out.otMin = days.filter(inP).reduce((n, d) => n + d.otMin, 0);
+  if (bestOt >= cfg.otWarnDays) add('repeat_ot', 'Repeated overtime', bestOt >= cfg.otHighDays ? 'high' : 'warn', `${bestOt} OT days`, `Overtime on ${bestOt} days within ${cfg.otWindow} days ending ${frFmt(bestOtEnd)} (rest-day work counts as overtime); ${out.otDays} OT day(s) in the period${wrWorked ? ', ' + wrWorked + ' on a rest day' : ''}.`);
+
+  if (out.dataGapText) out.notes.unshift('Incomplete data: ' + out.dataGapText + '.');
+
+  // overall classification
+  if (out.ind.some(i => i.level === 'high')) out.risk = 'High Risk';
+  else if (out.ind.some(i => i.level === 'warn')) out.risk = 'Warning';
+  else if (gapDays.length) out.risk = 'Incomplete Data';
+  else out.risk = 'Normal';
+
+  // trend snapshots (week ends inside the period)
+  out.trend = [];
+  ctx.snaps.forEach(snap => {
+    const i = days.findIndex(d => d.ms === snap.ms); if (i < 0) return;
+    const sa = streakAt.get(snap.ms) || 0, nr = runAt(snap.ms);
+    const c = sa > cfg.maxConsec, w = !c && sa >= cfg.warnConsecFrom, h = rw.arr[i] > cfg.weeklyHrs * 60 || mtdN[i] > limN || mtdT[i] > limT, n = nr > cfg.nightFlagWeeks;
+    out.trend.push({ c, w, h, n, any: c || h || n });
+  });
+  const cc = new Map(); days.forEach(d => { if (inP(d) && d.kind !== 'NODATA') { const k = d.code || '(blank)'; cc.set(k, (cc.get(k) || 0) + 1); } });
+  out.codeCounts = [...cc.entries()].sort((a, b) => b[1] - a[1]);
+  const lastDuty = days.filter(d => inP(d) && d.working && d.code).pop();
+  out.latestDuty = lastDuty || null;
+  out.dayLog = days;
+  return out;
+}
+
+// ============================== UI ===============================================================
+const FR = { cfg: frCfgLoad(), res: [], meta: null, ind: null, dim: 'dept', open: null, seq: 0, actions: {}, snaps: [] };
+try { FR.actions = JSON.parse(localStorage.getItem('frActionsV1') || '{}') || {}; } catch (e) { FR.actions = {}; }
+const FR_ROWCAP = 300;
+const FR_SCHEMA = [
+  ['Consecutive working days'],
+  ['maxConsec', 'Maximum consecutive days (High Risk above)', 1, 60], ['warnConsecFrom', 'Warning from (days)', 1, 60], ['leaveResets', 'Leave day resets the run', 'yn'],
+  ['Weekly rest'],
+  ['nightGrouping', 'Count night weeks and rest by', 'grp'], ['reqRestRun', 'Rest days required after each work block', 1, 7], ['patternMaxOn', 'Longest work run the roster allows (days on)', 3, 14], ['wrGapWarn', 'Warn if days between WR exceed', 2, 30],
+  ['weekStart', 'Calendar-week mode: week starts on', 'wk'], ['reqWR', 'Calendar-week mode: required WR per week', 1, 7],
+  ['Working-hour limits (set to company policy)'],
+  ['dailyHrs', 'Daily limit (hours)', 1, 24], ['weeklyHrs', 'Weekly limit (hours)', 1, 168], ['weeklyWindow', 'Weekly window (days)', 1, 14],
+  ['normalMonthHrs', 'Normal hours limit per month (excl. overtime)', 1, 744], ['totalMonthHrs', 'Total hours limit per month (incl. overtime)', 1, 744], ['monthFallback', 'Monthly hours: use scheduled hours when no biometric', 'yn'], ['warnPct', 'Warning at % of limit', 50, 100], ['extRepeat', 'Repeated extended shifts (count)', 1, 31],
+  ['Night-shift rotation'],
+  ['nightWeekMin', 'Night duties for a week to count', 1, 7], ['nightFlagWeeks', 'Flag above (consecutive weeks)', 1, 12], ['nightPriorityWeeks', 'Priority above (consecutive weeks)', 1, 12], ['nightRecoveryDays', 'Minimum recovery between night blocks (days)', 1, 60],
+  ['Rest between duties, transitions, overtime, call-ins'],
+  ['minRestHrs', 'Minimum rest between duties (hours)', 1, 24], ['recWarn', 'Short-rest: Warning from (count)', 1, 99], ['recHigh', 'Short-rest: High Risk from (count)', 1, 99],
+  ['transWarn', 'Night/Late→Early: Warning from', 1, 99], ['transHigh', 'Night/Late→Early: High Risk from', 1, 99],
+  ['otWindow', 'Overtime window (days)', 3, 31], ['otWarnDays', 'Overtime days: Warning from', 1, 31], ['otHighDays', 'Overtime days: High Risk from', 1, 31],
+  ['wrWorkedWarn', 'WR worked: Warning from (days)', 1, 99], ['wrWorkedHigh', 'WR worked: High Risk from (days)', 1, 99],
+  ['Data handling and shift classes'],
+  ['wrPunches', 'Punches on a day dispatched as WR', 'wrp'], ['trgMode', 'Training (TRG) handling', 'trg'], ['lookbackDays', 'Look-back before the period (days)', 0, 90], ['minWorkedMin', 'Minutes of punches that count as worked', 1, 480],
+  ['earlyFromHr', 'Early shift starts from (hour)', 0, 12], ['earlyBeforeHr', 'Early shift starts before (hour)', 1, 14], ['lateFromHr', 'Late shift starts from (hour)', 8, 23],
+];
+function frBuildSettings() {
+  const g = el('frSettingsGrid'); let h = '';
+  FR_SCHEMA.forEach(r => {
+    if (r.length === 1) { h += `<h4>${esc(r[0])}</h4>`; return; }
+    const [k, label, a, b] = r, id = 'frc_' + k;
+    if (a === 'yn') h += `<div><label for="${id}">${esc(label)}</label><select id="${id}"><option value="0">No</option><option value="1">Yes</option></select></div>`;
+    else if (a === 'wrp') h += `<div><label for="${id}">${esc(label)}</label><select id="${id}"><option value="ignore">Stays a rest day (Dispatch decides) — note only</option><option value="worked">Treat as rest-day work (overtime)</option></select></div>`;
+    else if (a === 'trg') h += `<div><label for="${id}">${esc(label)}</label><select id="${id}"><option value="days">Ignore TRG days; skip staff with no other duty</option><option value="staff">Exclude any staff with a TRG day</option></select></div>`;
+    else if (a === 'grp') h += `<div><label for="${id}">${esc(label)}</label><select id="${id}"><option value="block">Roster block (work run + rest days)</option><option value="week">Calendar week</option></select></div>`;
+    else if (a === 'wk') h += `<div><label for="${id}">${esc(label)}</label><select id="${id}"><option value="0">Sunday</option><option value="1">Monday</option><option value="6">Saturday</option></select></div>`;
+    else h += `<div><label for="${id}">${esc(label)}</label><input type="number" id="${id}" min="${a}" max="${b}" step="1"></div>`;
+  });
+  g.innerHTML = h; frFillSettings();
+}
+function frFillSettings() {
+  const c = FR.cfg;
+  FR_SCHEMA.forEach(r => { if (r.length === 1) return; const e = el('frc_' + r[0]); if (!e) return; e.value = r[2] === 'yn' ? (c[r[0]] ? '1' : '0') : String(c[r[0]]); });
+  /* grouping select holds a word, not a number */
+  el('frCfgRest').value = c.restCodes; el('frCfgWorkedRest').value = c.workedRestCodes; el('frCfgLeave').value = c.leaveCodes; el('frCfgWork').value = c.workCodes; el('frCfgTrain').value = c.trainingCodes; el('frCfgShift').value = c.shiftRef; el('frCfgDept').value = c.deptMap;
+}
+function frReadSettings() {
+  const c = Object.assign({}, FR.cfg);
+  FR_SCHEMA.forEach(r => {
+    if (r.length === 1) return; const k = r[0], e = el('frc_' + k); let v = Number(e.value);
+    if (r[2] === 'grp') { c[k] = e.value === 'week' ? 'week' : 'block'; return; }
+    if (r[2] === 'wrp') { c[k] = e.value === 'worked' ? 'worked' : 'ignore'; return; }
+    if (r[2] === 'trg') { c[k] = e.value === 'staff' ? 'staff' : 'days'; return; }
+    if (r[2] === 'yn') { c[k] = v === 1; return; }
+    if (!isFinite(v)) v = FR_DEFAULTS[k];
+    if (typeof r[2] === 'number') v = Math.min(r[3], Math.max(r[2], Math.round(v)));
+    c[k] = v;
+  });
+  c.restCodes = el('frCfgRest').value; c.workedRestCodes = el('frCfgWorkedRest').value; c.leaveCodes = el('frCfgLeave').value; c.workCodes = el('frCfgWork').value; c.trainingCodes = el('frCfgTrain').value; c.shiftRef = el('frCfgShift').value; c.deptMap = el('frCfgDept').value;
+  if (c.warnConsecFrom > c.maxConsec) c.warnConsecFrom = c.maxConsec;
+  if (c.nightPriorityWeeks < c.nightFlagWeeks) c.nightPriorityWeeks = c.nightFlagWeeks;
+  return c;
+}
+const FR_KIND = { DUTY: 'Duty', WR_WORKED: 'WR worked', WORK: 'Working (no times)', REST: 'WR', LEAVE: 'Leave', UNKNOWN: 'Blank dispatch', UNCLASSIFIED: 'Unclassified code', NODATA: 'No record', WORKED_UNROSTERED: 'Worked (not rostered)', NOSHOW: 'Not worked (no productive attendance)', TRAINING: 'Training (ignored)' };
+const FR_RANK = { 'High Risk': 0, 'Warning': 1, 'Incomplete Data': 2, 'Normal': 3 };
+const FR_PILL = { 'High Risk': 'high', 'Warning': 'warn', 'Incomplete Data': 'gap', 'Normal': 'ok' };
+const frHrs = m => (m === null || m === undefined) ? '—' : minutesToTotalHHMM(m);
+const frRange = () => FR.meta ? `${frFmt(FR.meta.fromMs)} → ${frFmt(FR.meta.toMs)}` : '';
+const frSetStatus = (m, k) => { const s = el('frStatus'); s.textContent = m || ''; s.className = 'status' + (k ? ' ' + k : ''); };
+function frHasHours(r, lvl) { return r.ind.some(i => i.key.indexOf('hours_') === 0 && (!lvl || i.level === lvl)); }
+
+// predicates for the dashboard indicators (also used for click-through filtering)
+const FR_PRED = {
+  total: () => true,
+  consec_high: r => r.flags.has('consec_high'), consec_warn: r => r.flags.has('consec_warn'),
+  wr_insufficient: r => r.flags.has('wr_insufficient'), night_gt2: r => r.flags.has('night_gt2'), night_gt3: r => r.flags.has('night_gt3'),
+  hours: r => frHasHours(r, 'high'),
+  hours_normal: r => r.ind.some(i => i.key === 'hours_normal' && i.level === 'high'), hours_total: r => r.ind.some(i => i.key === 'hours_total' && i.level === 'high'),
+  high: r => r.risk === 'High Risk', warn: r => r.risk === 'Warning', normal: r => r.risk === 'Normal', gap: r => r.risk === 'Incomplete Data' || r.flags.has('data_gap'),
+  short_recovery: r => r.flags.has('short_recovery'), transitions: r => r.flags.has('transitions'), repeat_ot: r => r.flags.has('repeat_ot'),
+  pattern_exceeded: r => r.flags.has('pattern_exceeded'), wr_worked: r => r.flags.has('wr_worked'), wr_gap: r => r.flags.has('wr_gap'), wr_punches: r => r.flags.has('wr_punches'), night_rotation: r => r.flags.has('night_rotation'), night_warn: r => r.flags.has('night_warn'),
+};
+function frCardDefs() {
+  const c = FR.cfg;
+  return {
+    main: [
+      ['total', 'Employees monitored', ''], ['consec_high', `Over ${c.maxConsec} consecutive working days`, 'high'], ['consec_warn', `Approaching the ${c.maxConsec}-day limit (${c.warnConsecFrom}–${c.maxConsec})`, 'warn'],
+      ['wr_insufficient', 'Insufficient weekly rest', 'high'], ['night_gt2', `Over ${c.nightFlagWeeks} consecutive night-shift weeks`, 'high'],
+      ['night_gt3', `Over ${c.nightPriorityWeeks} night-shift weeks (priority)`, 'high'],
+      ['hours_normal', `Over ${c.normalMonthHrs} normal hrs / month`, 'high'], ['hours_total', `Over ${c.totalMonthHrs} total hrs / month (incl. OT)`, 'high'], ['hours', 'Over any working-hour limit', 'high'],
+    ],
+    more: [
+      ['high', 'High Risk (overall)', 'high'], ['warn', 'Warning (overall)', 'warn'], ['normal', 'Normal', 'ok'], ['gap', 'Incomplete data', 'gap'],
+      ['night_warn', `Night weeks: approaching (${c.nightFlagWeeks})`, 'warn'], ['night_rotation', 'Short night-block recovery', 'warn'], ['short_recovery', `Rest under ${c.minRestHrs} h between duties`, 'warn'],
+      ['transitions', 'Night/Late → Early transitions', 'warn'], ['repeat_ot', 'Repeated overtime', 'warn'], ['wr_worked', 'Rest day worked (overtime)', 'high'], ['pattern_exceeded', `Worked beyond ${c.patternMaxOn} days on`, 'warn'], ['wr_punches', 'WR days with punches (info only)', ''], ['wr_gap', 'Long gap between WR days', 'warn'],
+    ],
+  };
+}
+
+// ---- data collection ------------------------------------------------------------------------
+function frCollectOt(ext0, to) {
+  const rows = []; let combined; try { combined = getCombinedMasterLookup(); } catch (e) { return rows; }
+  combined.map.forEach((v, key) => {
+    const sep = key.lastIndexOf('||'); const dateMs = Number(key.slice(sep + 2)); if (sep < 0 || !isFinite(dateMs) || dateMs < ext0 || dateMs > to) return;
+    rows.push({ id: key.slice(0, sep), sap: v.sap, name: v.name || '', line: v.line || '', position: v.position || '', dateMs, dispatched: typeof v.dispatched === 'string' ? v.dispatched : '', otMin: typeof v.minutes === 'number' ? v.minutes : 0 });
+  });
+  return rows;
+}
+function frRosterSpan() {
+  let mn = null, mx = null, staff = new Set(); try { getCombinedMasterLookup().map.forEach((v, key) => { const sep = key.lastIndexOf('||'); const d = Number(key.slice(sep + 2)); if (!isFinite(d)) return; staff.add(key.slice(0, sep)); if (mn === null || d < mn) mn = d; if (mx === null || d > mx) mx = d; }); } catch (e) {}
+  return { mn, mx, staff: staff.size };
+}
+function frCriteria() {
+  const span = frRosterSpan(); let fromMs, toMs;
+  if (el('frPeriodMode').value === 'custom') {
+    fromMs = parseIsoDate(el('frStart').value); toMs = parseIsoDate(el('frEnd').value);
+    if (fromMs === null || toMs === null) throw new Error('Select both a start date and an end date.');
+    if (fromMs > toMs) throw new Error('The start date is after the end date.');
+  } else {
+    if (span.mx === null) throw new Error('No roster data is available. Analyse a roster in the Overtime tab and save it to OT History first.');
+    toMs = span.mx; fromMs = toMs - (Number(el('frRecent').value) - 1) * FR_DAY;
+  }
+  return { fromMs, toMs };
+}
+
+async function frGenerate() {
+  const seq = ++FR.seq; let crit;
+  try { crit = frCriteria(); } catch (e) { frSetStatus(e.message, 'error'); return; }
+  const cfg = FR.cfg, comp = frCompile(cfg), fx = new Date(crit.fromMs), ext0 = Math.min(crit.fromMs - cfg.lookbackDays * FR_DAY, Date.UTC(fx.getUTCFullYear(), fx.getUTCMonth(), 1));
+  frSetStatus('Reading roster, schedules and biometric history…'); el('frGo').disabled = true;
+  try {
+    const otRows = frCollectOt(ext0, crit.toMs);
+    let schedRows = []; try { schedRows = ((await utbLoadSchedule()).rows || []).filter(s => s.dateMs >= ext0 && s.dateMs <= crit.toMs); } catch (e) { schedRows = []; }
+    let periods = [], cover = { min: null, max: null }, bioErr = '';
+    try { const d = await utbLoadPeriods(ext0, crit.toMs); periods = d.periods || []; cover = { min: d.coverMin, max: d.coverMax }; } catch (e) { bioErr = e.message; }
+    if (seq !== FR.seq) return;
+    if (!otRows.length && !schedRows.length) { frSetStatus('No roster or schedule data was found for this period. Save the OT report to OT History (Dispatch column) or load the attendance report first.', 'error'); el('frResults').style.display = 'none'; return; }
+    const staff = frAssemble(otRows, schedRows, periods, comp, cover, cfg);
+    const snaps = []; for (let ms = crit.toMs; ms >= crit.fromMs && snaps.length < 26; ms -= 7 * FR_DAY) snaps.unshift({ ms });
+    const ctx = { cfg, fromMs: crit.fromMs, toMs: crit.toMs, ext0, deptOf: p => frDeptOf(p, comp), refOf: p => frRefOf(p, comp), snaps };
+    const res = [];
+    let excludedTrg = 0;
+    staff.forEach(s => { let any = false; for (const ms of s.days.keys()) if (ms >= crit.fromMs && ms <= crit.toMs) { any = true; break; } if (!any) return;
+      const a = frAnalyse(s, ctx);
+      // staff in training are not conducting duty: left out of every risk count, list and export
+      if (a.trgDays > 0 && (cfg.trgMode === 'staff' || a.dutyDays === 0)) { excludedTrg++; return; }
+      res.push(a); });
+    FR.res = res; FR.snaps = snaps; FR.ind = null; FR.open = null;
+    FR.meta = { fromMs: crit.fromMs, toMs: crit.toMs, ext0, cover, bioErr, generated: Date.now(), comp, counts: { ot: otRows.length, sched: schedRows.length, periods: periods.length }, excludedTrg };
+    frPopulateFilters(); frRender(); frSaveHistory();
+    const hi = res.filter(r => r.risk === 'High Risk').length, wa = res.filter(r => r.risk === 'Warning').length;
+    let msg = `${res.length.toLocaleString()} employees monitored for ${frRange()} — ${hi} High Risk, ${wa} Warning.`;
+    if (excludedTrg) msg += ` ${excludedTrg} staff on training (TRG) were excluded.`;
+    if (bioErr) msg += ' Biometric history unavailable (' + bioErr + ') — scheduled hours were used.';
+    else if (cover.min === null) msg += ' No biometric history is stored, so actual hours and rest-day call-ins could not be verified.';
+    frSetStatus(msg, 'ok');
+  } catch (err) { console.error(err); frSetStatus('Could not generate the dashboard: ' + err.message, 'error'); }
+  finally { el('frGo').disabled = false; }
+}
+
+// ---- filters ----------------------------------------------------------------------------------
+function frPopulateFilters() {
+  const fill = (id, vals, all) => { const sel = el(id), prev = sel.value; const arr = [...new Set(vals.filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    sel.innerHTML = `<option value="">${all}</option>` + arr.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join(''); if (arr.includes(prev)) sel.value = prev; };
+  fill('frDept', FR.res.map(r => r.dept), 'All departments'); fill('frLine', FR.res.map(r => r.line), 'All lines'); fill('frPos', FR.res.map(r => r.position), 'All positions');
+}
+function frBase() {
+  const id = normalizeEmployeeKey(el('frStaff').value.trim()), nm = el('frName').value.trim().toLowerCase(), d = el('frDept').value, l = el('frLine').value, p = el('frPos').value;
+  return FR.res.filter(r => (!el('frStaff').value.trim() || r.id === id) && (!nm || String(r.name).toLowerCase().includes(nm)) && (!d || r.dept === d) && (!l || r.line === l) && (!p || r.position === p));
+}
+function frView() {
+  const risk = el('frRisk').value;
+  return frBase().filter(r => (!risk || r.risk === risk) && (!FR.ind || FR_PRED[FR.ind](r)))
+    .sort((a, b) => (FR_RANK[a.risk] - FR_RANK[b.risk]) || (b.maxConsec - a.maxConsec) || String(a.id).localeCompare(String(b.id), undefined, { numeric: true }));
+}
+
+// ---- render ---------------------------------------------------------------------------------------
+function frRender() {
+  const base = frBase(), defs = frCardDefs();
+  const card = d => `<button type="button" class="fr-card ${d[2]} ${FR.ind === d[0] ? 'on' : ''}" data-ind="${d[0]}"><div class="n">${base.filter(FR_PRED[d[0]]).length.toLocaleString()}</div><div class="l">${esc(d[1])}</div></button>`;
+  el('frCards').innerHTML = defs.main.map(card).join(''); el('frCards2').innerHTML = defs.more.map(card).join('');
+  frRenderBreak(base); frRenderTrend(base); frRenderHours(base); frRenderTable(); frRenderCodes(); frRenderHistory();
+  el('frResults').style.display = 'block';
+}
+function frRenderBreak(base) {
+  const dim = FR.dim, groups = new Map();
+  base.forEach(r => { const k = (dim === 'dept' ? r.dept : dim === 'position' ? r.position : r.line) || '(blank)'; const g = groups.get(k) || { k, n: 0, h: 0, w: 0, g: 0 }; g.n++; if (r.risk === 'High Risk') g.h++; else if (r.risk === 'Warning') g.w++; else if (r.risk === 'Incomplete Data') g.g++; groups.set(k, g); });
+  const arr = [...groups.values()].sort((a, b) => (b.h + b.w) - (a.h + a.w) || b.n - a.n);
+  el('frBreak').innerHTML = arr.length ? `<div class="fr-legend"><span><b style="background:#dc2626"></b>High Risk</span><span><b style="background:#f59e0b"></b>Warning</span><span><b style="background:#6366f1"></b>Incomplete</span><span><b style="background:#86efac"></b>Normal</span></div>` +
+    arr.map(g => `<div class="fr-brow" data-dim="${dim}" data-val="${esc(g.k)}" title="Click to filter"><div class="fr-bname">${esc(g.k)}</div><div class="fr-bar"><i class="h" style="width:${g.h / g.n * 100}%"></i><i class="w" style="width:${g.w / g.n * 100}%"></i><i class="g" style="width:${g.g / g.n * 100}%"></i><i class="o" style="width:${(g.n - g.h - g.w - g.g) / g.n * 100}%"></i></div><div class="fr-bnum">${g.h + g.w} / ${g.n}</div></div>`).join('') : '<div class="pay-empty" style="padding:20px">No data.</div>';
+}
+function frRenderTrend(base) {
+  const sn = FR.snaps, n = sn.length, box = el('frTrend'), pers = el('frPersist');
+  if (!n || !base.length) { box.innerHTML = '<div class="pay-empty" style="padding:20px">No trend data.</div>'; pers.innerHTML = ''; el('frTrendMeta').textContent = ''; return; }
+  const ser = [['any', 'Any threshold exceeded', '#dc2626'], ['c', `Over ${FR.cfg.maxConsec} consecutive days`, '#7c3aed'], ['h', 'Hours over limit', '#0891b2'], ['n', `Over ${FR.cfg.nightFlagWeeks} night weeks`, '#d97706']];
+  const vals = ser.map(s => sn.map((_, i) => base.filter(r => r.trend[i] && r.trend[i][s[0]]).length));
+  const mx = Math.max(1, ...vals.flat()), W = 640, H = 190, L = 38, R = 12, T = 12, B = 28;
+  const x = i => L + (n === 1 ? (W - L - R) / 2 : i * (W - L - R) / (n - 1)), y = v => T + (H - T - B) * (1 - v / mx);
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Fatigue risk trend">`;
+  for (let k = 0; k <= 4; k++) { const v = Math.round(mx * k / 4), yy = y(mx * k / 4); svg += `<line x1="${L}" y1="${yy}" x2="${W - R}" y2="${yy}" stroke="#e2e8f0"/><text x="${L - 6}" y="${yy + 4}" text-anchor="end" font-size="10" fill="#64748b">${v}</text>`; }
+  ser.forEach((s, si) => { const pts = vals[si].map((v, i) => `${x(i)},${y(v)}`).join(' '); svg += `<polyline fill="none" stroke="${s[2]}" stroke-width="${si === 0 ? 2.8 : 1.8}" points="${pts}"/>` + vals[si].map((v, i) => `<circle cx="${x(i)}" cy="${y(v)}" r="${si === 0 ? 3.2 : 2.2}" fill="${s[2]}"><title>${s[1]} — ${frFmt(sn[i].ms)}: ${v}</title></circle>`).join(''); });
+  [0, Math.floor((n - 1) / 2), n - 1].filter((v, i, a) => a.indexOf(v) === i).forEach(i => { svg += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle" font-size="10" fill="#64748b">${esc(frFmt(sn[i].ms).slice(0, 5))}</text>`; });
+  svg += '</svg>';
+  box.innerHTML = svg + `<div class="fr-legend">${ser.map(s => `<span><b style="background:${s[2]}"></b>${esc(s[1])}</span>`).join('')}</div>`;
+  el('frTrendMeta').textContent = `${n} weekly snapshot${n === 1 ? '' : 's'} (employees affected)`;
+  const dg = new Map(); base.forEach(r => { const g = dg.get(r.dept) || { d: r.dept, per: sn.map(() => 0) }; sn.forEach((_, i) => { if (r.trend[i] && r.trend[i].any) g.per[i]++; }); dg.set(r.dept, g); });
+  const rows = [...dg.values()].map(g => ({ d: g.d, weeks: g.per.filter(v => v > 0).length, avg: g.per.reduce((a, b) => a + b, 0) / n, peak: Math.max(...g.per) })).filter(g => g.weeks).sort((a, b) => b.weeks - a.weeks || b.avg - a.avg).slice(0, 6);
+  pers.innerHTML = rows.length ? `<div style="margin-top:4px"><b>Recurring exposure by department</b></div><table><tr><th>Department</th><th>Weeks with exposure</th><th>Avg. staff</th><th>Peak</th></tr>${rows.map(g => `<tr><td>${esc(g.d)}</td><td>${g.weeks} of ${n}</td><td>${g.avg.toFixed(1)}</td><td>${g.peak}</td></tr>`).join('')}</table>` : '<div style="margin-top:6px">No department shows a threshold breach in the weekly snapshots.</div>';
+}
+function frRenderHours(base) {
+  const rows = []; base.forEach(r => (r.hoursExceed || []).forEach(m => rows.push({ r, m })));
+  rows.sort((a, b) => b.m.total - a.m.total);
+  const shown = rows.slice(0, 150), c = FR.cfg;
+  el('frHrsBody').innerHTML = shown.length ? shown.map(({ r, m }) => `<tr><td class="num">${esc(r.id)}</td><td class="name">${esc(r.name) || '—'}</td><td>${esc(r.dept)}</td><td>${esc(r.line) || '—'}</td><td>${esc(m.label)}${m.partial ? ' <small>(to ' + esc(frFmt(m.lastMs)) + ')</small>' : ''}</td>
+    <td class="num ${m.nOver ? 'fr-over' : ''}">${frHrs(m.normal)}</td><td class="num">${frHrs(m.ot)}</td><td class="num ${m.tOver ? 'fr-over' : ''}"><b>${frHrs(m.total)}</b></td>
+    <td>${m.nOver ? `<span class="fr-pill high" title="Normal hours over the limit by ${frHrs(m.nOver)}">Normal &gt; ${c.normalMonthHrs} h (+${frHrs(m.nOver)})</span> ` : ''}${m.tOver ? `<span class="fr-pill high" title="Total hours over the limit by ${frHrs(m.tOver)}">Total &gt; ${c.totalMonthHrs} h (+${frHrs(m.tOver)})</span>` : ''}</td></tr>`).join('')
+    : `<tr><td colspan="9" class="pay-empty">No staff member exceeds ${c.normalMonthHrs} normal hours or ${c.totalMonthHrs} total hours in a month for the selected period.</td></tr>`;
+  el('frHrsMeta').textContent = `${rows.length} exceedance${rows.length === 1 ? '' : 's'} · ${new Set(rows.map(x => x.r.id)).size} staff`;
+  const cap = el('frHrsCap'); if (rows.length > 150) { cap.style.display = 'block'; cap.textContent = 'Showing the 150 highest of ' + rows.length + '. Export to Excel (working-hour exceedances) for the full list.'; } else cap.style.display = 'none';
+}
+function frActLabel(id) { const a = FR.actions[id]; return a ? `<span class="fr-ast ${a.status}">${esc(a.status)}</span>` : '<span class="fr-ast none">—</span>'; }
+function frHoursCells(r) {
+  const p = r.peak, c = FR.cfg; if (!p || !p.total) return '<td class="num">—</td><td class="num">—</td><td class="num">—</td>';
+  return `<td class="num ${p.nOver ? 'fr-over' : ''}" title="${esc(p.label)}">${frHrs(p.normal)}<br><small>${esc(p.label)}</small></td><td class="num">${frHrs(p.ot)}</td><td class="num ${p.tOver ? 'fr-over' : ''}">${frHrs(p.total)}</td>`;
+}
+function frCodeText(r, max) { const m = max || 8, a = (r.codeCounts || []); return a.length ? a.slice(0, m).map(x => x[0] + ' ×' + x[1]).join(' · ') + (a.length > m ? ' …' : '') : '—'; }
+function frIndTags(r) {
+  let h = r.ind.map(i => `<span class="fr-tag ${i.level}" title="${esc(i.detail)}">${esc(i.label)}: ${esc(i.value)}</span>`).join('');
+  if (r.flags.has('data_gap')) h += `<span class="fr-tag gap" title="${esc(r.dataGapText || '')}">Incomplete data (${r.gapDays} day${r.gapDays === 1 ? '' : 's'})</span>`;
+  return h || '<span style="color:#94a3b8">None</span>';
+}
+function frRenderTable() {
+  const v = frView(), shown = v.slice(0, FR_ROWCAP), base = frBase();
+  const chip = el('frChip');
+  if (FR.ind) { const d = [...frCardDefs().main, ...frCardDefs().more].find(x => x[0] === FR.ind); chip.style.display = 'inline-flex'; chip.innerHTML = `<span>Showing: <b>${esc(d ? d[1] : FR.ind)}</b></span><button type="button" id="frChipX" title="Clear">✕</button>`; } else chip.style.display = 'none';
+  el('frBody').innerHTML = shown.length ? shown.map(r => {
+    const win = d => d && d.sMin !== null ? ` ${utbClock(d.sMin)}–${utbClock(d.eMin)}${d.eMin >= 1440 ? ' (+1)' : ''}` : '';
+    const latest = r.latestNight ? `${frFmt(r.latestNight.ms)}${r.latestNight.code ? ' · ' + esc(r.latestNight.code) + win(r.latestNight) : ''}` : '—';
+    const disp = frCodeText(r);
+    const open = FR.open === r.id;
+    return `<tr class="fr-main" data-id="${esc(r.id)}"><td class="num">${esc(r.id)}</td><td class="name">${esc(r.name) || '—'}</td><td>${esc(r.dept)}</td><td>${esc(r.line) || '—'}</td><td>${esc(r.position) || '—'}</td>
+      <td class="num" style="white-space:nowrap">${esc(frRange())}</td><td class="num" title="${r.bioDays} of ${r.dutyDays} working days have biometric records">${r.bioDays ? frHrs(r.totActMin) : '—'}</td><td class="num">${r.totSchMin ? frHrs(r.totSchMin) : '—'}</td>${frHoursCells(r)}
+      <td class="num"><b>${r.maxConsec}</b></td><td class="num">${r.wrActual} / ${r.wrSched}${r.wrWorked ? ` <span style="color:#b91c1c">(${r.wrWorked} worked)</span>` : ''}</td>
+      <td class="num">${r.nightWeeks || 0}</td><td class="num" style="white-space:nowrap">${latest}</td><td class="fr-disp">${esc(disp)}</td><td class="fr-ind">${frIndTags(r)}</td>
+      <td><span class="fr-pill ${FR_PILL[r.risk]}">${esc(r.risk)}</span></td><td>${frActLabel(r.id)}</td></tr>` + (open ? frDetailRow(r) : '');
+  }).join('') : '<tr><td colspan="19" class="pay-empty">No employees match the current filters.</td></tr>';
+  el('frMeta').textContent = `${v.length.toLocaleString()} of ${base.length.toLocaleString()} employees`;
+  const cap = el('frCap'); if (v.length > FR_ROWCAP) { cap.style.display = 'block'; cap.textContent = `Showing the first ${FR_ROWCAP} of ${v.length.toLocaleString()} employees (highest risk first). Narrow the filters or export to Excel for the full list.`; } else cap.style.display = 'none';
+  el('frExport').disabled = !FR.res.length;
+}
+function frDetailRow(r) {
+  const meta = FR.meta, a = FR.actions[r.id] || {};
+  const inds = r.ind.length ? r.ind.map(i => `<li><span class="fr-pill ${i.level}">${i.level === 'high' ? 'High Risk' : 'Warning'}</span>&nbsp; <b>${esc(i.label)}</b> — ${esc(i.detail)}</li>`).join('') : '<li>No threshold breach identified.</li>';
+  const rf = r.ref, refTxt = rf ? `<div class="fr-d-note"><b>Working-hours reference (${esc(rf.dept)} · ${esc(rf.abbr)}):</b> ${frHrs(rf.totalMin)} shift − ${frHrs(rf.breakMin)} break − ${rf.handMin} min handover = ${frHrs(rf.totalMin - rf.breakMin - rf.handMin)} productive. Break and handover are excluded; productive hours drive every hour limit.</div>` : '<div class="fr-d-note">ⓘ This position is not in the shift-timing reference, so no break or handover is deducted.</div>';
+  const notes = refTxt + r.notes.map(n => `<div class="fr-d-note">ⓘ ${esc(n)}</div>`).join('');
+  const log = r.dayLog.filter(d => d.ms >= meta.fromMs && d.ms <= meta.toMs).map(d => {
+    const win = d.sMin !== null ? `${utbClock(d.sMin)}–${utbClock(d.eMin)}${d.eMin >= 1440 ? ' (+1)' : ''}` : '—';
+    return `<tr class="k-${d.kind}"><td>${esc(frFmt(d.ms))}</td><td>${esc(d.code) || '—'}</td><td>${esc(FR_KIND[d.kind] || d.kind)}</td><td>${win}</td><td>${d.bio ? esc(utbPunchClock(d.bio.inTs, d.ms)) : '—'}</td><td>${d.bio ? esc(utbPunchClock(d.bio.outTs, d.ms)) : '—'}</td><td>${d.schMin !== null ? frHrs(d.schMin) : '—'}</td><td>${d.bio ? frHrs(d.bio.mins) : '—'}</td><td>${d.bio && d.dedAct ? '−' + frHrs(d.dedAct) : (d.bio ? '0:00' : '—')}</td><td>${d.bio ? frHrs(d.actMin) : '—'}</td><td>${d.isNight ? 'Night' : (d.cls || '')}</td><td>${d.otMin ? frHrs(d.otMin) : ''}</td><td>${d.run || ''}</td></tr>`;
+  }).join('');
+  return `<tr class="fr-detail" data-for="${esc(r.id)}"><td colspan="19"><ul class="fr-d-ind">${inds}</ul>${notes}
+    <div class="fr-log"><table><tr><th>Date</th><th>Duty code</th><th>Day type</th><th>Scheduled</th><th>Punch-in</th><th>Punch-out</th><th>Sched. hrs</th><th>Gross hrs</th><th>Break + handover</th><th>Productive hrs</th><th>Shift</th><th>OT</th><th>Run</th></tr>${log}</table></div>
+    <div class="fr-act"><b style="font-size:12.5px">Action tracking</b>
+      <select id="frActSel"><option ${a.status === 'Outstanding' || !a.status ? 'selected' : ''}>Outstanding</option><option ${a.status === 'Reviewed' ? 'selected' : ''}>Reviewed</option><option ${a.status === 'Addressed' ? 'selected' : ''}>Addressed</option></select>
+      <input id="frActNote" type="text" placeholder="Note (e.g. roster adjusted, discussed with line manager)" value="${esc(a.note || '')}">
+      <button type="button" class="btn-secondary" id="frActSave" data-id="${esc(r.id)}">Save</button>
+      <span style="font-size:11.5px;color:#64748b">${a.ts ? 'Last updated ' + esc(new Date(a.ts).toLocaleString()) + (a.risk ? ' · risk then: ' + esc(a.risk) : '') : 'No action recorded yet'}</span></div>
+    ${a.history && a.history.length > 1 ? `<div class="fr-d-note">History: ${a.history.slice(-5).map(h => esc(new Date(h.ts).toLocaleDateString() + ' ' + h.status)).join(' · ')}</div>` : ''}</td></tr>`;
+}
+function frRenderCodes() {
+  const meta = FR.meta; if (!meta) return; const m = new Map();
+  FR.res.forEach(r => r.dayLog.forEach(d => { if (d.ms < meta.fromMs || d.ms > meta.toMs || d.kind === 'NODATA') return; const k = (d.code || '(blank)') + '|' + d.kind; m.set(k, (m.get(k) || 0) + 1); }));
+  const rows = [...m.entries()].map(([k, n]) => { const [c, kind] = k.split('|'); return { c, kind, n }; }).sort((a, b) => (a.kind === 'UNCLASSIFIED' ? -1 : 0) - (b.kind === 'UNCLASSIFIED' ? -1 : 0) || b.n - a.n);
+  const uc = rows.filter(r => r.kind === 'UNCLASSIFIED'), shown = rows.slice(0, 80);
+  const noRef = new Map(); FR.res.forEach(r => { if (!r.ref) { const k = r.position || '(blank)'; noRef.set(k, (noRef.get(k) || 0) + 1); } });
+  const refNote = noRef.size ? `<div class="fr-d-note" style="color:#b45309"><b>${[...noRef.values()].reduce((a, b) => a + b, 0)} staff hold positions that are not in the shift-timing reference</b> — nothing is deducted for break or handover and their department comes from the department mapping: ${esc([...noRef.entries()].sort((a, b) => b[1] - a[1]).slice(0, 15).map(x => x[0] + ' (' + x[1] + ')').join(', '))}. Add them to the shift-timing reference in “Thresholds &amp; rules”.</div>` : '<div class="fr-d-note">Every position was found in the shift-timing reference.</div>';
+  el('frCodes').innerHTML = refNote + (uc.length ? `<div class="fr-d-note" style="color:#b45309"><b>${uc.length} code(s) are unclassified</b> — those days are treated as missing data, not as work or rest. Add each code to the matching list in “Thresholds &amp; rules”: ${esc(uc.map(r => r.c).join(', '))}.</div>` : '<div class="fr-d-note">Every code found was classified.</div>') +
+    `<div class="fr-log" style="max-height:240px"><table><tr><th>Dispatch code</th><th>Classified as</th><th>Staff-days</th></tr>${shown.map(r => `<tr class="k-${r.kind}"><td>${esc(r.c)}</td><td>${esc(FR_KIND[r.kind] || r.kind)}</td><td>${r.n}</td></tr>`).join('')}</table></div>`;
+}
+function frSaveHistory() {
+  try {
+    const h = JSON.parse(localStorage.getItem('frHistoryV1') || '[]') || [], m = FR.meta;
+    h.push({ ts: m.generated, from: m.fromMs, to: m.toMs, n: FR.res.length, high: FR.res.filter(r => r.risk === 'High Risk').length, warn: FR.res.filter(r => r.risk === 'Warning').length, gap: FR.res.filter(r => r.risk === 'Incomplete Data').length, c13: FR.res.filter(FR_PRED.consec_high).length, n3: FR.res.filter(FR_PRED.night_gt3).length });
+    localStorage.setItem('frHistoryV1', JSON.stringify(h.slice(-40)));
+  } catch (e) { /* storage unavailable */ }
+}
+function frRenderHistory() {
+  let h = []; try { h = JSON.parse(localStorage.getItem('frHistoryV1') || '[]') || []; } catch (e) {}
+  el('frHist').innerHTML = h.length ? `<div class="fr-log" style="max-height:220px"><table><tr><th>Generated</th><th>Period</th><th>Employees</th><th>High Risk</th><th>Warning</th><th>Incomplete</th><th>Over ${FR.cfg.maxConsec} days</th><th>Night priority</th></tr>${h.slice().reverse().map(x => `<tr><td>${esc(new Date(x.ts).toLocaleString())}</td><td>${esc(frFmt(x.from) + ' → ' + frFmt(x.to))}</td><td>${x.n}</td><td>${x.high}</td><td>${x.warn}</td><td>${x.gap}</td><td>${x.c13}</td><td>${x.n3}</td></tr>`).join('')}</table></div>` : 'No reports generated yet.';
+}
+
+// ---- info / settings / events -------------------------------------------------------------------
+async function frRefreshInfo() {
+  const box = el('frInfo'); if (!box) return; const parts = [], span = frRosterSpan();
+  if (span.mn !== null) {
+    parts.push(`<span><b>Roster / dispatch data:</b> ${span.staff.toLocaleString()} staff · ${esc(frFmt(span.mn))} → ${esc(frFmt(span.mx))}</span>`);
+    ['frStart', 'frEnd'].forEach(i => { el(i).min = new Date(span.mn).toISOString().slice(0, 10); el(i).max = new Date(span.mx).toISOString().slice(0, 10); });
+    if (!el('frStart').value && !el('frEnd').value) { el('frEnd').value = new Date(span.mx).toISOString().slice(0, 10); el('frStart').value = new Date(span.mx - 29 * FR_DAY).toISOString().slice(0, 10); }
+  } else parts.push('<span class="warn">No roster data yet — analyse a roster in the Overtime tab and save it to OT History.</span>');
+  try {
+    if (!BVH.available) parts.push('<span class="warn">Biometric history unavailable in this browser.</span>');
+    else { const st = await bvhStats(); parts.push(st.total ? `<span><b>Biometric history:</b> ${st.total.toLocaleString()} punches · ${esc(frFmt(bvDayKey(st.minTs)))} → ${esc(frFmt(bvDayKey(st.maxTs)))}</span>` : '<span class="warn">No biometric history stored — actual hours and rest-day call-ins cannot be verified.</span>'); }
+  } catch (e) { parts.push('<span class="warn">Biometric history unreadable.</span>'); }
+  box.innerHTML = parts.join('');
+}
+function frTogglePeriod() { const c = el('frPeriodMode').value === 'custom'; document.querySelectorAll('#frCard .fr-recent').forEach(e => e.style.display = c ? 'none' : ''); document.querySelectorAll('#frCard .fr-custom').forEach(e => e.style.display = c ? '' : 'none'); }
+function frResetFilters() {
+  ['frStaff', 'frName'].forEach(i => el(i).value = ''); ['frDept', 'frLine', 'frPos', 'frRisk'].forEach(i => el(i).value = ''); FR.ind = null; FR.open = null;
+  el('frPeriodMode').value = 'recent'; el('frRecent').value = '30'; frTogglePeriod(); if (FR.res.length) frRender();
+}
+
+// ---- Excel export -----------------------------------------------------------------------------------
+async function frExport() {
+  const scope = el('frExportScope').value; let rows;
+  if (scope === 'all') rows = FR.res.slice(); else if (scope === 'atrisk') rows = FR.res.filter(r => r.risk === 'High Risk' || r.risk === 'Warning');
+  else if (scope === 'hours') rows = FR.res.filter(r => r.hoursExceed && r.hoursExceed.length);
+  else if (scope === 'high') rows = FR.res.filter(r => r.risk === 'High Risk'); else if (scope === 'warn') rows = FR.res.filter(r => r.risk === 'Warning'); else rows = frView();
+  rows = rows.slice().sort((a, b) => (FR_RANK[a.risk] - FR_RANK[b.risk]) || String(a.id).localeCompare(String(b.id), undefined, { numeric: true }));
+  if (!rows.length) { frSetStatus('Nothing to export for that selection.', 'error'); return; }
+  const btn = el('frExport'), orig = btn.innerHTML; btn.disabled = true; btn.textContent = 'Building…';
+  try {
+    const m = FR.meta, c = FR.cfg, period = frRange(), wb = new ExcelJS.Workbook();
+    const head = ws => ws.getRow(1).eachCell(x => { x.font = { bold: true, color: { argb: 'FFFFFFFF' } }; x.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB45309' } }; x.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }; });
+    const ws = wb.addWorksheet('Fatigue Risk Report');
+    ws.columns = [['Staff ID', 11], ['Employee Name', 28], ['Department', 26], ['Operational Line', 14], ['Position', 24], ['Reporting Period', 24], ['Total Actual Working Hours', 13], ['Total Scheduled Working Hours', 13], ['Working Days With Biometric', 12], ['Max Consecutive Working Days', 13],
+      ['Weekly Rest Days (actual)', 12], ['Weekly Rest Days (scheduled)', 12], ['Rest Days Worked (overtime)', 11], ['Consecutive Night-Shift Weeks', 13], ['Night Duties In Period', 11], ['Latest Night-Shift Assignment', 20], ['Overtime Days', 10], ['Fatigue-Risk Indicators', 70], ['Risk Classification', 16], ['Action Status', 13], ['Action Note', 30], ['Data Notes', 60], ['Dispatch Duties In Period (code × days)', 50], ['Latest Dispatch Duty', 26], ['Peak Month (hours)', 14], ['Normal Hours (peak month)', 13], ['Overtime Hours (peak month)', 13], ['Combined Hours (peak month)', 13], ['Break + Handover Excluded (hh:mm)', 14], ['Working-Hours Reference', 52]]
+      .map(a => ({ header: a[0], width: a[1] }));
+    const colour = { 'High Risk': 'FFB91C1C', 'Warning': 'FFB45309', 'Incomplete Data': 'FF3730A3', 'Normal': 'FF15803D' };
+    rows.forEach(r => {
+      const a = FR.actions[r.id] || {};
+      const row = ws.addRow([r.id, r.name, r.dept, r.line, r.position, period, r.bioDays ? frHrs(r.totActMin) : '', r.totSchMin ? frHrs(r.totSchMin) : '', r.bioDays, r.maxConsec, r.wrActual, r.wrSched, r.wrWorked, r.nightWeeks || 0, r.nightDutyCount,
+        r.latestNight ? frFmt(r.latestNight.ms) + (r.latestNight.code ? ' (' + r.latestNight.code + ')' : '') : '', r.otDays,
+        r.ind.map(i => `[${i.level === 'high' ? 'HIGH' : 'WARN'}] ${i.label}: ${i.detail}`).concat(r.flags.has('data_gap') ? ['[DATA] ' + (r.dataGapText || 'Incomplete data')] : []).join('\n') || 'None',
+        r.risk, a.status || '', a.note || '', r.notes.join(' '), frCodeText(r, 40), r.latestDuty ? frFmt(r.latestDuty.ms) + ' · ' + r.latestDuty.code + (r.latestDuty.sMin !== null ? ' ' + utbClock(r.latestDuty.sMin) + '–' + utbClock(r.latestDuty.eMin) + (r.latestDuty.eMin >= 1440 ? ' (+1)' : '') : '') : '', r.peak && r.peak.total ? r.peak.label : '', r.peak && r.peak.total ? frHrs(r.peak.normal) : '', r.peak && r.peak.total ? frHrs(r.peak.ot) : '', r.peak && r.peak.total ? frHrs(r.peak.total) : '', r.bioDays ? frHrs(r.dedMin) : '', r.ref ? `${r.ref.dept} · ${r.ref.abbr}: ${frHrs(r.ref.totalMin)} shift − ${frHrs(r.ref.breakMin)} break − ${r.ref.handMin} min handover = ${frHrs(r.ref.totalMin - r.ref.breakMin - r.ref.handMin)}` : 'Not in reference (nothing deducted)']);
+      row.getCell(18).alignment = { wrapText: true, vertical: 'top' }; row.getCell(22).alignment = { wrapText: true, vertical: 'top' };
+      row.getCell(19).font = { bold: true, color: { argb: colour[r.risk] } };
+    });
+    head(ws); ws.views = [{ state: 'frozen', ySplit: 1, xSplit: 2 }]; ws.autoFilter = { from: 'A1', to: { row: 1, column: 30 } };
+
+    const wi = wb.addWorksheet('Indicators');
+    wi.columns = [['Staff ID', 11], ['Employee Name', 28], ['Department', 24], ['Line', 12], ['Position', 22], ['Indicator', 34], ['Level', 11], ['Value', 16], ['Detail', 100]].map(a => ({ header: a[0], width: a[1] }));
+    rows.forEach(r => { r.ind.forEach(i => wi.addRow([r.id, r.name, r.dept, r.line, r.position, i.label, i.level === 'high' ? 'High Risk' : 'Warning', i.value, i.detail]));
+      if (r.flags.has('data_gap')) wi.addRow([r.id, r.name, r.dept, r.line, r.position, 'Incomplete data', 'Data', `${r.gapDays} day(s)`, r.dataGapText || '']); });
+    head(wi); wi.views = [{ state: 'frozen', ySplit: 1 }]; wi.autoFilter = { from: 'A1', to: { row: 1, column: 9 } };
+
+    const wh = wb.addWorksheet('Monthly Hours');
+    wh.columns = [['Staff ID', 11], ['Employee Name', 28], ['Department', 24], ['Line', 12], ['Position', 22], ['Month', 12], ['Normal Hours (hh:mm)', 14], ['Overtime Hours (hh:mm)', 14], ['Combined Hours (hh:mm)', 14],
+      ['Normal Limit (h)', 10], ['Normal vs Limit', 24], ['Total Limit (h)', 10], ['Combined vs Limit', 24], ['Working Days Counted', 11], ['Days Without Biometric', 12], ['Month Status', 18]].map(a => ({ header: a[0], width: a[1] }));
+    rows.forEach(r => (r.months || []).forEach(mm => {
+      if (!mm.total && !mm.missingBio) return;
+      const nS = mm.nOver > 0 ? 'EXCEEDS by ' + frHrs(mm.nOver) : mm.normal >= c.normalMonthHrs * 60 * c.warnPct / 100 ? 'Approaching' : 'Within limit', tS = mm.tOver > 0 ? 'EXCEEDS by ' + frHrs(mm.tOver) : mm.total >= c.totalMonthHrs * 60 * c.warnPct / 100 ? 'Approaching' : 'Within limit';
+      const row = wh.addRow([r.id, r.name, r.dept, r.line, r.position, mm.label, frHrs(mm.normal), frHrs(mm.ot), frHrs(mm.total), c.normalMonthHrs, nS, c.totalMonthHrs, tS, mm.counted, mm.missingBio, mm.partial ? 'Month to ' + frFmt(mm.lastMs) : 'Full month']);
+      [11, 13].forEach(ci => { if (/EXCEEDS/.test(String(row.getCell(ci).value))) row.getCell(ci).font = { bold: true, color: { argb: 'FFB91C1C' } }; });
+    }));
+    head(wh); wh.views = [{ state: 'frozen', ySplit: 1, xSplit: 2 }]; wh.autoFilter = { from: 'A1', to: { row: 1, column: 16 } };
+
+    const wd = wb.addWorksheet('Daily Log');
+    wd.columns = [['Staff ID', 11], ['Employee Name', 26], ['Date', 12], ['Duty Code', 14], ['Day Type', 20], ['Scheduled Start', 11], ['Scheduled End', 12], ['Punch-In', 12], ['Punch-Out', 12], ['Scheduled Hrs (productive)', 12], ['Gross Hrs (punch to punch)', 12], ['Break + Handover Excluded', 12], ['Productive Hrs', 11], ['Shift', 8], ['Overtime', 10], ['Consecutive Run', 11]].map(a => ({ header: a[0], width: a[1] }));
+    let n = 0;
+    rows.forEach(r => r.dayLog.forEach(d => { if (d.ms < m.fromMs || d.ms > m.toMs || n > 60000) return; n++;
+      wd.addRow([r.id, r.name, frFmt(d.ms), d.code, FR_KIND[d.kind] || d.kind, d.sMin !== null ? utbClock(d.sMin) : '', d.eMin !== null ? utbClock(d.eMin) + (d.eMin >= 1440 ? ' (+1)' : '') : '',
+        d.bio ? utbPunchClock(d.bio.inTs, d.ms) : '', d.bio ? utbPunchClock(d.bio.outTs, d.ms) : '', d.schMin !== null ? frHrs(d.schMin) : '', d.bio ? frHrs(d.bio.mins) : '', d.bio ? frHrs(d.dedAct) : '', d.bio ? frHrs(d.actMin) : '', d.isNight ? 'Night' : (d.cls || ''), d.otMin ? frHrs(d.otMin) : '', d.run || '']); }));
+    head(wd); wd.views = [{ state: 'frozen', ySplit: 1 }]; wd.autoFilter = { from: 'A1', to: { row: 1, column: 16 } };
+
+    const wsu = wb.addWorksheet('Settings & Notes');
+    wsu.getCell('A1').value = 'Fatigue Risk Indicator — report details'; wsu.getCell('A1').font = { bold: true, size: 14 };
+    const info = [['Reporting period', period], ['Export selection', el('frExportScope').selectedOptions[0].textContent.replace('Export: ', '')], ['Employees exported', rows.length], ['Generated', new Date(m.generated).toLocaleString()],
+      ['Biometric history covers', m.cover.min !== null ? frFmt(m.cover.min) + ' → ' + frFmt(m.cover.max) : 'none stored'], ['Look-back used for streaks', c.lookbackDays + ' days'], ['Punches on a WR day', c.wrPunches === 'worked' ? 'Treated as rest-day work' : 'Stay rest days (Dispatch decides); shown as a note'], ['Training (TRG) staff excluded', (m.excludedTrg || 0) + ' (' + (c.trgMode === 'staff' ? 'any TRG day' : 'training-only staff; TRG days ignored for others') + ')'],
+      ['Current filters', ['Staff ID: ' + (el('frStaff').value || 'all'), 'Name: ' + (el('frName').value || 'all'), 'Department: ' + (el('frDept').value || 'all'), 'Line: ' + (el('frLine').value || 'all'), 'Position: ' + (el('frPos').value || 'all'), 'Risk: ' + (el('frRisk').value || 'all')].join(' | ')],
+      ['', ''], ['Thresholds used', ''], ['Consecutive days: High Risk above', c.maxConsec], ['Consecutive days: Warning from', c.warnConsecFrom], ['Leave day resets the run', c.leaveResets ? 'Yes' : 'No'],
+      ['Night weeks / rest counted by', c.nightGrouping === 'week' ? 'Calendar week' : 'Roster block (work run + rest days)'], ['Rest days required after each work block', c.reqRestRun], ['Longest roster work run (days on)', c.patternMaxOn], ['Required WR per week (calendar-week mode)', c.reqWR], ['Warn if days between WR exceed', c.wrGapWarn], ['Daily / weekly hours', `${c.dailyHrs} / ${c.weeklyHrs} (${c.weeklyWindow} d)`], ['Monthly limit — normal hours (excl. overtime)', c.normalMonthHrs + ' h'], ['Monthly limit — total hours (incl. overtime)', c.totalMonthHrs + ' h'], ['Hours basis', 'Productive hours = actual attendance (first punch-in to last punch-out) − break − handover per the shift-timing reference; normal = productive − overtime' + (c.monthFallback ? '; scheduled hours used when no biometric' : '')], ['Warning at % of hour limits', c.warnPct],
+      ['Night duties for a night week', c.nightWeekMin], ['Night weeks: flag above / priority above', `${c.nightFlagWeeks} / ${c.nightPriorityWeeks}`], ['Min. recovery between night blocks (days)', c.nightRecoveryDays],
+      ['Minimum rest between duties (h)', c.minRestHrs], ['Overtime: Warning / High Risk (days in window)', `${c.otWarnDays} / ${c.otHighDays} in ${c.otWindow} d`], ['', ''],
+      ['Method', 'Overnight duties are counted once, on the day they start. Only a qualifying WR resets the consecutive-day count. Night weeks are counted per roster block (a 5- or 6-day work run plus its rest days); work on a rest day counts as overtime. Actual hours = first punch-in to last punch-out of the attendance period; scheduled hours come from the Dispatch times. Days with missing roster data are reported as Incomplete Data and are never treated as compliant.']];
+    info.forEach((p, i) => { wsu.getCell(`A${3 + i}`).value = p[0]; wsu.getCell(`B${3 + i}`).value = p[1]; wsu.getCell(`A${3 + i}`).font = { bold: true }; wsu.getCell(`B${3 + i}`).alignment = { wrapText: true, vertical: 'top' }; });
+    wsu.getColumn(1).width = 46; wsu.getColumn(2).width = 100;
+
+    const buf = await wb.xlsx.writeBuffer(), a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    a.download = `Fatigue_Risk_${scope === 'view' ? 'Filtered' : scope === 'atrisk' ? 'AtRisk' : scope === 'high' ? 'HighRisk' : scope === 'warn' ? 'Approaching' : 'All'}_${frFmt(m.fromMs).replace(/\./g, '-')}_to_${frFmt(m.toMs).replace(/\./g, '-')}.xlsx`;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  } catch (err) { console.error(err); frSetStatus('Failed to build the Excel file: ' + err.message, 'error'); }
+  finally { btn.innerHTML = orig; btn.disabled = !FR.res.length; }
+}
+
+(function frInit() {
+  if (!el('frCard')) return;
+  frBuildSettings(); frTogglePeriod();
+  el('frPeriodMode').addEventListener('change', frTogglePeriod);
+  el('frGo').addEventListener('click', frGenerate); el('frReset').addEventListener('click', frResetFilters); el('frExport').addEventListener('click', frExport);
+  el('frSaveCfg').addEventListener('click', () => { FR.cfg = frReadSettings(); const ok = frCfgSave(FR.cfg); frFillSettings(); el('frCfgMsg').textContent = ok ? 'Saved. Click “Generate dashboard” to apply.' : 'Could not save in this browser; settings apply to this session only.'; });
+  el('frResetCfg').addEventListener('click', () => { FR.cfg = Object.assign({}, FR_DEFAULTS); frCfgSave(FR.cfg); frFillSettings(); el('frCfgMsg').textContent = 'Defaults restored. Click “Generate dashboard” to apply.'; });
+  ['frStaff', 'frName'].forEach(i => el(i).addEventListener('input', () => { if (FR.res.length) { FR.open = null; frRender(); } }));
+  ['frDept', 'frLine', 'frPos', 'frRisk'].forEach(i => el(i).addEventListener('change', () => { if (FR.res.length) { FR.open = null; frRender(); } }));
+  el('frCard').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.type !== 'number') { e.preventDefault(); frGenerate(); } });
+  el('frCard').addEventListener('click', e => {
+    const t = e.target;
+    const card = t.closest('.fr-card'); if (card) { FR.ind = FR.ind === card.dataset.ind ? null : card.dataset.ind; FR.open = null; frRender(); return; }
+    const tab = t.closest('.fr-tab'); if (tab) { FR.dim = tab.dataset.dim; document.querySelectorAll('#frCard .fr-tab').forEach(b => b.classList.toggle('on', b === tab)); frRenderBreak(frBase()); return; }
+    const br = t.closest('.fr-brow'); if (br) { const sel = el(br.dataset.dim === 'dept' ? 'frDept' : br.dataset.dim === 'line' ? 'frLine' : 'frPos'); sel.value = br.dataset.val === '(blank)' ? '' : br.dataset.val; FR.open = null; frRender(); return; }
+    if (t.id === 'frChipX') { FR.ind = null; frRender(); return; }
+    if (t.id === 'frActSave') {
+      const id = t.dataset.id, r = FR.res.find(x => x.id === id), prev = FR.actions[id] || { history: [] }, status = el('frActSel').value;
+      FR.actions[id] = { status, note: el('frActNote').value.trim(), ts: Date.now(), risk: r ? r.risk : '', period: frRange(), history: (prev.history || []).concat([{ ts: Date.now(), status }]).slice(-20) };
+      try { localStorage.setItem('frActionsV1', JSON.stringify(FR.actions)); } catch (err) { frSetStatus('Action saved for this session only (browser storage unavailable).', 'error'); }
+      frRenderTable(); return;
+    }
+    if (t.closest('.fr-detail') || t.closest('.fr-act')) return;
+    const tr = t.closest('tr.fr-main'); if (tr) { FR.open = FR.open === tr.dataset.id ? null : tr.dataset.id; frRenderTable(); }
+  });
+  el('tabFatigue').addEventListener('click', frRefreshInfo);
+  try { const _r = refreshOtHistoryCache; refreshOtHistoryCache = async function () { const x = await _r.apply(this, arguments); try { frRefreshInfo(); } catch (e) {} return x; }; } catch (e) { /* optional */ }
+  frRefreshInfo();
 })();
 </script>
 <script>
@@ -8642,10 +9700,10 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
 
   // ---- roles -------------------------------------------------------------------------------
   // '' = full access (Administrator and every existing role, unchanged). 'hr_advisor' = restricted.
-  const ROLE_HR = 'hr_advisor', HR_TABS = ['biometric', 'undertime'];
-  const ALL_TABS = ['command', 'validator', 'biometric', 'undertime', 'night', 'payslip', 'claim'];
-  const TAB_BTN = { command: 'tabCommand', validator: 'tabValidator', biometric: 'tabBiometric', undertime: 'tabUndertime', night: 'tabNight', payslip: 'tabPayslip', claim: 'tabClaim' };
-  const TAB_PANEL = { command: 'ccPanel', validator: 'validatorPanel', biometric: 'bvPanel', undertime: 'undertimePanel', night: 'nightPanel', payslip: 'payslipPanel', claim: 'claimPanel' };
+  const ROLE_HR = 'hr_advisor', HR_TABS = ['biometric', 'undertime', 'night'];
+  const ALL_TABS = ['command', 'validator', 'biometric', 'undertime', 'night', 'fatigue', 'payslip', 'claim'];
+  const TAB_BTN = { command: 'tabCommand', validator: 'tabValidator', biometric: 'tabBiometric', undertime: 'tabUndertime', night: 'tabNight', fatigue: 'tabFatigue', payslip: 'tabPayslip', claim: 'tabClaim' };
+  const TAB_PANEL = { command: 'ccPanel', validator: 'validatorPanel', biometric: 'bvPanel', undertime: 'undertimePanel', night: 'nightPanel', fatigue: 'fatiguePanel', payslip: 'payslipPanel', claim: 'claimPanel' };
   const roleKeyOf = r => String(r || '').trim().toLowerCase().replace(/[\s-]+/g, '_') === ROLE_HR ? ROLE_HR : '';
   window.OTATS_ROLE = { key: '', allowedTabs: null, defaultTab: 'command' };
 

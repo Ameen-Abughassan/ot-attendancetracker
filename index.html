@@ -1809,7 +1809,7 @@ header .brand-mark{width:64px;height:64px;flex:none}
         <div>
           <div class="eyebrow" style="color:#b45309;margin-bottom:7px">Workforce Welfare · Fatigue</div>
           <h2>Fatigue Risk Indicator</h2>
-          <p>Monitors working hours, consecutive working days, weekly rest (WR), night-shift rotation, rest between duties, shift transitions, overtime and rest-day call-ins from the roster / dispatch data and the stored biometric history. Overnight duties count once, on the day they start. A “week” follows the roster pattern — 5 on / 2 off (three times) then 6 on / 2 off, OCC always 6 on / 2 off — so night weeks and rest are counted per work block plus its rest days, and work on a rest day counts as overtime. Monthly limits are checked on actual (biometric) hours, normal hours and overtime separately: normal hours over the monthly limit, and normal + overtime over the total limit. Where roster or attendance data is missing the employee is shown as <b>Incomplete Data</b>, never as compliant. This tab only reads existing data — it does not change any other calculation.</p>
+          <p>Monitors working hours, consecutive working days, weekly rest (WR), night-shift rotation, rest between duties, shift transitions, overtime and rest-day call-ins from the roster / dispatch data and the stored biometric history. Pick any date range (or a quick-select month). Night-shift weeks also look back over the last week before the selected period, so a night run that began at the end of the previous month is counted. Overnight duties count once, on the day they start. A “week” follows the roster pattern — 5 on / 2 off (three times) then 6 on / 2 off, OCC always 6 on / 2 off — so night weeks and rest are counted per work block plus its rest days, and work on a rest day counts as overtime. Monthly limits are checked on actual (productive) hours, one rule per staff member and month: a month with no overtime is held to the normal limit (192 h); a month with overtime is held to the total limit (normal + overtime, 240 h). Where roster or attendance data is missing the employee is shown as <b>Incomplete Data</b>, never as compliant. This tab only reads existing data — it does not change any other calculation.</p>
         </div>
         <div class="pdf-mark" style="background:linear-gradient(135deg,#d97706,#f59e0b)">FR</div>
       </div>
@@ -1838,12 +1838,9 @@ header .brand-mark{width:64px;height:64px;flex:none}
       </details>
 
       <div class="utb-controls">
-        <div class="control-field"><label for="frPeriodMode">Period</label>
-          <select id="frPeriodMode"><option value="recent">Latest days of roster data</option><option value="custom">Custom date range</option></select></div>
-        <div class="control-field fr-recent"><label for="frRecent">Days</label>
-          <select id="frRecent"><option value="14">Last 14 days</option><option value="30" selected>Last 30 days</option><option value="60">Last 60 days</option><option value="90">Last 90 days</option></select></div>
-        <div class="control-field fr-custom" style="display:none"><label for="frStart">Start date</label><input type="date" id="frStart"></div>
-        <div class="control-field fr-custom" style="display:none"><label for="frEnd">End date</label><input type="date" id="frEnd"></div>
+        <div class="control-field"><label for="frPreset">Quick select</label><select id="frPreset"><option value="d30">Last 30 days of roster data</option></select></div>
+        <div class="control-field"><label for="frStart">Start date</label><input type="date" id="frStart"></div>
+        <div class="control-field"><label for="frEnd">End date</label><input type="date" id="frEnd"></div>
         <div class="control-field"><label for="frStaff">Staff ID</label><input type="text" id="frStaff" placeholder="e.g. 1004948" spellcheck="false" autocomplete="off"></div>
         <div class="control-field"><label for="frName">Employee name</label><input type="text" id="frName" placeholder="contains…" spellcheck="false" autocomplete="off"></div>
         <div class="control-field"><label for="frDept">Department</label><select id="frDept"><option value="">All departments</option></select></div>
@@ -8244,7 +8241,7 @@ const FR_DEFAULTS = {
   minRestHrs: 11, recWarn: 1, recHigh: 3, transWarn: 1, transHigh: 3,
   otWindow: 14, otWarnDays: 5, otHighDays: 8, wrWorkedWarn: 1, wrWorkedHigh: 2,
   // data handling
-  lookbackDays: 28, minWorkedMin: 60, earlyFromHr: 3, earlyBeforeHr: 8, lateFromHr: 14,
+  lookbackDays: 0, nightLookbackDays: 7, minWorkedMin: 60, earlyFromHr: 3, earlyBeforeHr: 8, lateFromHr: 14,
   restCodes: 'WR',
   workedRestCodes: 'RDOT*, W RD',
   leaveCodes: 'AL, SICK, TOIL, TOIL 2025, CL, CF AL, UA, PL, UL',
@@ -8416,8 +8413,11 @@ function frAnalyse(st, ctx) {
     id: st.id, name: st.name, line: st.line, position: st.position, dept: ctx.deptOf(st.position),
     ind: [], flags: new Set(), notes: [], days: [], risk: 'Normal',
   };
-  const days = [];
-  for (let ms = ext0; ms <= to; ms += FR_DAY) days.push(st.days.get(ms) || { ms, code: '', kind: 'NODATA', sMin: null, eMin: null, schedMin: null, otMin: 0, bio: null, src: '' });
+  // Night-shift weeks also look back over the last week(s) before the period (nightFrom); every other indicator uses ext0 onward only.
+  const nightFrom = ctx.nightFrom !== undefined ? ctx.nightFrom : ext0, nStart = Math.min(ext0, nightFrom);
+  const allDays = [];
+  for (let ms = nStart; ms <= to; ms += FR_DAY) allDays.push(st.days.get(ms) || { ms, code: '', kind: 'NODATA', sMin: null, eMin: null, schedMin: null, otMin: 0, bio: null, src: '' });
+  const days = allDays.filter(d => d.ms >= ext0);
   const inP = d => d.ms >= from && d.ms <= to;
   const add = (key, label, level, value, detail) => { out.ind.push({ key, label, level, value, detail }); out.flags.add(key); };
 
@@ -8427,7 +8427,7 @@ function frAnalyse(st, ctx) {
   const ref = ctx.refOf ? ctx.refOf(st.position) : null; out.ref = ref;
   const dedOf = g => ref && g > 0 ? Math.round((ref.breakMin + ref.handMin) * Math.min(1, g / ref.totalMin)) : 0;
   const noShow = [];
-  days.forEach(d => {
+  allDays.forEach(d => {
     if ((d.kind === 'DUTY' || d.kind === 'WR_WORKED' || d.kind === 'WORKED_UNROSTERED') && d.bio) {
       // attendance that holds no productive time (e.g. only a handover) does not make a day a worked day
       const prod = d.bio.mins - dedOf(d.bio.mins);
@@ -8481,14 +8481,16 @@ function frAnalyse(st, ctx) {
   }
 
   // 3. weekly rest
+  const buildWeeks = arr => {
   const weeks = new Map();
-  days.forEach(d => {
+  arr.forEach(d => {
     const w = frWeekIdx(d.ms, ws); let o = weeks.get(w);
     if (!o) { const s0 = frWeekStartMs(w, ws); o = { w, start: s0, end: s0 + 6 * FR_DAY, rest: 0, worked: 0, leave: 0, gap: 0, duty: 0, night: 0, nightDates: [] }; weeks.set(w, o); }
     if (d.kind === 'REST') o.rest++; if (d.kind === 'WR_WORKED') o.worked++; if (d.kind === 'LEAVE') o.leave++; if (d.gap) o.gap++;
     if (d.working) o.duty++; if (d.isNight) { o.night++; o.nightDates.push(d.ms); }
   });
-  const wl = [...weeks.values()].sort((a, b) => a.w - b.w);
+  return [...weeks.values()].sort((a, b) => a.w - b.w); };
+  const wl = buildWeeks(days), wlN = nStart === ext0 ? wl : buildWeeks(allDays);
   let wrSched = 0, wrActual = 0, wrWorked = 0, wrConfirmed = 0; const wrWorkedList = [], restPunch = [];
   days.forEach(d => {
     if (!inP(d)) return;
@@ -8499,14 +8501,17 @@ function frAnalyse(st, ctx) {
   if (restPunch.length) { out.flags.add('wr_punches'); out.notes.push(`${restPunch.length} day(s) dispatched as WR have biometric punches (${restPunch.slice(0, 6).map(d => frFmt(d.ms)).join(', ')}${restPunch.length > 6 ? ' …' : ''}). They are counted as rest days because the Dispatch says WR; they are not treated as work or overtime.`); }
   // roster blocks: a run of working days up to the next rest day(s), plus those rest days. Pattern: 5 on / 2 off (x3) then
   // 6 on / 2 off; OCC staff 6 on / 2 off. A rest day that is worked ends the rest early, so the block after it starts sooner.
+  const buildBlocks = arr => {
   const blocks = []; let bk = null;
-  days.forEach(d => {
+  arr.forEach(d => {
     if (d.gap) { if (bk) { if (bk.restRun > 0) bk.nextGap = true; else bk.gapAfter = true; bk = null; } return; }   // no roster record: block boundary, never counted as work or rest
     if (d.kind === 'REST') { if (bk) bk.restRun++; return; }
     if (d.kind === 'LEAVE' && cfg.leaveResets) { if (bk) { bk.leaveAfter = true; bk = null; } return; }   // (a dispatched duty with no productive attendance still belongs to its roster block)   // leave is time off: closes the block
     if (!bk || bk.restRun > 0) { if (bk) bk.nextGap = d.gap; bk = { start: d.ms, end: d.ms, work: 0, night: 0, nightDates: [], gap: 0, leave: 0, restRun: 0, nextGap: false, leaveAfter: false, gapAfter: false }; blocks.push(bk); }
     bk.end = d.ms; if (d.working || d.kind === 'NOSHOW') bk.work++; if (d.isNight) { bk.night++; bk.nightDates.push(d.ms); } if (d.gap) bk.gap++; if (d.kind === 'LEAVE') bk.leave++;
   });
+  return blocks; };
+  const blocks = buildBlocks(days), nBlocks = nStart === ext0 ? blocks : buildBlocks(allDays);
   const insuff = [], notAssessable = [];
   if (cfg.nightGrouping === 'week') {
   wl.forEach(o => {
@@ -8578,7 +8583,7 @@ function frAnalyse(st, ctx) {
   // monthly working-hour limits (calendar month) from ACTUAL hours (first punch-in to last punch-out); normal hours and
   // overtime are kept apart: normal = actual - overtime. Two independent limits: normal only, and normal + overtime.
   const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const mon = new Map(), mtdN = [], mtdT = [];
+  const mon = new Map(), mtdN = [], mtdT = [], mtdO = [];
   days.forEach((d, i) => {
     const x = new Date(d.ms), key = x.getUTCFullYear() * 100 + x.getUTCMonth(); let m = mon.get(key);
     if (!m) { const y = x.getUTCFullYear(), mo = x.getUTCMonth(); m = { key, label: MON[mo] + ' ' + y, start: Date.UTC(y, mo, 1), end: Date.UTC(y, mo + 1, 0), normal: 0, ot: 0, total: 0, counted: 0, missingBio: 0, wrMin: 0, dedMin: 0, noData: 0, lastMs: d.ms }; mon.set(key, m); }
@@ -8589,22 +8594,23 @@ function frAnalyse(st, ctx) {
     d.nrmMin = nrm; d.otCntMin = ot; m.normal += nrm; m.ot += ot; m.total += nrm + ot; if (nrm + ot > 0) m.counted++;
     if (d.kind === 'REST' && d.bio && d.bio.mins >= cfg.minWorkedMin) m.wrMin += d.bio.mins;
     if (d.working && d.bio) m.dedMin = (m.dedMin || 0) + d.dedAct;
-    mtdN[i] = m.normal; mtdT[i] = m.total;
+    mtdN[i] = m.normal; mtdT[i] = m.total; mtdO[i] = m.ot;
   });
   const limN = cfg.normalMonthHrs * 60, limT = cfg.totalMonthHrs * 60;
-  out.months = [...mon.values()].filter(m => m.end >= from && m.start <= to).map(m => Object.assign(m, { partial: to < m.end, nOver: Math.max(0, m.normal - limN), tOver: Math.max(0, m.total - limT) }));
+  out.months = [...mon.values()].filter(m => m.end >= from && m.start <= to).map(m => Object.assign(m, { partial: to < m.end, noOt: m.ot === 0, nOver: m.ot === 0 ? Math.max(0, m.normal - limN) : 0, tOver: m.ot > 0 ? Math.max(0, m.total - limT) : 0 }));
   out.peak = out.months.reduce((b, m) => (!b || m.total > b.total) ? m : b, null);
   out.hoursExceed = out.months.filter(m => m.nOver > 0 || m.tOver > 0);
   const mLvl = (v, lim) => v > lim ? 'high' : v >= lim * cfg.warnPct / 100 ? 'warn' : null;
   const monTxt = m => `${m.label}${m.partial ? ' (to ' + frFmt(m.lastMs) + ')' : ''}: normal ${fh(m.normal)}, overtime ${fh(m.ot)}, combined ${fh(m.total)}`;
-  const nW = out.months.reduce((b, m) => (!b || m.normal > b.normal) ? m : b, null), tW = out.peak;
+  // One rule applies per month: no overtime worked -> the normal-hours limit; any overtime worked -> the total-hours limit.
+  const nW = out.months.filter(m => m.noOt).reduce((b, m) => (!b || m.normal > b.normal) ? m : b, null), tW = out.months.filter(m => !m.noOt).reduce((b, m) => (!b || m.total > b.total) ? m : b, null);
   const nL = nW ? mLvl(nW.normal, limN) : null, tL = tW ? mLvl(tW.total, limT) : null;
   if (nL) add('hours_normal', 'Normal hours per month', nL, fh(nW.normal), nL === 'high'
-    ? `Normal (non-overtime) hours exceed ${cfg.normalMonthHrs} h: ` + out.months.filter(m => m.nOver > 0).map(m => `${monTxt(m)} — over by ${fh(m.nOver)}`).join('; ') + '.'
-    : `Normal hours are approaching the ${cfg.normalMonthHrs} h monthly limit — ${monTxt(nW)}.`);
+    ? `No overtime worked, so the ${cfg.normalMonthHrs} h limit applies; hours exceed it: ` + out.months.filter(m => m.nOver > 0).map(m => `${monTxt(m)} — over by ${fh(m.nOver)}`).join('; ') + '.'
+    : `No overtime worked, so the ${cfg.normalMonthHrs} h limit applies; hours are approaching it — ${monTxt(nW)}.`);
   if (tL) add('hours_total', 'Total hours incl. overtime per month', tL, fh(tW.total), tL === 'high'
-    ? `Total hours including overtime exceed ${cfg.totalMonthHrs} h: ` + out.months.filter(m => m.tOver > 0).map(m => `${monTxt(m)} — over by ${fh(m.tOver)}`).join('; ') + '.'
-    : `Total hours are approaching the ${cfg.totalMonthHrs} h monthly limit — ${monTxt(tW)}.`);
+    ? `Overtime worked, so the ${cfg.totalMonthHrs} h limit (normal + overtime) applies; hours exceed it: ` + out.months.filter(m => m.tOver > 0).map(m => `${monTxt(m)} — over by ${fh(m.tOver)}`).join('; ') + '.'
+    : `Overtime worked, so the ${cfg.totalMonthHrs} h limit (normal + overtime) applies; hours are approaching it — ${monTxt(tW)}.`);
   const missBio = out.months.reduce((n, m) => n + m.missingBio, 0), wrMin = out.months.reduce((n, m) => n + m.wrMin, 0);
   if (missBio) out.notes.push(`${missBio} working day(s) have no biometric record and were not counted in the monthly hours (actual hours only), so monthly totals may be understated.`);
   if (wrMin) out.notes.push(`${fh(wrMin)} h of punches on days dispatched as WR were not counted in the monthly hours.`);
@@ -8618,8 +8624,8 @@ function frAnalyse(st, ctx) {
   // night weeks are counted per roster block (work run + its rest days) so 5-on and 6-on weeks both count as one week;
   // 'calendar week' grouping remains available in the settings.
   const units = cfg.nightGrouping === 'week'
-    ? wl.map(o => ({ start: o.start, end: o.end, night: o.night, nightDates: o.nightDates, gap: o.gap, weeks: 1, complete: o.start >= ext0 && o.end <= to }))
-    : blocks.map(b => ({ start: b.start, end: b.end, night: b.night, nightDates: b.nightDates, gap: b.gap, weeks: Math.max(1, Math.ceil(b.work / 7)), complete: b.restRun > 0 || b.leaveAfter || b.gapAfter, brk: b.leaveAfter || b.gapAfter || b.nextGap }));
+    ? wlN.filter(o => o.end >= nightFrom).map(o => ({ start: o.start, end: o.end, night: o.night, nightDates: o.nightDates, gap: o.gap, weeks: 1, complete: o.start >= nStart && o.end <= to }))
+    : nBlocks.filter(b => b.end >= nightFrom).map(b => ({ start: b.start, end: b.end, night: b.night, nightDates: b.nightDates, gap: b.gap, weeks: Math.max(1, Math.ceil(b.work / 7)), complete: b.restRun > 0 || b.leaveAfter || b.gapAfter, brk: b.leaveAfter || b.gapAfter || b.nextGap }));
   const runs = []; let cur = null;
   units.forEach((u, i) => {
     u.isN = u.night >= cfg.nightWeekMin;
@@ -8634,7 +8640,7 @@ function frAnalyse(st, ctx) {
   const maxNightRun = relevant.reduce((m, r) => Math.max(m, r.n), 0);
   const lastRun = runs.length ? runs[runs.length - 1] : null;
   out.nightWeeks = maxNightRun; out.nightCurrent = lastRun && lastRun.last >= units.length - 2 ? lastRun.n : 0;
-  const nightDays = days.filter(d => d.isNight);
+  const nightDays = allDays.filter(d => d.isNight);
   out.latestNight = nightDays.length ? nightDays[nightDays.length - 1] : null;
   out.nightDutyCount = nightDays.filter(inP).length;
   const nRunTxt = r => `${frFmt(r.units[0].start)} → ${frFmt(runEnd(r))}`;
@@ -8690,7 +8696,7 @@ function frAnalyse(st, ctx) {
   ctx.snaps.forEach(snap => {
     const i = days.findIndex(d => d.ms === snap.ms); if (i < 0) return;
     const sa = streakAt.get(snap.ms) || 0, nr = runAt(snap.ms);
-    const c = sa > cfg.maxConsec, w = !c && sa >= cfg.warnConsecFrom, h = rw.arr[i] > cfg.weeklyHrs * 60 || mtdN[i] > limN || mtdT[i] > limT, n = nr > cfg.nightFlagWeeks;
+    const c = sa > cfg.maxConsec, w = !c && sa >= cfg.warnConsecFrom, h = rw.arr[i] > cfg.weeklyHrs * 60 || (mtdO[i] === 0 ? mtdN[i] > limN : mtdT[i] > limT), n = nr > cfg.nightFlagWeeks;
     out.trend.push({ c, w, h, n, any: c || h || n });
   });
   const cc = new Map(); days.forEach(d => { if (inP(d) && d.kind !== 'NODATA') { const k = d.code || '(blank)'; cc.set(k, (cc.get(k) || 0) + 1); } });
@@ -8713,7 +8719,7 @@ const FR_SCHEMA = [
   ['weekStart', 'Calendar-week mode: week starts on', 'wk'], ['reqWR', 'Calendar-week mode: required WR per week', 1, 7],
   ['Working-hour limits (set to company policy)'],
   ['dailyHrs', 'Daily limit (hours)', 1, 24], ['weeklyHrs', 'Weekly limit (hours)', 1, 168], ['weeklyWindow', 'Weekly window (days)', 1, 14],
-  ['normalMonthHrs', 'Normal hours limit per month (excl. overtime)', 1, 744], ['totalMonthHrs', 'Total hours limit per month (incl. overtime)', 1, 744], ['monthFallback', 'Monthly hours: use scheduled hours when no biometric', 'yn'], ['warnPct', 'Warning at % of limit', 50, 100], ['extRepeat', 'Repeated extended shifts (count)', 1, 31],
+  ['normalMonthHrs', 'Monthly limit when NO overtime is worked (h)', 1, 744], ['totalMonthHrs', 'Monthly limit when overtime IS worked — normal + overtime (h)', 1, 744], ['monthFallback', 'Monthly hours: use scheduled hours when no biometric', 'yn'], ['warnPct', 'Warning at % of limit', 50, 100], ['extRepeat', 'Repeated extended shifts (count)', 1, 31],
   ['Night-shift rotation'],
   ['nightWeekMin', 'Night duties for a week to count', 1, 7], ['nightFlagWeeks', 'Flag above (consecutive weeks)', 1, 12], ['nightPriorityWeeks', 'Priority above (consecutive weeks)', 1, 12], ['nightRecoveryDays', 'Minimum recovery between night blocks (days)', 1, 60],
   ['Rest between duties, transitions, overtime, call-ins'],
@@ -8722,7 +8728,7 @@ const FR_SCHEMA = [
   ['otWindow', 'Overtime window (days)', 3, 31], ['otWarnDays', 'Overtime days: Warning from', 1, 31], ['otHighDays', 'Overtime days: High Risk from', 1, 31],
   ['wrWorkedWarn', 'WR worked: Warning from (days)', 1, 99], ['wrWorkedHigh', 'WR worked: High Risk from (days)', 1, 99],
   ['Data handling and shift classes'],
-  ['wrPunches', 'Punches on a day dispatched as WR', 'wrp'], ['trgMode', 'Training (TRG) handling', 'trg'], ['lookbackDays', 'Look-back before the period (days)', 0, 90], ['minWorkedMin', 'Minutes of punches that count as worked', 1, 480],
+  ['wrPunches', 'Punches on a day dispatched as WR', 'wrp'], ['trgMode', 'Training (TRG) handling', 'trg'], ['nightLookbackDays', 'Night shifts: look back before the period (days) — the last week of the previous period', 0, 90], ['lookbackDays', 'All other indicators: look back before the period (days)', 0, 90], ['minWorkedMin', 'Minutes of punches that count as worked', 1, 480],
   ['earlyFromHr', 'Early shift starts from (hour)', 0, 12], ['earlyBeforeHr', 'Early shift starts before (hour)', 1, 14], ['lateFromHr', 'Late shift starts from (hour)', 8, 23],
 ];
 function frBuildSettings() {
@@ -8788,7 +8794,7 @@ function frCardDefs() {
       ['total', 'Employees monitored', ''], ['consec_high', `Over ${c.maxConsec} consecutive working days`, 'high'], ['consec_warn', `Approaching the ${c.maxConsec}-day limit (${c.warnConsecFrom}–${c.maxConsec})`, 'warn'],
       ['wr_insufficient', 'Insufficient weekly rest', 'high'], ['night_gt2', `Over ${c.nightFlagWeeks} consecutive night-shift weeks`, 'high'],
       ['night_gt3', `Over ${c.nightPriorityWeeks} night-shift weeks (priority)`, 'high'],
-      ['hours_normal', `Over ${c.normalMonthHrs} normal hrs / month`, 'high'], ['hours_total', `Over ${c.totalMonthHrs} total hrs / month (incl. OT)`, 'high'], ['hours', 'Over any working-hour limit', 'high'],
+      ['hours_normal', `Over ${c.normalMonthHrs} h / month — no overtime worked`, 'high'], ['hours_total', `Over ${c.totalMonthHrs} h / month — overtime worked`, 'high'], ['hours', 'Over any working-hour limit', 'high'],
     ],
     more: [
       ['high', 'High Risk (overall)', 'high'], ['warn', 'Warning (overall)', 'warn'], ['normal', 'Normal', 'ok'], ['gap', 'Incomplete data', 'gap'],
@@ -8812,33 +8818,46 @@ function frRosterSpan() {
   return { mn, mx, staff: staff.size };
 }
 function frCriteria() {
-  const span = frRosterSpan(); let fromMs, toMs;
-  if (el('frPeriodMode').value === 'custom') {
-    fromMs = parseIsoDate(el('frStart').value); toMs = parseIsoDate(el('frEnd').value);
-    if (fromMs === null || toMs === null) throw new Error('Select both a start date and an end date.');
-    if (fromMs > toMs) throw new Error('The start date is after the end date.');
-  } else {
-    if (span.mx === null) throw new Error('No roster data is available. Analyse a roster in the Overtime tab and save it to OT History first.');
-    toMs = span.mx; fromMs = toMs - (Number(el('frRecent').value) - 1) * FR_DAY;
-  }
+  const fromMs = parseIsoDate(el('frStart').value), toMs = parseIsoDate(el('frEnd').value);
+  if (fromMs === null || toMs === null) throw new Error('Select a start date and an end date (or pick a quick-select period).');
+  if (fromMs > toMs) throw new Error('The start date is after the end date.');
   return { fromMs, toMs };
+}
+const FR_MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function frFillPresets(span) {
+  const sel = el('frPreset'), prev = sel.value; let h = '';
+  [14, 30, 60, 90].forEach(n => h += `<option value="d${n}">Last ${n} days of roster data</option>`);
+  if (span.mn !== null) {
+    const a = new Date(span.mn), b = new Date(span.mx); let y = b.getUTCFullYear(), m = b.getUTCMonth(), k = 0;
+    while (Date.UTC(y, m, 1) >= Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), 1) && k++ < 18) { h += `<option value="m${y}-${m}">${FR_MON[m]} ${y}</option>`; if (--m < 0) { m = 11; y--; } }
+  }
+  h += '<option value="custom">Custom date range</option>';
+  sel.innerHTML = h; sel.value = [...sel.options].some(o => o.value === prev) ? prev : 'd30';
+}
+function frApplyPreset() {
+  const v = el('frPreset').value, span = frRosterSpan(); if (v === 'custom' || span.mx === null) return;
+  const iso = ms => new Date(ms).toISOString().slice(0, 10); let s, e;
+  if (v[0] === 'd') { e = span.mx; s = e - (Number(v.slice(1)) - 1) * FR_DAY; }
+  else { const [y, m] = v.slice(1).split('-').map(Number); s = Math.max(Date.UTC(y, m, 1), span.mn); e = Math.min(Date.UTC(y, m + 1, 0), span.mx); }
+  el('frStart').value = iso(s); el('frEnd').value = iso(e);
 }
 
 async function frGenerate() {
   const seq = ++FR.seq; let crit;
   try { crit = frCriteria(); } catch (e) { frSetStatus(e.message, 'error'); return; }
-  const cfg = FR.cfg, comp = frCompile(cfg), fx = new Date(crit.fromMs), ext0 = Math.min(crit.fromMs - cfg.lookbackDays * FR_DAY, Date.UTC(fx.getUTCFullYear(), fx.getUTCMonth(), 1));
+  const cfg = FR.cfg, comp = frCompile(cfg), fx = new Date(crit.fromMs), ext0 = Math.min(crit.fromMs - cfg.lookbackDays * FR_DAY, Date.UTC(fx.getUTCFullYear(), fx.getUTCMonth(), 1)),
+    nightFrom = crit.fromMs - cfg.nightLookbackDays * FR_DAY, loadFrom = Math.min(ext0, nightFrom);   // monthly hours need the month start; night weeks need the last week before the period
   frSetStatus('Reading roster, schedules and biometric history…'); el('frGo').disabled = true;
   try {
-    const otRows = frCollectOt(ext0, crit.toMs);
-    let schedRows = []; try { schedRows = ((await utbLoadSchedule()).rows || []).filter(s => s.dateMs >= ext0 && s.dateMs <= crit.toMs); } catch (e) { schedRows = []; }
+    const otRows = frCollectOt(loadFrom, crit.toMs);
+    let schedRows = []; try { schedRows = ((await utbLoadSchedule()).rows || []).filter(s => s.dateMs >= loadFrom && s.dateMs <= crit.toMs); } catch (e) { schedRows = []; }
     let periods = [], cover = { min: null, max: null }, bioErr = '';
-    try { const d = await utbLoadPeriods(ext0, crit.toMs); periods = d.periods || []; cover = { min: d.coverMin, max: d.coverMax }; } catch (e) { bioErr = e.message; }
+    try { const d = await utbLoadPeriods(loadFrom, crit.toMs); periods = d.periods || []; cover = { min: d.coverMin, max: d.coverMax }; } catch (e) { bioErr = e.message; }
     if (seq !== FR.seq) return;
     if (!otRows.length && !schedRows.length) { frSetStatus('No roster or schedule data was found for this period. Save the OT report to OT History (Dispatch column) or load the attendance report first.', 'error'); el('frResults').style.display = 'none'; return; }
     const staff = frAssemble(otRows, schedRows, periods, comp, cover, cfg);
     const snaps = []; for (let ms = crit.toMs; ms >= crit.fromMs && snaps.length < 26; ms -= 7 * FR_DAY) snaps.unshift({ ms });
-    const ctx = { cfg, fromMs: crit.fromMs, toMs: crit.toMs, ext0, deptOf: p => frDeptOf(p, comp), refOf: p => frRefOf(p, comp), snaps };
+    const ctx = { cfg, fromMs: crit.fromMs, toMs: crit.toMs, ext0, nightFrom, deptOf: p => frDeptOf(p, comp), refOf: p => frRefOf(p, comp), snaps };
     const res = [];
     let excludedTrg = 0;
     staff.forEach(s => { let any = false; for (const ms of s.days.keys()) if (ms >= crit.fromMs && ms <= crit.toMs) { any = true; break; } if (!any) return;
@@ -8914,8 +8933,8 @@ function frRenderHours(base) {
   const shown = rows.slice(0, 150), c = FR.cfg;
   el('frHrsBody').innerHTML = shown.length ? shown.map(({ r, m }) => `<tr><td class="num">${esc(r.id)}</td><td class="name">${esc(r.name) || '—'}</td><td>${esc(r.dept)}</td><td>${esc(r.line) || '—'}</td><td>${esc(m.label)}${m.partial ? ' <small>(to ' + esc(frFmt(m.lastMs)) + ')</small>' : ''}</td>
     <td class="num ${m.nOver ? 'fr-over' : ''}">${frHrs(m.normal)}</td><td class="num">${frHrs(m.ot)}</td><td class="num ${m.tOver ? 'fr-over' : ''}"><b>${frHrs(m.total)}</b></td>
-    <td>${m.nOver ? `<span class="fr-pill high" title="Normal hours over the limit by ${frHrs(m.nOver)}">Normal &gt; ${c.normalMonthHrs} h (+${frHrs(m.nOver)})</span> ` : ''}${m.tOver ? `<span class="fr-pill high" title="Total hours over the limit by ${frHrs(m.tOver)}">Total &gt; ${c.totalMonthHrs} h (+${frHrs(m.tOver)})</span>` : ''}</td></tr>`).join('')
-    : `<tr><td colspan="9" class="pay-empty">No staff member exceeds ${c.normalMonthHrs} normal hours or ${c.totalMonthHrs} total hours in a month for the selected period.</td></tr>`;
+    <td>${m.nOver ? `<span class="fr-pill high" title="No overtime worked, so the ${c.normalMonthHrs} h limit applies; over by ${frHrs(m.nOver)}">No overtime: over ${c.normalMonthHrs} h (+${frHrs(m.nOver)})</span> ` : ''}${m.tOver ? `<span class="fr-pill high" title="Overtime worked, so the ${c.totalMonthHrs} h limit (normal + overtime) applies; over by ${frHrs(m.tOver)}">Overtime worked: over ${c.totalMonthHrs} h (+${frHrs(m.tOver)})</span>` : ''}</td></tr>`).join('')
+    : `<tr><td colspan="9" class="pay-empty">No staff member exceeds the monthly limit that applies to them (${c.normalMonthHrs} h without overtime, ${c.totalMonthHrs} h with overtime) in the selected period.</td></tr>`;
   el('frHrsMeta').textContent = `${rows.length} exceedance${rows.length === 1 ? '' : 's'} · ${new Set(rows.map(x => x.r.id)).size} staff`;
   const cap = el('frHrsCap'); if (rows.length > 150) { cap.style.display = 'block'; cap.textContent = 'Showing the 150 highest of ' + rows.length + '. Export to Excel (working-hour exceedances) for the full list.'; } else cap.style.display = 'none';
 }
@@ -8995,7 +9014,7 @@ async function frRefreshInfo() {
   if (span.mn !== null) {
     parts.push(`<span><b>Roster / dispatch data:</b> ${span.staff.toLocaleString()} staff · ${esc(frFmt(span.mn))} → ${esc(frFmt(span.mx))}</span>`);
     ['frStart', 'frEnd'].forEach(i => { el(i).min = new Date(span.mn).toISOString().slice(0, 10); el(i).max = new Date(span.mx).toISOString().slice(0, 10); });
-    if (!el('frStart').value && !el('frEnd').value) { el('frEnd').value = new Date(span.mx).toISOString().slice(0, 10); el('frStart').value = new Date(span.mx - 29 * FR_DAY).toISOString().slice(0, 10); }
+    frFillPresets(span); if (el('frPreset').value !== 'custom' || (!el('frStart').value && !el('frEnd').value)) frApplyPreset();
   } else parts.push('<span class="warn">No roster data yet — analyse a roster in the Overtime tab and save it to OT History.</span>');
   try {
     if (!BVH.available) parts.push('<span class="warn">Biometric history unavailable in this browser.</span>');
@@ -9003,10 +9022,9 @@ async function frRefreshInfo() {
   } catch (e) { parts.push('<span class="warn">Biometric history unreadable.</span>'); }
   box.innerHTML = parts.join('');
 }
-function frTogglePeriod() { const c = el('frPeriodMode').value === 'custom'; document.querySelectorAll('#frCard .fr-recent').forEach(e => e.style.display = c ? 'none' : ''); document.querySelectorAll('#frCard .fr-custom').forEach(e => e.style.display = c ? '' : 'none'); }
 function frResetFilters() {
   ['frStaff', 'frName'].forEach(i => el(i).value = ''); ['frDept', 'frLine', 'frPos', 'frRisk'].forEach(i => el(i).value = ''); FR.ind = null; FR.open = null;
-  el('frPeriodMode').value = 'recent'; el('frRecent').value = '30'; frTogglePeriod(); if (FR.res.length) frRender();
+  el('frPreset').value = 'd30'; frApplyPreset(); if (FR.res.length) frRender();
 }
 
 // ---- Excel export -----------------------------------------------------------------------------------
@@ -9045,14 +9063,15 @@ async function frExport() {
 
     const wh = wb.addWorksheet('Monthly Hours');
     wh.columns = [['Staff ID', 11], ['Employee Name', 28], ['Department', 24], ['Line', 12], ['Position', 22], ['Month', 12], ['Normal Hours (hh:mm)', 14], ['Overtime Hours (hh:mm)', 14], ['Combined Hours (hh:mm)', 14],
-      ['Normal Limit (h)', 10], ['Normal vs Limit', 24], ['Total Limit (h)', 10], ['Combined vs Limit', 24], ['Working Days Counted', 11], ['Days Without Biometric', 12], ['Month Status', 18]].map(a => ({ header: a[0], width: a[1] }));
+      ['Normal Limit (h)', 10], ['Normal vs Limit', 30], ['Total Limit (h)', 10], ['Combined vs Limit', 30], ['Working Days Counted', 11], ['Days Without Biometric', 12], ['Month Status', 18], ['Rule Applied', 44]].map(a => ({ header: a[0], width: a[1] }));
     rows.forEach(r => (r.months || []).forEach(mm => {
       if (!mm.total && !mm.missingBio) return;
-      const nS = mm.nOver > 0 ? 'EXCEEDS by ' + frHrs(mm.nOver) : mm.normal >= c.normalMonthHrs * 60 * c.warnPct / 100 ? 'Approaching' : 'Within limit', tS = mm.tOver > 0 ? 'EXCEEDS by ' + frHrs(mm.tOver) : mm.total >= c.totalMonthHrs * 60 * c.warnPct / 100 ? 'Approaching' : 'Within limit';
-      const row = wh.addRow([r.id, r.name, r.dept, r.line, r.position, mm.label, frHrs(mm.normal), frHrs(mm.ot), frHrs(mm.total), c.normalMonthHrs, nS, c.totalMonthHrs, tS, mm.counted, mm.missingBio, mm.partial ? 'Month to ' + frFmt(mm.lastMs) : 'Full month']);
+      const nS = mm.ot > 0 ? 'Not applicable (overtime worked)' : mm.nOver > 0 ? 'EXCEEDS by ' + frHrs(mm.nOver) : mm.normal >= c.normalMonthHrs * 60 * c.warnPct / 100 ? 'Approaching' : 'Within limit',
+        tS = mm.ot === 0 ? 'Not applicable (no overtime)' : mm.tOver > 0 ? 'EXCEEDS by ' + frHrs(mm.tOver) : mm.total >= c.totalMonthHrs * 60 * c.warnPct / 100 ? 'Approaching' : 'Within limit';
+      const row = wh.addRow([r.id, r.name, r.dept, r.line, r.position, mm.label, frHrs(mm.normal), frHrs(mm.ot), frHrs(mm.total), c.normalMonthHrs, nS, c.totalMonthHrs, tS, mm.counted, mm.missingBio, mm.partial ? 'Month to ' + frFmt(mm.lastMs) : 'Full month', mm.ot > 0 ? `Overtime worked: ${c.totalMonthHrs} h limit (normal + overtime)` : `No overtime: ${c.normalMonthHrs} h limit`]);
       [11, 13].forEach(ci => { if (/EXCEEDS/.test(String(row.getCell(ci).value))) row.getCell(ci).font = { bold: true, color: { argb: 'FFB91C1C' } }; });
     }));
-    head(wh); wh.views = [{ state: 'frozen', ySplit: 1, xSplit: 2 }]; wh.autoFilter = { from: 'A1', to: { row: 1, column: 16 } };
+    head(wh); wh.views = [{ state: 'frozen', ySplit: 1, xSplit: 2 }]; wh.autoFilter = { from: 'A1', to: { row: 1, column: 17 } };
 
     const wd = wb.addWorksheet('Daily Log');
     wd.columns = [['Staff ID', 11], ['Employee Name', 26], ['Date', 12], ['Duty Code', 14], ['Day Type', 20], ['Scheduled Start', 11], ['Scheduled End', 12], ['Punch-In', 12], ['Punch-Out', 12], ['Scheduled Hrs (productive)', 12], ['Gross Hrs (punch to punch)', 12], ['Break + Handover Excluded', 12], ['Productive Hrs', 11], ['Shift', 8], ['Overtime', 10], ['Consecutive Run', 11]].map(a => ({ header: a[0], width: a[1] }));
@@ -9065,10 +9084,10 @@ async function frExport() {
     const wsu = wb.addWorksheet('Settings & Notes');
     wsu.getCell('A1').value = 'Fatigue Risk Indicator — report details'; wsu.getCell('A1').font = { bold: true, size: 14 };
     const info = [['Reporting period', period], ['Export selection', el('frExportScope').selectedOptions[0].textContent.replace('Export: ', '')], ['Employees exported', rows.length], ['Generated', new Date(m.generated).toLocaleString()],
-      ['Biometric history covers', m.cover.min !== null ? frFmt(m.cover.min) + ' → ' + frFmt(m.cover.max) : 'none stored'], ['Look-back used for streaks', c.lookbackDays + ' days'], ['Punches on a WR day', c.wrPunches === 'worked' ? 'Treated as rest-day work' : 'Stay rest days (Dispatch decides); shown as a note'], ['Training (TRG) staff excluded', (m.excludedTrg || 0) + ' (' + (c.trgMode === 'staff' ? 'any TRG day' : 'training-only staff; TRG days ignored for others') + ')'],
+      ['Biometric history covers', m.cover.min !== null ? frFmt(m.cover.min) + ' → ' + frFmt(m.cover.max) : 'none stored'], ['Night-shift look-back before the period', c.nightLookbackDays + ' days (only night-shift weeks use it)'], ['Look-back for all other indicators', c.lookbackDays + ' days'], ['Punches on a WR day', c.wrPunches === 'worked' ? 'Treated as rest-day work' : 'Stay rest days (Dispatch decides); shown as a note'], ['Training (TRG) staff excluded', (m.excludedTrg || 0) + ' (' + (c.trgMode === 'staff' ? 'any TRG day' : 'training-only staff; TRG days ignored for others') + ')'],
       ['Current filters', ['Staff ID: ' + (el('frStaff').value || 'all'), 'Name: ' + (el('frName').value || 'all'), 'Department: ' + (el('frDept').value || 'all'), 'Line: ' + (el('frLine').value || 'all'), 'Position: ' + (el('frPos').value || 'all'), 'Risk: ' + (el('frRisk').value || 'all')].join(' | ')],
       ['', ''], ['Thresholds used', ''], ['Consecutive days: High Risk above', c.maxConsec], ['Consecutive days: Warning from', c.warnConsecFrom], ['Leave day resets the run', c.leaveResets ? 'Yes' : 'No'],
-      ['Night weeks / rest counted by', c.nightGrouping === 'week' ? 'Calendar week' : 'Roster block (work run + rest days)'], ['Rest days required after each work block', c.reqRestRun], ['Longest roster work run (days on)', c.patternMaxOn], ['Required WR per week (calendar-week mode)', c.reqWR], ['Warn if days between WR exceed', c.wrGapWarn], ['Daily / weekly hours', `${c.dailyHrs} / ${c.weeklyHrs} (${c.weeklyWindow} d)`], ['Monthly limit — normal hours (excl. overtime)', c.normalMonthHrs + ' h'], ['Monthly limit — total hours (incl. overtime)', c.totalMonthHrs + ' h'], ['Hours basis', 'Productive hours = actual attendance (first punch-in to last punch-out) − break − handover per the shift-timing reference; normal = productive − overtime' + (c.monthFallback ? '; scheduled hours used when no biometric' : '')], ['Warning at % of hour limits', c.warnPct],
+      ['Night weeks / rest counted by', c.nightGrouping === 'week' ? 'Calendar week' : 'Roster block (work run + rest days)'], ['Rest days required after each work block', c.reqRestRun], ['Longest roster work run (days on)', c.patternMaxOn], ['Required WR per week (calendar-week mode)', c.reqWR], ['Warn if days between WR exceed', c.wrGapWarn], ['Daily / weekly hours', `${c.dailyHrs} / ${c.weeklyHrs} (${c.weeklyWindow} d)`], ['Monthly limit — month with NO overtime', c.normalMonthHrs + ' h (normal hours)'], ['Monthly limit — month WITH overtime', c.totalMonthHrs + ' h (normal + overtime)'], ['Hours basis', 'Productive hours = actual attendance (first punch-in to last punch-out) − break − handover per the shift-timing reference; normal = productive − overtime' + (c.monthFallback ? '; scheduled hours used when no biometric' : '')], ['Warning at % of hour limits', c.warnPct],
       ['Night duties for a night week', c.nightWeekMin], ['Night weeks: flag above / priority above', `${c.nightFlagWeeks} / ${c.nightPriorityWeeks}`], ['Min. recovery between night blocks (days)', c.nightRecoveryDays],
       ['Minimum rest between duties (h)', c.minRestHrs], ['Overtime: Warning / High Risk (days in window)', `${c.otWarnDays} / ${c.otHighDays} in ${c.otWindow} d`], ['', ''],
       ['Method', 'Overnight duties are counted once, on the day they start. Only a qualifying WR resets the consecutive-day count. Night weeks are counted per roster block (a 5- or 6-day work run plus its rest days); work on a rest day counts as overtime. Actual hours = first punch-in to last punch-out of the attendance period; scheduled hours come from the Dispatch times. Days with missing roster data are reported as Incomplete Data and are never treated as compliant.']];
@@ -9085,8 +9104,9 @@ async function frExport() {
 
 (function frInit() {
   if (!el('frCard')) return;
-  frBuildSettings(); frTogglePeriod();
-  el('frPeriodMode').addEventListener('change', frTogglePeriod);
+  frBuildSettings();
+  el('frPreset').addEventListener('change', frApplyPreset);
+  ['frStart', 'frEnd'].forEach(i => el(i).addEventListener('input', () => { el('frPreset').value = 'custom'; }));
   el('frGo').addEventListener('click', frGenerate); el('frReset').addEventListener('click', frResetFilters); el('frExport').addEventListener('click', frExport);
   el('frSaveCfg').addEventListener('click', () => { FR.cfg = frReadSettings(); const ok = frCfgSave(FR.cfg); frFillSettings(); el('frCfgMsg').textContent = ok ? 'Saved. Click “Generate dashboard” to apply.' : 'Could not save in this browser; settings apply to this session only.'; });
   el('frResetCfg').addEventListener('click', () => { FR.cfg = Object.assign({}, FR_DEFAULTS); frCfgSave(FR.cfg); frFillSettings(); el('frCfgMsg').textContent = 'Defaults restored. Click “Generate dashboard” to apply.'; });

@@ -875,6 +875,8 @@ header{background:linear-gradient(135deg,#0f2a5e 0%,#2a4bb3 55%,#6d5ce7 100%);}
   #nsTreSummary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 14px}
   #nsTreSummary .tre-title{grid-column:1/-1;font-size:12.5px;color:#312e81;font-weight:700}
   #nsTable.tre-off .tre-col{display:none}
+  #nsTable.tre-comb .tre-res{display:none}
+  #nsTable .ns-why{display:block;margin-top:3px;font-size:10.5px;line-height:1.3;color:#64748b;white-space:normal;max-width:170px}
   #nsTable th.tre-col{background:#e0e7ff;color:#312e81}
   @media(max-width:700px){#nsTreSummary{grid-template-columns:1fr}}
   #utbSummary{grid-template-columns:repeat(5,minmax(0,1fr))}
@@ -1815,9 +1817,14 @@ header .brand-mark{width:64px;height:64px;flex:none}
       <div id="nsTreBox">
         <div class="tre-head">
           <h4>Time Range Eligibility <span style="font-weight:500;color:#64748b">· Actual IN vs scheduled duty start</span></h4>
-          <label class="tre-on" for="treOn"><input type="checkbox" id="treOn" checked> Show Time Range Eligibility</label>
+          <div class="tre-on" style="gap:10px"><label for="treMode" style="font-size:13px;font-weight:600;color:#334766;margin:0">How to use it</label>
+            <select id="treMode" style="height:38px;border:1px solid #c7d2fe;border-radius:9px;padding:0 10px;font-size:13px;color:#172b4d;background:#fff">
+              <option value="combined">One combined eligibility (recommended)</option>
+              <option value="separate">Show separately (information only)</option>
+              <option value="off">Off (original report)</option>
+            </select></div>
         </div>
-        <p class="tre-note">A separate check: it only compares each staff member's Actual IN (first punch-in) with an acceptable window around the scheduled duty start from the Dispatch cell. It does <b>not</b> change Total Night Shift Hrs, Shortfall, Allowance Eligibility, the Show filter, or any other tab. Both limits are inclusive. A duty with <b>no sign-out</b> (or no punches at all) is always <b>Not Eligible</b>.</p>
+        <p class="tre-note" id="treNote"></p>
         <div class="tre-grid">
           <div class="control-field"><label for="treBefore">Hours before duty start</label><input type="number" id="treBefore" min="0" max="24" step="0.25" value="5"></div>
           <div class="control-field"><label for="treAfter">Hours after duty start</label><input type="number" id="treAfter" min="0" max="24" step="0.25" value="4"></div>
@@ -1856,8 +1863,8 @@ header .brand-mark{width:64px;height:64px;flex:none}
               <thead><tr>
                 <th>Staff ID</th><th>Staff Name</th><th>Position</th><th>Location</th><th>Duty Date</th>
                 <th>Scheduled Duty</th><th>Sched. Start</th><th>Sched. End</th><th>Punch-In</th><th>Punch-Out</th>
-                <th>Sched. Hrs</th><th>Total Night Shift Hrs</th><th>Shortfall</th><th>Identified by</th><th>Allowance Eligibility</th>
-                <th class="tre-col">Eligible Window<br><small>from → to</small></th><th class="tre-col">Actual IN vs Sched. Start</th><th class="tre-col">Time Range Eligibility</th>
+                <th>Sched. Hrs</th><th>Total Night Shift Hrs</th><th>Shortfall</th><th>Identified by</th><th id="nsEligTh">Allowance Eligibility</th>
+                <th class="tre-col">Eligible Window<br><small>from → to</small></th><th class="tre-col">Actual IN vs Sched. Start</th><th class="tre-col tre-res">Time Range Eligibility</th>
                 <th>Remarks</th>
               </tr></thead>
               <tbody id="nsBody"></tbody>
@@ -8177,13 +8184,20 @@ function nsEndClock(r) { return utbClock(r.schEndMin) + (r.schEndMin >= 1440 ? '
    Reads existing row fields only; never writes to elig / nightMin / shortMin / review / kind / remarks.
    Settings are kept in this browser only. ---------------------------------------------------------------------- */
 const TRE_KEY = 'nsTimeRangeV1';
-const TRE_DEF = { on: true, beforeH: 5, afterH: 4 };
+const TRE_DEF = { mode: 'combined', beforeH: 5, afterH: 4 };
+const TRE_MODES = ['combined', 'separate', 'off'];
 const treNum = (v, d) => { const n = parseFloat(v); return isFinite(n) ? Math.min(24, Math.max(0, Math.round(n * 60) / 60)) : d; };
 const TRE = (() => {
-  try { const o = JSON.parse(localStorage.getItem(TRE_KEY) || 'null'); if (o && typeof o === 'object') return { on: o.on !== false, beforeH: treNum(o.beforeH, TRE_DEF.beforeH), afterH: treNum(o.afterH, TRE_DEF.afterH) }; } catch (e) { /* optional */ }
-  return Object.assign({}, TRE_DEF);
+  try {
+    const o = JSON.parse(localStorage.getItem(TRE_KEY) || 'null');
+    if (o && typeof o === 'object') {
+      const mode = TRE_MODES.includes(o.mode) ? o.mode : (o.on === false ? 'off' : TRE_DEF.mode);
+      return { mode, on: mode !== 'off', beforeH: treNum(o.beforeH, TRE_DEF.beforeH), afterH: treNum(o.afterH, TRE_DEF.afterH) };
+    }
+  } catch (e) { /* optional */ }
+  return Object.assign({ on: true }, TRE_DEF);
 })();
-function treSave() { try { localStorage.setItem(TRE_KEY, JSON.stringify(TRE)); } catch (e) { /* optional */ } }
+function treSave() { try { localStorage.setItem(TRE_KEY, JSON.stringify({ mode: TRE.mode, beforeH: TRE.beforeH, afterH: TRE.afterH })); } catch (e) { /* optional */ } }
 function treClock(min) { const d = Math.floor(min / 1440); return utbClock(min) + (d === 0 ? '' : d > 0 ? ` (+${d})` : ` (${d})`); }
 function treHrs(h) { return (Math.round(h * 100) / 100).toString() + ' h'; }
 function treEval(r) {
@@ -8219,28 +8233,56 @@ function treShowMatch(r) {
   if (!TRE.on || f === 'all' || !r.tre) return true;
   return f === 'eligible' ? r.tre.res === 'Eligible' : f === 'not' ? r.tre.res === 'Not Eligible' : r.tre.res === 'Cannot Determine';
 }
+// One final result from the two checks: Not Eligible if either fails; Eligible only if both pass; otherwise Needs Review.
+function treCombine(r) {
+  const a = r.eligAllow, t = r.tre ? r.tre.res : 'Cannot Determine';
+  if (a === 'Not Eligible' || t === 'Not Eligible') return 'Not Eligible';
+  return a === 'Eligible' && t === 'Eligible' ? 'Eligible' : 'Needs Review';
+}
+function treFail(r) {
+  const aFail = r.eligAllow === 'Not Eligible', tFail = !!(r.tre && r.tre.res === 'Not Eligible');
+  const noOut = r.exitTs === null || r.exitTs === undefined, parts = [];
+  if (noOut && (aFail || tFail)) parts.push('No sign-out');
+  else { if (aFail) parts.push(r.nightMin === null ? 'No complete biometric' : 'Hours short of schedule'); if (tFail) parts.push('Actual IN outside time range'); }
+  return { aFail, tFail, text: parts.join(' + ') };
+}
 function treApply() { NS.rows.forEach(r => { r.tre = TRE.on ? treEval(r) : null; }); }
 function treSyncUi() {
   const box = el('nsTreBox'); if (!box) return;
   box.classList.toggle('tre-disabled', !TRE.on);
-  const tb = el('nsTable'); if (tb) tb.classList.toggle('tre-off', !TRE.on);
+  const tb = el('nsTable'); if (tb) { tb.classList.toggle('tre-off', !TRE.on); tb.classList.toggle('tre-comb', TRE.mode === 'combined'); }
+  const th = el('nsEligTh'); if (th) th.textContent = TRE.mode === 'combined' ? 'Night Shift Eligibility (final)' : 'Allowance Eligibility';
   const ex = 23 * 60;
+  el('treNote').innerHTML = TRE.mode === 'combined'
+    ? 'Gives <b>one</b> eligibility result per duty. <b>Eligible</b> only when the allowance check (worked hours vs scheduled hours, within the grace) <b>and</b> the time-range check (Actual IN inside the window, sign-out present) both pass; <b>Not Eligible</b> if either fails (the reason is shown under the result); otherwise <b>Needs Review</b>. Total Night Shift Hrs and Shortfall are not recalculated. Both window limits are inclusive.'
+    : TRE.mode === 'separate'
+      ? 'Shows the time-range result in its own column, for information only. It does <b>not</b> change Allowance Eligibility, the counts or the Show filter, so the two columns can differ. A duty with no sign-out is Not Eligible here.'
+      : 'Off: the report, filters and export behave exactly as the original Night Shift Allowance report.';
   el('trePrev').innerHTML = TRE.on
     ? `<b>Current window:</b> ${treHrs(TRE.beforeH)} before → ${treHrs(TRE.afterH)} after the scheduled start. Example: a <b>${utbClock(ex)}</b> start accepts Actual IN from <b>${treClock(ex - Math.round(TRE.beforeH * 60))}</b> to <b>${treClock(ex + Math.round(TRE.afterH * 60))}</b>.`
-    : 'Time Range Eligibility is hidden. The report, filters and export behave exactly as before.';
+    : 'Time Range Eligibility is off.';
 }
 function treRenderSummary() {
   const box = el('nsTreSummary'); if (!box) return;
   if (!TRE.on || !NS.rows.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
-  const c = k => NS.rows.filter(r => r.tre && r.tre.res === k).length;
   box.style.display = '';
+  if (TRE.mode === 'combined') {
+    const ne = NS.rows.filter(r => r.elig === 'Not Eligible').map(treFail);
+    const only = f => ne.filter(f).length;
+    box.innerHTML = `<div class="tre-title">Why duties are Not Eligible · window ${esc(treHrs(TRE.beforeH))} before → ${esc(treHrs(TRE.afterH))} after the scheduled start</div>
+      <div class="stat flag"><div class="n">${only(x => x.aFail && !x.tFail)}</div><div class="l">Allowance check only (hours / biometric)</div></div>
+      <div class="stat flag"><div class="n">${only(x => x.tFail && !x.aFail)}</div><div class="l">Time range only (Actual IN outside window)</div></div>
+      <div class="stat flag"><div class="n">${only(x => x.aFail && x.tFail)}</div><div class="l">Both checks failed</div></div>`;
+    return;
+  }
+  const c = k => NS.rows.filter(r => r.tre && r.tre.res === k).length;
   box.innerHTML = `<div class="tre-title">Time Range Eligibility · window ${esc(treHrs(TRE.beforeH))} before → ${esc(treHrs(TRE.afterH))} after the scheduled start (all ${NS.rows.length} records in this report)</div>
     <div class="stat"><div class="n">${c('Eligible')}</div><div class="l">Within range</div></div>
-    <div class="stat flag"><div class="n">${c('Not Eligible')}</div><div class="l">Outside range</div></div>
+    <div class="stat flag"><div class="n">${c('Not Eligible')}</div><div class="l">Outside range / no sign-out</div></div>
     <div class="stat"><div class="n">${c('Cannot Determine')}</div><div class="l">Cannot determine (punch-out but no Actual IN)</div></div>`;
 }
 function treChanged() {
-  TRE.on = el('treOn').checked;
+  TRE.mode = TRE_MODES.includes(el('treMode').value) ? el('treMode').value : TRE_DEF.mode; TRE.on = TRE.mode !== 'off';
   TRE.beforeH = treNum(el('treBefore').value, TRE.beforeH);
   TRE.afterH = treNum(el('treAfter').value, TRE.afterH);
   treSave(); treSyncUi();
@@ -8248,8 +8290,9 @@ function treChanged() {
 }
 function nsApplyView() {
   const g = nsGrace(), show = el('nsShow').value;
-  NS.rows.forEach(r => { r.elig = nsEligibilityOf(r, g); });
+  NS.rows.forEach(r => { r.eligAllow = nsEligibilityOf(r, g); r.elig = r.eligAllow; });
   treApply();
+  if (TRE.mode === 'combined') NS.rows.forEach(r => { r.elig = treCombine(r); });
   NS.view = NS.rows.filter(r => {
     if (!treShowMatch(r)) return false;
     if (show === 'eligible') return r.elig === 'Eligible';
@@ -8294,12 +8337,12 @@ function nsRenderAll() {
       <td class="num">${r.nightMin !== null ? minutesToTotalHHMM(r.nightMin) : '—'}</td>
       <td class="num">${r.shortMin !== null ? minutesToTotalHHMM(r.shortMin) : '—'}</td>
       <td>${esc(r.criteria)}</td>
-      <td><span class="ut-tag ${nsEligClass(r.elig)}">${esc(r.elig)}</span></td>
+      <td><span class="ut-tag ${nsEligClass(r.elig)}">${esc(r.elig)}</span>${TRE.mode === 'combined' && r.elig === 'Not Eligible' ? '<span class="ns-why">' + esc(treFail(r).text) + '</span>' : ''}</td>
       <td class="num tre-col">${r.tre ? esc(treClock(r.tre.ws) + ' → ' + treClock(r.tre.we)) : '—'}</td>
       <td class="num tre-col">${r.tre ? esc(treDiffText(r.tre.diff)) : '—'}</td>
-      <td class="tre-col" title="${r.tre ? esc(r.tre.note) : ''}">${r.tre ? `<span class="ut-tag ${treClass(r.tre.res)}">${esc(r.tre.res)}</span>` : '—'}</td>
+      <td class="tre-col tre-res" title="${r.tre ? esc(r.tre.note) : ''}">${r.tre ? `<span class="ut-tag ${treClass(r.tre.res)}">${esc(r.tre.res)}</span>` : '—'}</td>
       <td class="utb-remark">${esc(nsRemarks(r, g)) || '—'}${r.tre && r.tre.note ? '<br><span style="color:#4338ca">Time range: ' + esc(r.tre.note) + '</span>' : ''}</td>
-    </tr>`).join('') : '<tr><td colspan="${TRE.on ? 19 : 16}" class="pay-empty">No records match the current view.</td></tr>';
+    </tr>`).join('') : '<tr><td colspan="' + (TRE.mode === 'separate' ? 19 : TRE.mode === 'combined' ? 18 : 16) + '" class="pay-empty">No records match the current view.</td></tr>';
   el('nsMeta').textContent = `${NS.view.length} of ${rows.length} records`;
   const cap = el('nsCap');
   if (NS.view.length > NS_CAP) { cap.style.display = 'block'; cap.textContent = `Showing the first ${NS_CAP} of ${NS.view.length} records. Use “Export to Excel” for the complete list.`; }
@@ -8413,10 +8456,12 @@ async function nsExport() {
       { header: 'Actual Punch-In', key: 'ci', width: 13 }, { header: 'Actual Punch-Out', key: 'co', width: 14 },
       { header: 'Scheduled Hours', key: 'sh', width: 11 }, { header: 'Total Night Shift Hours (hh:mm)', key: 'nh', width: 15 },
       { header: 'Night Shift Hours (decimal)', key: 'nd', width: 13 }, { header: 'Shortfall (hh:mm)', key: 'sf', width: 11 },
-      { header: 'Identified By', key: 'by', width: 26 }, { header: 'Night Shift Allowance Eligibility', key: 'el', width: 18 },
+      { header: 'Identified By', key: 'by', width: 26 }, { header: TRE.mode === 'combined' ? 'Night Shift Eligibility (final)' : 'Night Shift Allowance Eligibility', key: 'el', width: 20 },
+      ...(TRE.mode === 'combined' ? [{ header: 'Eligibility Reason', key: 'why', width: 34 }] : []),
       ...(TRE.on ? [
         { header: 'Eligible Window From', key: 'tf', width: 14 }, { header: 'Eligible Window To', key: 'tt', width: 14 },
-        { header: 'Actual IN vs Scheduled Start', key: 'td', width: 16 }, { header: 'Time Range Eligibility', key: 'tr', width: 18 },
+        { header: 'Actual IN vs Scheduled Start', key: 'td', width: 16 },
+        ...(TRE.mode === 'separate' ? [{ header: 'Time Range Eligibility', key: 'tr', width: 18 }] : []),
       ] : []),
       { header: 'Schedule Source', key: 'src', width: 22 }, { header: 'Remarks', key: 'rem', width: 70 },
     ];
@@ -8429,31 +8474,35 @@ async function nsExport() {
         sh: minutesToTotalHHMM(r.schedMin), nh: r.nightMin !== null ? minutesToTotalHHMM(r.nightMin) : '',
         nd: r.nightMin !== null ? Math.round(r.nightMin / 60 * 100) / 100 : '', sf: r.shortMin !== null ? minutesToTotalHHMM(r.shortMin) : '',
         by: r.criteria, el: r.elig, src: r.source,
-        ...(TRE.on && r.tre ? { tf: treClock(r.tre.ws), tt: treClock(r.tre.we), td: treDiffText(r.tre.diff), tr: r.tre.res } : {}),
+        ...(TRE.mode === 'combined' ? { why: r.elig === 'Not Eligible' ? treFail(r).text : '' } : {}),
+        ...(TRE.on && r.tre ? { tf: treClock(r.tre.ws), tt: treClock(r.tre.we), td: treDiffText(r.tre.diff), ...(TRE.mode === 'separate' ? { tr: r.tre.res } : {}) } : {}),
         rem: nsRemarks(r, g) + (TRE.on && r.tre && r.tre.note ? (nsRemarks(r, g) ? ' ' : '') + 'Time range: ' + r.tre.note : ''),
       });
       row.getCell('rem').alignment = { wrapText: true, vertical: 'top' };
       if (r.kind === 'missing' || r.kind === 'incomplete') row.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF7E6' } }; });
       row.getCell('el').font = { bold: true, color: { argb: r.elig === 'Eligible' ? 'FF15803D' : r.elig === 'Needs Review' ? 'FF4338CA' : 'FFDC2626' } };
-      if (TRE.on && r.tre) row.getCell('tr').font = { bold: true, color: { argb: r.tre.res === 'Eligible' ? 'FF15803D' : r.tre.res === 'Not Eligible' ? 'FFDC2626' : 'FFB45309' } };
+      if (TRE.mode === 'separate' && r.tre) row.getCell('tr').font = { bold: true, color: { argb: r.tre.res === 'Eligible' ? 'FF15803D' : r.tre.res === 'Not Eligible' ? 'FFDC2626' : 'FFB45309' } };
     });
     ws.views = [{ state: 'frozen', ySplit: 1 }];
     ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: ws.rowCount, column: ws.columns.length } };
 
     const sum = wb.addWorksheet('Summary');
     const m = NS.meta, v = NS.view;
-    const T = TRE.on;   // Time Range Eligibility is shown: the Summary reports it side by side with the allowance eligibility
-    sum.getCell('A1').value = T ? 'Night Shift — Allowance & Time Range Eligibility Summary' : 'Night Shift Allowance — Summary'; sum.getCell('A1').font = { bold: true, size: 14, color: { argb: 'FF172B4D' } };
+    const T = TRE.mode === 'separate', C = TRE.mode === 'combined';   // separate: side by side; combined: one final result
+    sum.getCell('A1').value = T ? 'Night Shift — Allowance & Time Range Eligibility Summary' : C ? 'Night Shift Eligibility — Summary' : 'Night Shift Allowance — Summary'; sum.getCell('A1').font = { bold: true, size: 14, color: { argb: 'FF172B4D' } };
     const top = [['Period', m.crit.label], ['Staff', m.crit.staffKey ? m.crit.staffRaw : (m.crit.scope === 'line' ? 'Line ' + m.crit.line : 'All staff')],
      ['View exported', el('nsShow').selectedOptions[0].textContent], ['Grace (minutes)', g], ['Generated', new Date().toLocaleString()],
      ['Biometric data covers', utbFmtDate(m.coverMin) + ' → ' + utbFmtDate(m.coverMax)],
      ['Night duty rule', 'Dispatch Duty contains the letter N, or scheduled start 22:00–23:59 (around 23:00)' + (NS_EXC.size ? ' — excluded dispatch codes: ' + [...NS_EXC].join(', ') : '')],
      ['Night shift hours', 'Time worked inside the scheduled duty window (first Entry → last Exit of the attendance period)']];
+    if (C) top.push(['Eligibility rule', 'One result per duty: Eligible only when the allowance check (worked hours vs scheduled, within grace) AND the time-range check (Actual IN inside the window, sign-out present) both pass; Not eligible if either fails; otherwise Needs review'],
+      ['Time range window', `${treHrs(TRE.beforeH)} before → ${treHrs(TRE.afterH)} after the scheduled start (inclusive)`],
+      ['View exported (time-range filter)', el('treShow').selectedOptions[0].textContent]);
     if (T) top.push(['Time range window', `${treHrs(TRE.beforeH)} before → ${treHrs(TRE.afterH)} after the scheduled start (inclusive); no sign-out = not eligible`],
       ['View exported (time-range filter)', el('treShow').selectedOptions[0].textContent],
       ['Combined result', 'Eligible only when BOTH Night Shift Allowance Eligibility and Time Range Eligibility are Eligible; Not eligible if either is Not eligible; otherwise Needs review']);
     top.forEach((p, i) => { sum.getCell(`A${3 + i}`).value = p[0]; sum.getCell(`B${3 + i}`).value = p[1]; sum.getCell(`A${3 + i}`).font = { bold: true }; });
-    const aCls = r => r.elig === 'Eligible' ? 'ok' : r.elig === 'Needs Review' ? 'rev' : 'not';               // Night Shift Allowance Eligibility
+    const aCls = r => (T ? r.eligAllow : r.elig) === 'Eligible' ? 'ok' : (T ? r.eligAllow : r.elig) === 'Needs Review' ? 'rev' : 'not';               // Night Shift Allowance Eligibility (final result when combined)
     const tCls = r => !r.tre ? 'rev' : r.tre.res === 'Eligible' ? 'ok' : r.tre.res === 'Not Eligible' ? 'not' : 'rev';   // Time Range Eligibility
     const cCls = r => (aCls(r) === 'not' || tCls(r) === 'not') ? 'not' : (aCls(r) === 'ok' && tCls(r) === 'ok') ? 'ok' : 'rev';   // both must pass
     const cnt = (f, k) => v.filter(r => f(r) === k).length;
@@ -8462,10 +8511,14 @@ async function nsExport() {
     let nextRow;
     const hdrCell = (c, h) => { c.value = h; c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4338CA' } }; c.alignment = { horizontal: 'center', wrapText: true }; };
     if (!T) {
-      [['Records exported', v.length], ['Eligible', cnt(aCls, 'ok')], ['Not eligible', cnt(aCls, 'not')], ['Needs review', cnt(aCls, 'rev')],
-       ['Night hours — eligible + review (hh:mm)', hrs(aCls, k => k !== 'not')]]
-        .forEach((p, i) => { sum.getCell(`A${cs + i}`).value = p[0]; sum.getCell(`B${cs + i}`).value = p[1]; sum.getCell(`B${cs + i}`).font = { bold: true }; });
-      nextRow = cs + 7;
+      const fl = C ? v.filter(r => r.elig === 'Not Eligible').map(treFail) : [];
+      const base = [['Records exported', v.length], ['Eligible', cnt(aCls, 'ok')], ['Not eligible', cnt(aCls, 'not')], ['Needs review', cnt(aCls, 'rev')],
+       ['Night hours — eligible + review (hh:mm)', hrs(aCls, k => k !== 'not')]];
+      if (C) base.push(['Not eligible — allowance check only (hours / biometric)', fl.filter(x => x.aFail && !x.tFail).length],
+        ['Not eligible — time range only (Actual IN outside window / no sign-out)', fl.filter(x => x.tFail && !x.aFail).length],
+        ['Not eligible — both checks failed', fl.filter(x => x.aFail && x.tFail).length]);
+      base.forEach((p, i) => { sum.getCell(`A${cs + i}`).value = p[0]; sum.getCell(`B${cs + i}`).value = p[1]; sum.getCell(`B${cs + i}`).font = { bold: true }; });
+      nextRow = cs + base.length + 2;
     } else {
       ['Result', 'Night Shift Allowance Eligibility', 'Time Range Eligibility', 'Combined (both must pass)'].forEach((h, i) => hdrCell(sum.getCell(cs, i + 1), h));
       const rows = [
@@ -8529,8 +8582,8 @@ async function nsExport() {
   nsExcSummary();
   el('nsShow').addEventListener('change', () => { if (NS.rows.length) nsRenderAll(); });
   // Time Range Eligibility add-on
-  el('treOn').checked = TRE.on; el('treBefore').value = TRE.beforeH; el('treAfter').value = TRE.afterH;
-  ['treOn', 'treBefore', 'treAfter'].forEach(i => el(i).addEventListener(i === 'treOn' ? 'change' : 'input', treChanged));
+  el('treMode').value = TRE.mode; el('treBefore').value = TRE.beforeH; el('treAfter').value = TRE.afterH;
+  ['treMode', 'treBefore', 'treAfter'].forEach(i => el(i).addEventListener(i === 'treMode' ? 'change' : 'input', treChanged));
   el('treShow').addEventListener('change', () => { if (NS.rows.length) nsRenderAll(); });
   el('treDefault').addEventListener('click', () => { el('treBefore').value = TRE_DEF.beforeH; el('treAfter').value = TRE_DEF.afterH; treChanged(); });
   treSyncUi();

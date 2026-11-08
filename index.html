@@ -1817,7 +1817,7 @@ header .brand-mark{width:64px;height:64px;flex:none}
           <h4>Time Range Eligibility <span style="font-weight:500;color:#64748b">· Actual IN vs scheduled duty start</span></h4>
           <label class="tre-on" for="treOn"><input type="checkbox" id="treOn" checked> Show Time Range Eligibility</label>
         </div>
-        <p class="tre-note">A separate check: it only compares each staff member's Actual IN (first punch-in) with an acceptable window around the scheduled duty start from the Dispatch cell. It does <b>not</b> change Total Night Shift Hrs, Shortfall, Allowance Eligibility, the Show filter, or any other tab. Both limits are inclusive.</p>
+        <p class="tre-note">A separate check: it only compares each staff member's Actual IN (first punch-in) with an acceptable window around the scheduled duty start from the Dispatch cell. It does <b>not</b> change Total Night Shift Hrs, Shortfall, Allowance Eligibility, the Show filter, or any other tab. Both limits are inclusive. A duty with <b>no sign-out</b> (or no punches at all) is always <b>Not Eligible</b>.</p>
         <div class="tre-grid">
           <div class="control-field"><label for="treBefore">Hours before duty start</label><input type="number" id="treBefore" min="0" max="24" step="0.25" value="5"></div>
           <div class="control-field"><label for="treAfter">Hours after duty start</label><input type="number" id="treAfter" min="0" max="24" step="0.25" value="4"></div>
@@ -8190,16 +8190,25 @@ function treEval(r) {
   const bMin = Math.round(TRE.beforeH * 60), aMin = Math.round(TRE.afterH * 60);
   const ws = r.schStartMin - bMin, we = r.schStartMin + aMin;
   const out = { ws, we, res: 'Cannot Determine', diff: null, note: '' };
-  if (r.entryTs === null || r.entryTs === undefined) {
-    out.note = r.kind === 'missing' ? 'No Actual IN — no biometric punches found for this duty, so the time range cannot be checked.' : 'No Actual IN (missing punch-in) — the time range cannot be checked.';
-    return out;
+  const hasIn = r.entryTs !== null && r.entryTs !== undefined, hasOut = r.exitTs !== null && r.exitTs !== undefined;
+  let inRel = null;
+  if (hasIn) {
+    inRel = Math.floor(r.entryTs / 60000) - r.dateMs / 60000;       // minutes from the duty date's midnight (can be negative)
+    out.inRel = inRel; out.diff = inRel - r.schStartMin;
   }
-  const inRel = Math.floor(r.entryTs / 60000) - r.dateMs / 60000;       // minutes from the duty date's midnight (can be negative)
-  out.inRel = inRel; out.diff = inRel - r.schStartMin;
-  const t = treClock(inRel);
-  if (inRel < ws) { out.res = 'Not Eligible'; out.note = `Actual IN ${t} is ${minutesToTotalHHMM(ws - inRel)} before the window opens (${treClock(ws)}).`; }
-  else if (inRel > we) { out.res = 'Not Eligible'; out.note = `Actual IN ${t} is ${minutesToTotalHHMM(inRel - we)} after the window closes (${treClock(we)}).`; }
-  else out.res = 'Eligible';
+  if (!hasOut) {                                                      // no sign-out (or no punches at all) => never eligible
+    out.res = 'Not Eligible';
+    out.note = !hasIn && r.kind === 'missing' ? 'No Actual IN / OUT — no biometric punches found for this duty, so it is treated as not eligible.'
+      : !hasIn ? 'No Actual IN and no sign-out — treated as not eligible.'
+      : 'No sign-out (Actual OUT) recorded — treated as not eligible.';
+  } else if (!hasIn) {
+    out.note = 'No Actual IN (missing punch-in) — the time range cannot be checked.';
+  } else {
+    const t = treClock(inRel);
+    if (inRel < ws) { out.res = 'Not Eligible'; out.note = `Actual IN ${t} is ${minutesToTotalHHMM(ws - inRel)} before the window opens (${treClock(ws)}).`; }
+    else if (inRel > we) { out.res = 'Not Eligible'; out.note = `Actual IN ${t} is ${minutesToTotalHHMM(inRel - we)} after the window closes (${treClock(we)}).`; }
+    else out.res = 'Eligible';
+  }
   if (r.assumed) out.note += (out.note ? ' ' : '') + 'Scheduled start is assumed (no clock times in the Dispatch cell) — confirm it.';
   return out;
 }
@@ -8228,7 +8237,7 @@ function treRenderSummary() {
   box.innerHTML = `<div class="tre-title">Time Range Eligibility · window ${esc(treHrs(TRE.beforeH))} before → ${esc(treHrs(TRE.afterH))} after the scheduled start (all ${NS.rows.length} records in this report)</div>
     <div class="stat"><div class="n">${c('Eligible')}</div><div class="l">Within range</div></div>
     <div class="stat flag"><div class="n">${c('Not Eligible')}</div><div class="l">Outside range</div></div>
-    <div class="stat"><div class="n">${c('Cannot Determine')}</div><div class="l">No Actual IN</div></div>`;
+    <div class="stat"><div class="n">${c('Cannot Determine')}</div><div class="l">Cannot determine (punch-out but no Actual IN)</div></div>`;
 }
 function treChanged() {
   TRE.on = el('treOn').checked;
@@ -8433,43 +8442,60 @@ async function nsExport() {
 
     const sum = wb.addWorksheet('Summary');
     const m = NS.meta, v = NS.view;
-    const T = TRE.on;   // when Time Range Eligibility is shown, the Summary is based on it instead of the allowance eligibility
-    sum.getCell('A1').value = T ? 'Night Shift — Time Range Eligibility Summary' : 'Night Shift Allowance — Summary'; sum.getCell('A1').font = { bold: true, size: 14, color: { argb: 'FF172B4D' } };
+    const T = TRE.on;   // Time Range Eligibility is shown: the Summary reports it side by side with the allowance eligibility
+    sum.getCell('A1').value = T ? 'Night Shift — Allowance & Time Range Eligibility Summary' : 'Night Shift Allowance — Summary'; sum.getCell('A1').font = { bold: true, size: 14, color: { argb: 'FF172B4D' } };
     const top = [['Period', m.crit.label], ['Staff', m.crit.staffKey ? m.crit.staffRaw : (m.crit.scope === 'line' ? 'Line ' + m.crit.line : 'All staff')],
      ['View exported', el('nsShow').selectedOptions[0].textContent], ['Grace (minutes)', g], ['Generated', new Date().toLocaleString()],
      ['Biometric data covers', utbFmtDate(m.coverMin) + ' → ' + utbFmtDate(m.coverMax)],
      ['Night duty rule', 'Dispatch Duty contains the letter N, or scheduled start 22:00–23:59 (around 23:00)' + (NS_EXC.size ? ' — excluded dispatch codes: ' + [...NS_EXC].join(', ') : '')],
      ['Night shift hours', 'Time worked inside the scheduled duty window (first Entry → last Exit of the attendance period)']];
-    if (T) top.push(['Eligibility basis', 'Time Range Eligibility (Actual IN vs scheduled duty start)'],
-      ['Time range window', `${treHrs(TRE.beforeH)} before → ${treHrs(TRE.afterH)} after the scheduled start (inclusive)`],
-      ['View exported (time-range filter)', el('treShow').selectedOptions[0].textContent]);
+    if (T) top.push(['Time range window', `${treHrs(TRE.beforeH)} before → ${treHrs(TRE.afterH)} after the scheduled start (inclusive); no sign-out = not eligible`],
+      ['View exported (time-range filter)', el('treShow').selectedOptions[0].textContent],
+      ['Combined result', 'Eligible only when BOTH Night Shift Allowance Eligibility and Time Range Eligibility are Eligible; Not eligible if either is Not eligible; otherwise Needs review']);
     top.forEach((p, i) => { sum.getCell(`A${3 + i}`).value = p[0]; sum.getCell(`B${3 + i}`).value = p[1]; sum.getCell(`A${3 + i}`).font = { bold: true }; });
-    // classification used by the Summary: 'ok' / 'not' / 'rev'
-    const cls = r => T ? (r.tre ? (r.tre.res === 'Eligible' ? 'ok' : r.tre.res === 'Not Eligible' ? 'not' : 'rev') : 'rev')
-                       : (r.elig === 'Eligible' ? 'ok' : r.elig === 'Needs Review' ? 'rev' : 'not');
-    const cnt = k => v.filter(r => cls(r) === k).length;
+    const aCls = r => r.elig === 'Eligible' ? 'ok' : r.elig === 'Needs Review' ? 'rev' : 'not';               // Night Shift Allowance Eligibility
+    const tCls = r => !r.tre ? 'rev' : r.tre.res === 'Eligible' ? 'ok' : r.tre.res === 'Not Eligible' ? 'not' : 'rev';   // Time Range Eligibility
+    const cCls = r => (aCls(r) === 'not' || tCls(r) === 'not') ? 'not' : (aCls(r) === 'ok' && tCls(r) === 'ok') ? 'ok' : 'rev';   // both must pass
+    const cnt = (f, k) => v.filter(r => f(r) === k).length;
+    const hrs = (f, keep) => minutesToTotalHHMM(v.filter(r => keep(f(r))).reduce((n, r) => n + (r.nightMin || 0), 0));
     const cs = 3 + top.length + 1;
-    (T ? [['Records exported', v.length], ['Eligible (within time range)', cnt('ok')], ['Not eligible (outside time range)', cnt('not')], ['No Actual IN (cannot determine)', cnt('rev')],
-          ['Night hours — time-range eligible (hh:mm)', minutesToTotalHHMM(v.filter(r => cls(r) === 'ok').reduce((n, r) => n + (r.nightMin || 0), 0))]]
-       : [['Records exported', v.length], ['Eligible', cnt('ok')], ['Not eligible', cnt('not')], ['Needs review', cnt('rev')],
-          ['Night hours — eligible + review (hh:mm)', minutesToTotalHHMM(v.filter(r => cls(r) !== 'not').reduce((n, r) => n + (r.nightMin || 0), 0))]])
-      .forEach((p, i) => { sum.getCell(`A${cs + i}`).value = p[0]; sum.getCell(`B${cs + i}`).value = p[1]; sum.getCell(`B${cs + i}`).font = { bold: true }; });
+    let nextRow;
+    const hdrCell = (c, h) => { c.value = h; c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4338CA' } }; c.alignment = { horizontal: 'center', wrapText: true }; };
+    if (!T) {
+      [['Records exported', v.length], ['Eligible', cnt(aCls, 'ok')], ['Not eligible', cnt(aCls, 'not')], ['Needs review', cnt(aCls, 'rev')],
+       ['Night hours — eligible + review (hh:mm)', hrs(aCls, k => k !== 'not')]]
+        .forEach((p, i) => { sum.getCell(`A${cs + i}`).value = p[0]; sum.getCell(`B${cs + i}`).value = p[1]; sum.getCell(`B${cs + i}`).font = { bold: true }; });
+      nextRow = cs + 7;
+    } else {
+      ['Result', 'Night Shift Allowance Eligibility', 'Time Range Eligibility', 'Combined (both must pass)'].forEach((h, i) => hdrCell(sum.getCell(cs, i + 1), h));
+      const rows = [
+        ['Records exported', v.length, v.length, v.length],
+        ['Eligible', cnt(aCls, 'ok'), cnt(tCls, 'ok'), cnt(cCls, 'ok')],
+        ['Not eligible', cnt(aCls, 'not'), cnt(tCls, 'not'), cnt(cCls, 'not')],
+        ['Needs review / cannot determine', cnt(aCls, 'rev'), cnt(tCls, 'rev'), cnt(cCls, 'rev')],
+        ['Night hours (hh:mm) — allowance & combined: eligible + review; time range: eligible', hrs(aCls, k => k !== 'not'), hrs(tCls, k => k === 'ok'), hrs(cCls, k => k !== 'not')],
+        ['Allowance eligible/review but outside time range', '', v.filter(r => aCls(r) !== 'not' && tCls(r) === 'not').length, ''],
+        ['Within time range but allowance not eligible', '', v.filter(r => tCls(r) === 'ok' && aCls(r) === 'not').length, ''],
+      ];
+      rows.forEach((p, i) => p.forEach((val, ci) => { const c = sum.getCell(cs + 1 + i, ci + 1); c.value = val; if (ci) { c.font = { bold: true }; c.alignment = { horizontal: 'center' }; } }));
+      nextRow = cs + rows.length + 3;
+    }
     const by = new Map();
     v.forEach(r => {
-      if (!by.has(r.id)) by.set(r.id, { id: r.id, name: r.name, duties: 0, ok: 0, rev: 0, not: 0, min: 0 });
+      if (!by.has(r.id)) by.set(r.id, { id: r.id, name: r.name, duties: 0, aOk: 0, aRev: 0, aNot: 0, aMin: 0, tOk: 0, tNot: 0, tRev: 0, cOk: 0, cRev: 0, cNot: 0 });
       const e = by.get(r.id); if (!e.name && r.name) e.name = r.name;
-      const k = cls(r); e.duties++; e[k]++;
-      if (T ? k === 'ok' : k !== 'not') e.min += r.nightMin || 0;
+      e.duties++; const a = aCls(r), t = tCls(r), c = cCls(r);
+      e['a' + a[0].toUpperCase() + a.slice(1)]++; e['t' + t[0].toUpperCase() + t.slice(1)]++; e['c' + c[0].toUpperCase() + c.slice(1)]++;
+      if (a !== 'not') e.aMin += r.nightMin || 0;
     });
-    const hr = cs + 7; sum.getCell(`A${hr - 1}`).value = 'By staff'; sum.getCell(`A${hr - 1}`).font = { bold: true, size: 12 };
-    (T ? ['Staff ID', 'Staff Name', 'Night duties', 'Eligible (within range)', 'No Actual IN', 'Not eligible (outside range)', 'Night hours — eligible (hh:mm)']
-       : ['Staff ID', 'Staff Name', 'Night duties', 'Eligible', 'Needs review', 'Not eligible', 'Night hours (hh:mm)']).forEach((h, i) => {
-      const c = sum.getCell(hr, i + 1); c.value = h; c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4338CA' } }; c.alignment = { horizontal: 'center', wrapText: true };
-    });
+    const hr = nextRow; sum.getCell(`A${hr - 1}`).value = 'By staff'; sum.getCell(`A${hr - 1}`).font = { bold: true, size: 12 };
+    (T ? ['Staff ID', 'Staff Name', 'Night duties', 'Allowance: Eligible', 'Allowance: Needs review', 'Allowance: Not eligible', 'Night hours (hh:mm)',
+          'Time range: Eligible', 'Time range: Not eligible', 'Time range: Cannot determine', 'Combined: Eligible', 'Combined: Needs review', 'Combined: Not eligible']
+       : ['Staff ID', 'Staff Name', 'Night duties', 'Eligible', 'Needs review', 'Not eligible', 'Night hours (hh:mm)']).forEach((h, i) => hdrCell(sum.getCell(hr, i + 1), h));
     [...by.values()].sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true })).forEach((e, i) => {
-      [e.id, e.name, e.duties, e.ok, e.rev, e.not, minutesToTotalHHMM(e.min)].forEach((val, ci) => { sum.getCell(hr + 1 + i, ci + 1).value = val; });
+      [e.id, e.name, e.duties, e.aOk, e.aRev, e.aNot, minutesToTotalHHMM(e.aMin), ...(T ? [e.tOk, e.tNot, e.tRev, e.cOk, e.cRev, e.cNot] : [])].forEach((val, ci) => { sum.getCell(hr + 1 + i, ci + 1).value = val; });
     });
-    sum.getColumn(1).width = 44; sum.getColumn(2).width = 40; for (let i = 3; i <= 7; i++) sum.getColumn(i).width = 16;
+    sum.getColumn(1).width = 44; sum.getColumn(2).width = 40; for (let i = 3; i <= 13; i++) sum.getColumn(i).width = T ? 20 : 16;
 
     const buf = await wb.xlsx.writeBuffer();
     const a = document.createElement('a');

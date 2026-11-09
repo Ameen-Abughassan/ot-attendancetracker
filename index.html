@@ -3232,7 +3232,7 @@ function otBvIndex() {
   return { byId, exById };
 }
 
-function otBvCrossCheck(idx, meta, sap, dateStr, dispatched) {
+function otBvCrossCheck(idx, meta, sap, dateStr, dispatched, lenient) {
   const key = normalizeEmployeeKey(sap);
   const day = parseRosterDate(dateStr);
   if (!key) return { kind: 'unreadable', label: 'Could not match', text: 'The roster row has no SAP/Staff ID to match against the biometric report.' };
@@ -3257,6 +3257,13 @@ function otBvCrossCheck(idx, meta, sap, dateStr, dispatched) {
   if (p) {
     if (BV_USABLE_STATUSES.has(p.status)) {
       return { kind: 'valid', p, adjacent, actual: bvFmtTime(p.firstEntryTs) + ' - ' + bvFmtTime(p.lastExitTs) };
+    }
+    // Used only when the roster's own Working Hrs is N/A (source could not pair the punches): a 'Needs Review'
+    // period whose only review reasons are a walk-out blip / repeated Entry-Exit scans still holds a usable
+    // first Entry -> last Exit span (e.g. Entry 03:15:40 + Exit 03:15:50 logged at the end of the same shift).
+    if (lenient && p.status === BV_STATUS.REVIEW && p.firstEntryTs !== null && p.lastExitTs !== null &&
+        p.details.filter(d => d.sev !== 'info').every(d => ['TAIL_MERGE', 'MULTI_ENTRY', 'MULTI_EXIT'].includes(d.code))) {
+      return { kind: 'valid', p, adjacent, viaReview: true, actual: bvFmtTime(p.firstEntryTs) + ' - ' + bvFmtTime(p.lastExitTs) };
     }
     const rej = exList.filter(e => e.day === p.attDay);
     const rejTxt = rej.length ? ' Rejected source row(s): ' + rej.slice(0, 2).map(e => `row ${e.row} ${e.dirText || ''} — ${e.type}`.replace('  ', ' ')).join('; ') + '.' : '';
@@ -3574,28 +3581,32 @@ function runAnalysis() {
 
     blocks.forEach((block, bi) => {
       let res = evalBlock(block, bi, undefined);
+      // Source Working Hrs = N/A means the roster system could not pair this day's punches, so a well-formed
+      // Actual next to it is not trustworthy (it may combine an Entry and an Exit from different days).
+      const naWorking = !!bvIdx && String(getVal(ws, r, block.startCol + 5)).trim().toUpperCase() === 'N/A' &&
+        isValidBiometric(getVal(ws, r, block.startCol + 2));
 
-      if (res.corr.noBiometric) {
+      if (res.corr.noBiometric || naWorking) {
         if (!bvIdx) {
           if (res.skipRec && res.bioSkip) res.skipRec.bv = bvMeta.state === 'not-processed'
             ? { label: 'Report not processed', text: 'A biometric report is loaded in the Biometric Validation tab but has not been processed — not cross-checked.' }
             : { label: 'Report not loaded', text: 'No biometric report in the Biometric Validation tab — not cross-checked.' };
         } else {
-          const x = otBvCrossCheck(bvIdx, bvMeta, sap, block.dateVal, getVal(ws, r, block.startCol + 1));
+          const x = otBvCrossCheck(bvIdx, bvMeta, sap, block.dateVal, getVal(ws, r, block.startCol + 1), naWorking);
           cs.checked++;
           let accepted = false;
           if (x.kind === 'valid') {
             const res2 = evalBlock(block, bi, x.actual);
             if (!res2.corr.noBiometric && !(res2.skipRec && res2.bioSkip)) {
               accepted = true;
-              const wasFinding = !!(res.skipRec && res.bioSkip), usedFallback = !!res.corr.rule;
+              const wasFinding = !!(res.skipRec && res.bioSkip), usedFallback = !!res.corr.rule || naWorking;
               res2.corr.bvEvidence = { inTs: x.p.firstEntryTs, outTs: x.p.lastExitTs, adjacentDay: x.adjacent, actual: x.actual, source: x.p.srcLabel || 'Current upload' };
               if (wasFinding || usedFallback) {
                 if (wasFinding) cs.resolved++; else cs.refined++;
                 resolved.push({
                   sap, name, date: block.dateVal, rule: res2.corr.rule || (res.skipRec && res.skipRec.rule) || '—',
                   bvIn: bvFmtDT(x.p.firstEntryTs), bvOut: bvFmtDT(x.p.lastExitTs), adjacentDay: x.adjacent, source: x.p.srcLabel || 'Current upload',
-                  previous: wasFinding ? res.skipRec.reason : 'Used the roster\'s own Working Hrs (no valid Actual punch)',
+                  previous: wasFinding ? res.skipRec.reason : naWorking ? 'Roster Working Hrs was N/A — its Actual punch ignored' + (x.viaReview ? ' (Biometric Validation period had review notes: walk-out/repeat scans)' : '') : 'Used the roster\'s own Working Hrs (no valid Actual punch)',
                   result: res2.mismatchRec ? `OT discrepancy: calculated ${res2.mismatchRec.calcOt ?? '—'} vs recorded ${res2.mismatchRec.recordedOt ?? '—'}` : 'Verified — no OT discrepancy',
                   discrepancy: !!res2.mismatchRec,
                 });
@@ -3607,6 +3618,7 @@ function runAnalysis() {
               cs.issues++;
             }
           }
+          if (naWorking && !accepted) cs.naUnverified = (cs.naUnverified || 0) + 1;
           if (!accepted && x.kind !== 'valid' && res.skipRec && res.bioSkip) {
             res.skipRec.bv = { label: x.label, text: x.text };
             if (x.kind === 'issue' || x.kind === 'rejected') {
@@ -3652,7 +3664,7 @@ el('analyzeBtn').addEventListener('click', () => {
       el('downloadDiscrepBtn').disabled = false;
       el('saveHistoryBtn').disabled = false;
       setStatus(`Analysis complete — ${analysis.mismatches.length} discrepancies found.` +
-        (analysis.bvMeta.state === 'applied' ? ` Biometric Validation cross-check: ${analysis.crossStats.resolved} resolved, ${analysis.crossStats.issues} incomplete/invalid, ${analysis.crossStats.notFound} no matching record.` : ''), 'ok');
+        (analysis.bvMeta.state === 'applied' ? ` Biometric Validation cross-check: ${analysis.crossStats.resolved} resolved, ${analysis.crossStats.issues} incomplete/invalid, ${analysis.crossStats.notFound} no matching record.` + (analysis.crossStats.naUnverified ? ` ${analysis.crossStats.naUnverified} day(s) had Working Hrs = N/A and could not be confirmed by the Biometric Validation tab — roster Actual kept, please review.` : '') : ''), 'ok');
     } catch (err) {
       console.error(err);
       setStatus('Analysis failed: ' + err.message, 'error');

@@ -1167,6 +1167,10 @@ header .brand-mark{width:64px;height:64px;flex:none}
 
 #frTable td.fr-over,#frHrsTable td.fr-over{color:#b91c1c;font-weight:700;background:#fef2f2}
 #frTable td small{color:#64748b;font-weight:500}
+
+/* Sidebar: never wrap tabs into a hidden second column on short windows - scroll instead (keeps the Claims tab reachable) */
+main>.app-tabs{flex-wrap:nowrap !important}
+@media(min-width:901px){main>.app-tabs{overflow-y:auto !important;overflow-x:hidden !important;contain:none !important;height:auto !important;max-height:calc(100vh - 32px) !important}main>.app-tabs .app-tab{flex:0 0 auto !important}}
 </style>
 </head>
 <body class="auth-locked">
@@ -9822,9 +9826,7 @@ const SB = (function () {
     const pill = document.querySelector('#bvhCard .bvh-pill'); if (pill) pill.textContent = 'cloud + this browser';
     const ob = document.getElementById('sbOtSyncBtn'); if (ob) { ob.style.display = ''; if (!ob.__wired) { ob.__wired = true; ob.addEventListener('click', () => out.syncOt()); } }
     const ab = document.getElementById('sbAttSyncBtn'); if (ab) { ab.style.display = ''; if (!ab.__wired) { ab.__wired = true; ab.addEventListener('click', () => out.syncAtt()); } }
-    await out.syncAll();
-    await out.syncOt();
-    await out.syncAtt();
+    await Promise.all([out.syncAll(), out.syncOt(), out.syncAtt()]);
   };
 
   // ---- hooks into the existing history functions (their callers are unchanged) -----------------
@@ -9918,13 +9920,23 @@ const SB = (function () {
     rq.onsuccess = () => { const c = rq.result; if (c) { const v = c.value; v.batchId = newId; c.update(v); c.continue(); } };
     await idbTxDone(tx);
   }
-  async function pullOtBatch(cb) {
+  async function pullOtBatch(cb, onPage) {
     const recs = [];
-    for (let from = 0; ; from += SB_CONFIG.chunk) {
-      const r = await client.from('ot_history_records').select('*').eq('batch_id', cb.id).order('id').range(from, from + SB_CONFIG.chunk - 1);
+    let last = null;   // keyset paging (id > last): every page is an index seek, so it stays fast however large the batch is
+    for (;;) {
+      let r;
+      for (let a = 0; a < 4; a++) {
+        r = await (last === null
+          ? client.from('ot_history_records').select('*').eq('batch_id', cb.id).order('id').limit(SB_CONFIG.chunk)
+          : client.from('ot_history_records').select('*').eq('batch_id', cb.id).gt('id', last).order('id').limit(SB_CONFIG.chunk));
+        if (!r.error) break;
+        await new Promise(res => setTimeout(res, 400 * Math.pow(2, a)));
+      }
       if (r.error) throw fail('Could not download OT records', r.error);
       r.data.forEach(x => recs.push(otRecFromCloud(x, cb.id)));
+      if (onPage) onPage(r.data.length);
       if (r.data.length < SB_CONFIG.chunk) break;
+      last = r.data[r.data.length - 1].id;
     }
     await _origOtSave({ batchId: cb.id, label: cb.label, period: cb.period, employeeCount: cb.employee_count, dayCount: cb.day_count,
       recordCount: recs.length, savedAt: Date.parse(cb.saved_at), sourceFileName: cb.source_file_name || '' }, recs);
@@ -9957,10 +9969,18 @@ const SB = (function () {
         await pushOtBatch(newId, lb, recs);
         pushedSet.add(newId); saveOtPushed(pushedSet); pushed++;
       }
-      for (const cb of cr.data) {
-        if (localIds.has(cb.id) || tooFresh(cb.saved_at)) continue;
-        await pullOtBatch(cb); pushedSet.add(cb.id); pulled++;
-      }
+      const todo = cr.data.filter(cb => !localIds.has(cb.id) && !tooFresh(cb.saved_at)), totalB = todo.length;
+      let nRec = 0;
+      const worker = async () => {
+        while (todo.length) {
+          const cb = todo.shift();
+          await pullOtBatch(cb, n => { nRec += n; otMsg(`Downloading OT history… ${pulled}/${totalB} batches done, ${nRec.toLocaleString()} records`); });
+          pushedSet.add(cb.id); saveOtPushed(pushedSet); pulled++;
+          otMsg(`Downloading OT history… ${pulled}/${totalB} batches done, ${nRec.toLocaleString()} records`);
+          try { await refreshOtHistoryCache(); } catch (e) {}   // show each batch as soon as it has arrived
+        }
+      };
+      await Promise.all([worker(), worker(), worker()]);
       saveOtPushed(pushedSet);
       await refreshOtHistoryCache();
       otMsg(`OT history synced — ${pushed} batch${pushed === 1 ? '' : 'es'} sent, ${pulled} downloaded${removed ? `, ${removed} removed (deleted on another device)` : ''}. ${new Date().toLocaleTimeString()}`, 'ok');

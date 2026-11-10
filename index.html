@@ -1769,7 +1769,7 @@ header .brand-mark{width:64px;height:64px;flex:none}
         <div>
           <div class="eyebrow" style="color:#4338ca;margin-bottom:7px">Attendance · Night Shift</div>
           <h2>Night Shift Allowance</h2>
-          <p>Identifies night duties from the Dispatch Duty column — any duty containing the letter <b>N</b>, or any duty whose scheduled start is around <b>23:00</b> (22:00–23:59) even without an N, including RDOT call-ins and OJT duties such as N-DM-OJT or RDOTNDC — and compares each one with the staff member's actual biometric punch-in / punch-out from the Biometric Validation history. Overnight duties are matched as one attendance period, so a punch-out on the following calendar day is shown as <b>(+1)</b>. <b>Total Night Shift Hours</b> = the time actually worked inside the scheduled duty window (early arrival and time after the scheduled end are not counted). One record per staff member per duty date.</p>
+          <p>Identifies night duties by the duty's actual <b>scheduled start time</b> — a duty is a night shift when it starts inside the <b>Night shift start</b> window chosen in the filters (default <b>22:00–23:59</b>), whatever the duty is called, so Early / Late duties such as E-ENG or L-Eng are never picked up just because the name contains an N. Only duties with no clock times at all (RDOT call-ins and OJT duties such as N-DM-OJT or RDOTNDC) fall back to the letter <b>N</b>. Each night duty is compared with the staff member's actual biometric punch-in / punch-out from the Biometric Validation history. Overnight duties are matched as one attendance period, so a punch-out on the following calendar day is shown as <b>(+1)</b>. <b>Total Night Shift Hours</b> = the time actually worked inside the scheduled duty window (early arrival and time after the scheduled end are not counted). One record per staff member per duty date.</p>
         </div>
         <div class="pdf-mark" style="background:linear-gradient(135deg,#4338ca,#6366f1)">NS</div>
       </div>
@@ -1790,6 +1790,15 @@ header .brand-mark{width:64px;height:64px;flex:none}
         <div class="control-field">
           <label for="nsGrace" title="Minutes a staff member may fall short of the scheduled duty and still be eligible">Grace (minutes)</label>
           <input type="number" id="nsGrace" min="0" max="240" step="1" value="0">
+        </div>
+        <div class="control-field">
+          <label for="nsWinFrom" title="A duty is a night shift when its scheduled START time falls inside this window, whatever its name (the letter N is not used when clock times exist). A window that crosses midnight, e.g. 22:00 to 04:00, is allowed.">Night shift start from</label>
+          <input type="time" id="nsWinFrom" value="22:00">
+        </div>
+        <div class="control-field">
+          <label for="nsWinTo" title="Latest scheduled START time still counted as a night shift (inclusive). This is the start time of the duty, not the time the night shift ends.">Night shift start to</label>
+          <input type="time" id="nsWinTo" value="23:59">
+          <small id="nsWinHint" style="display:none;color:#b45309;font-size:11.5px;line-height:1.35;max-width:240px;margin-top:4px"></small>
         </div>
         <div class="control-field">
           <label for="nsShow">Show</label>
@@ -7928,19 +7937,40 @@ const NS_CAP = 500;
 const nsCodeKey = c => String(c == null ? '' : c).split(/\r?\n/)[0].trim().toUpperCase().replace(/\s+/g, ' ');
 const NS_EXC = new Set((() => { try { const a = JSON.parse(localStorage.getItem('nsExcCodesV1') || '[]'); return Array.isArray(a) ? a.map(nsCodeKey).filter(Boolean) : []; } catch (e) { return []; } })());
 function nsExcSave() { try { localStorage.setItem('nsExcCodesV1', JSON.stringify([...NS_EXC])); } catch (e) { /* optional */ } }
-const NS_START_FROM = 22 * 60, NS_START_TO = 24 * 60;      // "around 23:00" = scheduled start 22:00 – 23:59
+// Night duties are decided by the duty's real START TIME, inside this window (editable in the report filters; default 22:00-23:59,
+// inclusive; a window that crosses midnight such as 22:00-04:00 is allowed). The letter N is NOT used when clock times are known
+// (E-ENG / L-Eng / L456Eng all contain an N but are Early/Late duties). Only a duty with no clock times at all (OJT / RDOT call-ins)
+// falls back to the letter N.
+const NS_WIN_KEY = 'nsNightWindowV1', NS_WIN_DEF = { from: 22 * 60, to: 23 * 60 + 59 };
+const NS_WIN = (() => { try { const o = JSON.parse(localStorage.getItem(NS_WIN_KEY) || 'null'); if (o && isFinite(o.from) && isFinite(o.to) && o.from !== o.to) return { from: +o.from, to: +o.to }; } catch (e) { /* default */ } return { ...NS_WIN_DEF }; })();
+function nsWinHint() {
+  const h = document.getElementById('nsWinHint'); if (!h) return;
+  const wrap = NS_WIN.from > NS_WIN.to;
+  if (wrap && NS_WIN.to >= 4 * 60) {
+    h.style.display = 'block';
+    h.textContent = 'Heads-up: duties STARTING between 00:00 and ' + String(Math.floor(NS_WIN.to / 60)).padStart(2, '0') + ':' + String(NS_WIN.to % 60).padStart(2, '0') + ' count as night, e.g. an Early duty starting 06:00. These two fields are the duty START time, not the end of the night shift - for shifts starting at 22:00 use 22:00 to 23:59.';
+  } else { h.style.display = 'none'; h.textContent = ''; }
+}
+function nsWinSave() { try { localStorage.setItem(NS_WIN_KEY, JSON.stringify(NS_WIN)); } catch (e) { /* optional */ } }
+function nsInWin(startMin) {
+  const s = ((startMin % 1440) + 1440) % 1440;
+  return NS_WIN.from <= NS_WIN.to ? (s >= NS_WIN.from && s <= NS_WIN.to) : (s >= NS_WIN.from || s <= NS_WIN.to);
+}
+const nsWinText = () => String(Math.floor(NS_WIN.from / 60)).padStart(2, '0') + ':' + String(NS_WIN.from % 60).padStart(2, '0') + '-' +
+  String(Math.floor(NS_WIN.to / 60)).padStart(2, '0') + ':' + String(NS_WIN.to % 60).padStart(2, '0');
 const NS_NIGHTLIKE_FROM = 18 * 60, NS_NIGHTLIKE_TO = 5 * 60; // used only to spot a suspicious letter-N match
 
-function nsClassify(duty, startMin, endMin) {
+function nsClassify(duty, startMin, endMin, timeKnown) {
   const label = String(duty || '').toUpperCase();
   const hasN = label.indexOf('N') !== -1;
+  const known = timeKnown !== false;
   const s = ((startMin % 1440) + 1440) % 1440;
-  const near23 = s >= NS_START_FROM && s < NS_START_TO;
-  const nightLike = s >= NS_NIGHTLIKE_FROM || s < NS_NIGHTLIKE_TO || endMin > 1440;
+  const inWin = nsInWin(s);
   const reasons = [];
-  if (hasN) reasons.push('Letter N in duty');
-  if (near23) reasons.push('Start ≈ 23:00');
-  return { night: hasN || near23, hasN, near23, reasons, suspect: hasN && !near23 && !nightLike };
+  let night;
+  if (known) { night = inWin; if (inWin) reasons.push('Start ' + utbClock(s) + ' in night window ' + nsWinText()); }
+  else { night = hasN; if (hasN) reasons.push('Letter N in duty (no clock times)'); }
+  return { night, hasN, near23: known && inWin, reasons, suspect: false };
 }
 
 // Schedules come from the app's merged schedule (OT History Dispatch > attendance report). The Dispatch cell looks like
@@ -7973,8 +8003,7 @@ function nsSupplementWorkbook() {
         const L = getVal(ws, r, 11), M = getVal(ws, r, 12);
         if (typeof L === 'number' && typeof M === 'number') dt = { start: timeCellToMinutes(L), end: timeCellToMinutes(M) };
       }
-      const hasN = duty.toUpperCase().indexOf('N') !== -1, near23 = !!dt && dt.start >= NS_START_FROM && dt.start < NS_START_TO;
-      if (!hasN && !near23) continue;
+      if (!(dt ? nsInWin(dt.start) : duty.toUpperCase().indexOf('N') !== -1)) continue;   // by start time when known; letter N only without clock times
       out.push({ id: normalizeEmployeeKey(sap), sap, name: `${getVal(ws, r, 1) || ''} ${getVal(ws, r, 2) || ''}`.trim(), position: getVal(ws, r, 5) || '',
         line: getVal(ws, r, 6) || '', dateMs, dt, duty, source: 'Attendance report' });
     }
@@ -7990,8 +8019,7 @@ function nsSupplementOt() {
       const disp = typeof v.dispatched === 'string' ? v.dispatched : '', duty = nsDutyOf(disp);
       if (nsIsNonDutyCode(duty)) return;
       const dt = parseDispatchedTimes(disp);
-      const hasN = duty.toUpperCase().indexOf('N') !== -1, near23 = !!dt && dt.start >= NS_START_FROM && dt.start < NS_START_TO;
-      if (!hasN && !near23) return;
+      if (!(dt ? nsInWin(dt.start) : duty.toUpperCase().indexOf('N') !== -1)) return;   // by start time when known; letter N only without clock times
       out.push({ id: key.slice(0, sep), sap: v.sap, name: v.name || '', position: v.position || '', line: v.line || '', dateMs, dt, duty, source: 'OT History (Dispatch)' });
     });
   } catch (e) { console.warn('Night supplement (OT history) skipped', e); }
@@ -8008,7 +8036,7 @@ async function nsLoadSchedule() {
     let end = s.dutyEndMin; if (end === null || end === undefined || end <= s.dutyStartMin) end = (end === null || end === undefined ? s.dutyStartMin : end) + 1440;
     const duty = String(s.dispatched || '').split(/\r?\n/)[0].trim();
     all.push({ id: s.id, sap: s.sap || s.id, name: s.name || '', position: s.position || '', line: s.line || '', dateMs: s.dateMs,
-      dutyStartMin: s.dutyStartMin, dutyEndMin: end, duty, source: s.source || '', cls: nsClassify(duty, s.dutyStartMin, end) });
+      dutyStartMin: s.dutyStartMin, dutyEndMin: end, duty, source: s.source || '', cls: nsClassify(duty, s.dutyStartMin, end, true) });
   });
   // add the night duties the shared schedule dropped (RDOT*, OJT, rows without clock times); OT Dispatch wins over the attendance report
   const extra = new Map();
@@ -8026,7 +8054,7 @@ async function nsLoadSchedule() {
       else { start = 23 * 60; let fx = 0; try { fx = getFixedMinutesForPosition(x.position) || 0; } catch (e) { fx = 0; } end = start + (fx > 0 ? fx : 510); }
     }
     all.push({ id: x.id, sap: x.sap || x.id, name: x.name, position: x.position, line: x.line, dateMs: x.dateMs, dutyStartMin: start, dutyEndMin: end,
-      duty: x.duty, source: x.source, assumed, rdot: /^RDOT/i.test(x.duty), cls: nsClassify(x.duty, start, end) });
+      duty: x.duty, source: x.source, assumed, rdot: /^RDOT/i.test(x.duty), cls: nsClassify(x.duty, start, end, !assumed) });
   });
   // every dispatch code seen in the sources (for the exclusion dropdown), with how many night duties each has
   const codeMap = new Map();
@@ -8447,6 +8475,7 @@ function nsReset() {
   el('nsScope').value = 'all'; el('nsLine').value = ''; nsToggleScope();
   el('nsShow').value = 'all'; el('nsGrace').value = '0'; el('treShow').value = 'all';
   NS_EXC.clear(); nsExcSave(); nsRenderCodes();
+  NS_WIN.from = NS_WIN_DEF.from; NS_WIN.to = NS_WIN_DEF.to; nsWinSave(); el('nsWinFrom').value = '22:00'; el('nsWinTo').value = '23:59'; nsWinHint();
   NS.rows = []; NS.view = []; NS.meta = null;
   el('nsResults').style.display = 'none'; el('nsBody').innerHTML = ''; el('nsExport').disabled = true;
   nsSetStatus('');
@@ -8505,7 +8534,7 @@ async function nsExport() {
     const top = [['Period', m.crit.label], ['Staff', m.crit.staffKey ? m.crit.staffRaw : (m.crit.scope === 'line' ? 'Line ' + m.crit.line : 'All staff')],
      ['View exported', el('nsShow').selectedOptions[0].textContent], ['Grace (minutes)', g], ['Generated', new Date().toLocaleString()],
      ['Biometric data covers', utbFmtDate(m.coverMin) + ' → ' + utbFmtDate(m.coverMax)],
-     ['Night duty rule', 'Dispatch Duty contains the letter N, or scheduled start 22:00–23:59 (around 23:00)' + (NS_EXC.size ? ' — excluded dispatch codes: ' + [...NS_EXC].join(', ') : '')],
+     ['Night duty rule', 'Scheduled duty START time inside the night shift window ' + nsWinText() + ' (the letter N in the duty name is not used when clock times exist; duties without clock times fall back to the letter N)' + (NS_EXC.size ? ' — excluded dispatch codes: ' + [...NS_EXC].join(', ') : '')],
      ['Night shift hours', 'Time worked inside the scheduled duty window (first Entry → last Exit of the attendance period)']];
     if (C) top.push(['Eligibility rule', 'One result per duty: Eligible only when the allowance check (worked hours vs scheduled, within grace) AND the time-range check (Actual IN inside the window, sign-out present) both pass; Not eligible if either fails; otherwise Needs review'],
       ['Time range window', `${treHrs(TRE.beforeH)} before → ${treHrs(TRE.afterH)} after the scheduled start (inclusive)`],
@@ -8547,20 +8576,20 @@ async function nsExport() {
     }
     const by = new Map();
     v.forEach(r => {
-      if (!by.has(r.id)) by.set(r.id, { id: r.id, name: r.name, duties: 0, aOk: 0, aRev: 0, aNot: 0, aMin: 0, tOk: 0, tNot: 0, tRev: 0, cOk: 0, cRev: 0, cNot: 0 });
-      const e = by.get(r.id); if (!e.name && r.name) e.name = r.name;
+      if (!by.has(r.id)) by.set(r.id, { id: r.id, name: r.name, locs: new Set(), duties: 0, aOk: 0, aRev: 0, aNot: 0, aMin: 0, tOk: 0, tNot: 0, tRev: 0, cOk: 0, cRev: 0, cNot: 0 });
+      const e = by.get(r.id); if (!e.name && r.name) e.name = r.name; if (String(r.line || '').trim()) e.locs.add(String(r.line).trim());
       e.duties++; const a = aCls(r), t = tCls(r), c = cCls(r);
       e['a' + a[0].toUpperCase() + a.slice(1)]++; e['t' + t[0].toUpperCase() + t.slice(1)]++; e['c' + c[0].toUpperCase() + c.slice(1)]++;
       if (a !== 'not') e.aMin += r.nightMin || 0;
     });
     const hr = nextRow; sum.getCell(`A${hr - 1}`).value = 'By staff'; sum.getCell(`A${hr - 1}`).font = { bold: true, size: 12 };
-    (T ? ['Staff ID', 'Staff Name', 'Night duties', 'Allowance: Eligible', 'Allowance: Needs review', 'Allowance: Not eligible', 'Night hours (hh:mm)',
+    (T ? ['Staff ID', 'Staff Name', 'Location', 'Night duties', 'Allowance: Eligible', 'Allowance: Needs review', 'Allowance: Not eligible', 'Night hours (hh:mm)',
           'Time range: Eligible', 'Time range: Not eligible', 'Time range: Cannot determine', 'Combined: Eligible', 'Combined: Needs review', 'Combined: Not eligible']
-       : ['Staff ID', 'Staff Name', 'Night duties', 'Eligible', 'Needs review', 'Not eligible', 'Night hours (hh:mm)']).forEach((h, i) => hdrCell(sum.getCell(hr, i + 1), h));
+       : ['Staff ID', 'Staff Name', 'Location', 'Night duties', 'Eligible', 'Needs review', 'Not eligible', 'Night hours (hh:mm)']).forEach((h, i) => hdrCell(sum.getCell(hr, i + 1), h));
     [...by.values()].sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true })).forEach((e, i) => {
-      [e.id, e.name, e.duties, e.aOk, e.aRev, e.aNot, minutesToTotalHHMM(e.aMin), ...(T ? [e.tOk, e.tNot, e.tRev, e.cOk, e.cRev, e.cNot] : [])].forEach((val, ci) => { sum.getCell(hr + 1 + i, ci + 1).value = val; });
+      [e.id, e.name, [...e.locs].join(' / '), e.duties, e.aOk, e.aRev, e.aNot, minutesToTotalHHMM(e.aMin), ...(T ? [e.tOk, e.tNot, e.tRev, e.cOk, e.cRev, e.cNot] : [])].forEach((val, ci) => { sum.getCell(hr + 1 + i, ci + 1).value = val; });
     });
-    sum.getColumn(1).width = 44; sum.getColumn(2).width = 40; for (let i = 3; i <= 13; i++) sum.getColumn(i).width = T ? 20 : 16;
+    sum.getColumn(1).width = 44; sum.getColumn(2).width = 40; for (let i = 3; i <= 14; i++) sum.getColumn(i).width = T ? 20 : 16;
 
     const buf = await wb.xlsx.writeBuffer();
     const a = document.createElement('a');
@@ -8593,6 +8622,16 @@ async function nsExport() {
   document.addEventListener('click', e => { const d = el('nsExcDd'); if (d && d.open && !d.contains(e.target)) d.open = false; });
   nsExcSummary();
   el('nsShow').addEventListener('change', () => { if (NS.rows.length) nsRenderAll(); });
+  // Night start window (night shift is decided by the duty start time)
+  const wClock = m => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+  const wParse = v => { const m = /^(\d{1,2}):(\d{2})/.exec(v || ''); return m ? (+m[1]) * 60 + (+m[2]) : null; };
+  el('nsWinFrom').value = wClock(NS_WIN.from); el('nsWinTo').value = wClock(NS_WIN.to); nsWinHint();
+  ['nsWinFrom', 'nsWinTo'].forEach(i => el(i).addEventListener('change', () => {
+    const f = wParse(el('nsWinFrom').value), t = wParse(el('nsWinTo').value);
+    if (f === null || t === null || f === t) { el('nsWinFrom').value = wClock(NS_WIN.from); el('nsWinTo').value = wClock(NS_WIN.to); nsSetStatus('Choose two different times for the night shift start window.', 'error'); return; }
+    NS_WIN.from = f; NS_WIN.to = t; nsWinSave(); nsWinHint();
+    nsSetStatus(NS.rows.length ? 'Night shift start window changed to ' + nsWinText() + ' — click Generate report to apply it.' : '');
+  }));
   // Time Range Eligibility add-on
   el('treMode').value = TRE.mode; el('treBefore').value = TRE.beforeH; el('treAfter').value = TRE.afterH;
   ['treMode', 'treBefore', 'treAfter'].forEach(i => el(i).addEventListener(i === 'treMode' ? 'change' : 'input', treChanged));

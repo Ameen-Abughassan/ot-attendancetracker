@@ -9630,6 +9630,7 @@ const SB = (function () {
       if (r.error) throw fail('Could not save punches', r.error);
       if (rows.length > SB_CONFIG.chunk) msg(`Uploading to cloud… ${Math.min(i + SB_CONFIG.chunk, rows.length).toLocaleString()} / ${rows.length.toLocaleString()}`);
     }
+    await client.from('biometric_batches').update({ punches: punches.length }).eq('id', id);   // completion signal for live sync
   }
   async function localBatchPunches(id) {
     const db = await bvhOpen();
@@ -9742,7 +9743,7 @@ const SB = (function () {
         pushedSet.add(newId); savePushed(pushedSet); pushed++;
       }
       for (const cb of cr.data) {
-        if (groups.has(cb.id)) continue;
+        if (groups.has(cb.id) || tooFresh(cb.uploaded_at)) continue;
         await pullBatch(cb); pushedSet.add(cb.id); pulled++;
       }
       savePushed(pushedSet);
@@ -9814,6 +9815,7 @@ const SB = (function () {
 
   out.onSignedIn = async function () {
     out.ready = true;
+    if (!out.__boot) { out.__boot = true; try { await out.syncSettings(); } catch (e) {} startAuto(); }
     const db = document.getElementById('sbDateSyncBtn'); if (db) { db.style.display = ''; if (!db.__wired) { db.__wired = true; db.addEventListener('click', () => out.syncDates(true)); } }
     out.syncDates();   // dates first (tiny) so the analysis rules are right while the big history syncs run
     const btn = document.getElementById('sbSyncBtn'); if (btn) { btn.style.display = ''; if (!btn.__wired) { btn.__wired = true; btn.addEventListener('click', () => out.syncAll(true)); } }
@@ -9900,6 +9902,7 @@ const SB = (function () {
       if (r.error) throw fail('Could not save OT records', r.error);
       if (rows.length > SB_CONFIG.chunk) otMsg(`Uploading OT history… ${Math.min(i + SB_CONFIG.chunk, rows.length).toLocaleString()} / ${rows.length.toLocaleString()}`);
     }
+    await client.from('ot_history_batches').update({ record_count: records.length }).eq('id', id);   // completion signal for live sync
     return { sent: rows.length, skipped };
   }
   async function localOtRecords(id) {
@@ -9955,7 +9958,7 @@ const SB = (function () {
         pushedSet.add(newId); saveOtPushed(pushedSet); pushed++;
       }
       for (const cb of cr.data) {
-        if (localIds.has(cb.id)) continue;
+        if (localIds.has(cb.id) || tooFresh(cb.saved_at)) continue;
         await pullOtBatch(cb); pushedSet.add(cb.id); pulled++;
       }
       saveOtPushed(pushedSet);
@@ -10030,6 +10033,7 @@ const SB = (function () {
       if (r.error) throw fail('Could not save the schedule rows', r.error);
       if (list.length > SB_CONFIG.chunk) attMsg(`Uploading schedule… ${Math.min(i + SB_CONFIG.chunk, list.length).toLocaleString()} / ${list.length.toLocaleString()}`);
     }
+    await client.from('attendance_batches').update({ uploaded_at: new Date(meta.at || Date.now()).toISOString() }).eq('id', id);   // completion signal for live sync
     return list.length;
   }
   async function pullAttBatch(cb) {
@@ -10065,7 +10069,7 @@ const SB = (function () {
         await pushAttBatch(lb.id, lb, await attRowsOfBatch(lb.id));
         pushedSet.add(lb.id); saveAttPushed(pushedSet); pushed++;
       }
-      for (const cb of cr.data) { if (localIds.has(cb.id)) continue; await pullAttBatch(cb); pushedSet.add(cb.id); pulled++; }
+      for (const cb of cr.data) { if (localIds.has(cb.id) || tooFresh(cb.uploaded_at)) continue; await pullAttBatch(cb); pushedSet.add(cb.id); pulled++; }
       saveAttPushed(pushedSet);
       attMsg(`Schedules synced — ${pushed} upload${pushed === 1 ? '' : 's'} sent, ${pulled} downloaded${removed ? `, ${removed} removed` : ''}. ${new Date().toLocaleTimeString()}`, 'ok');
       try { await utbRefreshInfo(); } catch (e) {}
@@ -10094,6 +10098,71 @@ const SB = (function () {
     }
     return _origAttDelete(id);
   };
+  // ======================= SHARED SETTINGS (table app_settings) =======================
+  // Night-shift window / excluded codes, Time Range Eligibility and follow-up report config used to live only in each
+  // browser's localStorage. They are now kept in Supabase: pulled at sign-in, pushed whenever they are saved.
+  const SET_KEYS = ['nsNightWindowV1', 'nsExcCodesV1', 'nsTimeRangeV1', 'frCfgV1'], SET_FLAG = 'otats.settingsReloaded';
+  async function pushSetting(k) {
+    if (!out.ready || out.readOnlyOt) return;
+    try {
+      const v = localStorage.getItem(k); if (v === null) return;
+      const r = await client.from('app_settings').upsert({ key: k, value: v, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+      if (r.error) console.warn('Could not save setting ' + k + ' to the cloud:', r.error.message);
+    } catch (e) { console.warn('Setting sync failed', e); }
+  }
+  out.syncSettings = async function (live) {
+    if (!out.ready) return;
+    const cr = await client.from('app_settings').select('key,value').in('key', SET_KEYS);
+    if (cr.error) { console.warn('Settings sync skipped (create the app_settings table):', cr.error.message); return; }
+    const cloud = new Map(cr.data.map(r => [r.key, r.value]));
+    let changed = false;
+    for (const k of SET_KEYS) {
+      const local = localStorage.getItem(k);
+      if (cloud.has(k)) { if (cloud.get(k) !== local) { localStorage.setItem(k, cloud.get(k)); changed = true; } }
+      else if (local !== null) await pushSetting(k);   // first time: seed the cloud from this browser
+    }
+    if (changed && live) showSettingsNotice();
+    else if (changed && !sessionStorage.getItem(SET_FLAG)) { sessionStorage.setItem(SET_FLAG, '1'); location.reload(); }   // reload once so the new values take effect
+    else if (!changed) sessionStorage.removeItem(SET_FLAG);
+  };
+  [['nsWinSave', 'nsNightWindowV1'], ['nsExcSave', 'nsExcCodesV1'], ['treSave', 'nsTimeRangeV1'], ['frCfgSave', 'frCfgV1']].forEach(([fn, key]) => {
+    const orig = window[fn]; if (typeof orig !== 'function') return;
+    window[fn] = function () { const r = orig.apply(this, arguments); pushSetting(key); return r; };
+  });
+
+  const tooFresh = ts => !out.__rtPull && !!ts && (Date.now() - Date.parse(ts)) < 180000;
+  function showSettingsNotice() {
+    if (document.getElementById('sbSettingsNotice')) return;
+    const d = document.createElement('div'); d.id = 'sbSettingsNotice';
+    d.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:99999;background:#1f2937;color:#fff;padding:12px 14px;border-radius:10px;font:13px system-ui,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.3)';
+    d.innerHTML = 'Settings were updated by another user. <button style="margin-left:8px;padding:4px 10px;border:0;border-radius:6px;cursor:pointer">Reload to apply</button>';
+    d.querySelector('button').onclick = () => location.reload();
+    document.body.appendChild(d);
+  }
+  // ---- real-time: Supabase Realtime pushes changes to every open page, which then syncs within seconds ----
+  function startRealtime() {
+    if (out.__live) return; out.__live = true;
+    const timers = {};
+    const later = (name, fn) => { clearTimeout(timers[name]); timers[name] = setTimeout(async () => { out.__rtPull = true; try { await fn(); } catch (e) { console.warn('Live sync', e); } finally { out.__rtPull = false; } }, 2000); };
+    const ch = client.channel('otats-live');
+    [['biometric_batches', () => out.syncAll(), true], ['ot_history_batches', () => out.syncOt(), true], ['attendance_batches', () => out.syncAtt(), true],
+     ['ot_date_config', () => out.syncDates(), false], ['app_settings', () => out.syncSettings(true), false]].forEach(([table, fn, skipInsert]) => {
+      ch.on('postgres_changes', { event: '*', schema: 'public', table }, pl => { if (skipInsert && pl.eventType === 'INSERT') return; later(table, fn); });   // INSERT = upload just started; the UPDATE that follows = finished
+    });
+    ch.subscribe(st => { if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT') console.warn('Realtime unavailable (' + st + ') - falling back to 5-minute polling'); });
+  }
+  // ---- background re-sync: when the tab regains focus (and every 5 min while visible) pick up other people's uploads ----
+  function startAuto() {
+    let last = Date.now();
+    const tick = force => {
+      if (!out.ready || document.hidden || (!force && Date.now() - last < 300000)) return;
+      last = Date.now(); out.syncAll(); out.syncOt(); out.syncAtt();
+    };
+    window.addEventListener('focus', () => tick(false));
+    document.addEventListener('visibilitychange', () => tick(false));
+    setInterval(() => tick(true), 300000);
+    startRealtime();
+  }
   return out;
 })();
 window.SB = SB;   // a top-level const is not a window property; the sign-in layer reads window.SB
@@ -10159,6 +10228,9 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
 
   const LS_ACCOUNT = 'otats.localAccess.v1', LS_LOCK = 'otats.authLock.v1';
   const SS_SESSION = 'otats.session.v1', SS_TOKEN = 'otats.token.v1';
+  const LS_SEEN = 'otats.lastSeen.v1', RESTORE_MIN = 480;   // auto sign-in allowed if the user was active within the last 8 h
+  const seenAt = () => { try { return Number(localStorage.getItem(LS_SEEN)) || 0; } catch (e) { return 0; } };
+  const markSeen = () => { try { localStorage.setItem(LS_SEEN, String(Date.now())); } catch (e) {} };
   const $ = id => document.getElementById(id);
   const serverMode = !!AUTH_CONFIG.loginUrl;
   const sbMode = !!(window.SB && window.SB.enabled);   // Supabase Auth (set SB_CONFIG above)
@@ -10343,7 +10415,7 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
     document.body.classList.remove('auth-locked');
     document.title = 'Overtime & Attendance Tracking System';
     $('authPass').value = ''; $('authConfirm').value = '';
-    lastActive = Date.now(); startIdleWatch();
+    lastActive = Date.now(); markSeen(); startIdleWatch();
     window.scrollTo(0, 0);
     if (sbMode) { try { window.SB.readOnlyOt = (rk === ROLE_HR); window.SB.onSignedIn(); } catch (e) { console.warn('Cloud sync could not start', e); } }
   }
@@ -10354,7 +10426,7 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
     enforceCooldown();
     setTimeout(() => { try { (view === 'login' && $('authUser').value ? $('authPass') : $('authUser')).focus(); } catch (e) {} }, 60);
   }
-  function clearSession() { SS.del(SS_SESSION); SS.del(SS_TOKEN); currentUser = null; }
+  function clearSession() { SS.del(SS_SESSION); SS.del(SS_TOKEN); try { localStorage.removeItem(LS_SEEN); } catch (e) {} currentUser = null; }
   function logoutServer() {
     if (serverMode && AUTH_CONFIG.logoutUrl) { try { fetch(AUTH_CONFIG.logoutUrl, { method: 'POST', credentials: AUTH_CONFIG.sendCookies ? 'include' : 'same-origin' }).catch(() => {}); } catch (e) {} }
   }
@@ -10372,7 +10444,7 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
   }
   function startIdleWatch() {
     stopIdleWatch(); if (!AUTH_CONFIG.idleTimeoutMin) return;
-    idleTimer = setInterval(() => { if (Date.now() - lastActive > AUTH_CONFIG.idleTimeoutMin * 60000) lockForIdle(); }, 15000);
+    idleTimer = setInterval(() => { if (Date.now() - lastActive > AUTH_CONFIG.idleTimeoutMin * 60000) lockForIdle(); else if (Date.now() - lastActive < 60000) markSeen(); }, 15000);
   }
   function stopIdleWatch() { clearInterval(idleTimer); idleTimer = null; }
   ['mousemove', 'keydown', 'click', 'touchstart', 'scroll'].forEach(ev => window.addEventListener(ev, () => { lastActive = Date.now(); }, { passive: true }));
@@ -10451,6 +10523,18 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
         unlock({ name: saved.name, role: saved.role }); return;
       }
       clearSession();
+    }
+    // New tab / new window / reopened browser: a valid Supabase session + recent activity signs the user in automatically.
+    if (!fresh && sbMode && (Date.now() - seenAt()) < RESTORE_MIN * 60000) {
+      try {
+        const sess = await window.SB.getSession();
+        if (sess && sess.user) {
+          const am = sess.user.app_metadata || {}, um = sess.user.user_metadata || {};
+          const nm = um.full_name || um.name || sess.user.email || 'User', rl = am.role || 'Signed in';
+          SS.set(SS_SESSION, JSON.stringify({ name: nm, role: rl, mode: 'sb', at: Date.now() }));
+          unlock({ name: nm, role: rl }); return;
+        }
+      } catch (e) { /* fall through to the login screen */ }
     }
     showLogin();
   })();

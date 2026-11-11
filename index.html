@@ -1557,6 +1557,16 @@ header .brand-mark{width:64px;height:64px;flex:none}
         <select id="payPeriod" disabled><option value="">No period available</option></select>
       </div>
       <div class="control-field">
+        <label for="payDateFrom">Date range <span style="font-weight:400;color:#64748b">(optional &mdash; narrows the selected period)</span></label>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="date" id="payDateFrom" aria-label="From date" style="flex:1;min-width:130px">
+          <span style="color:#64748b;font-size:12px">to</span>
+          <input type="date" id="payDateTo" aria-label="To date" style="flex:1;min-width:130px">
+          <button type="button" class="btn-secondary" id="payDateClear" style="padding:7px 12px;font-size:11px">Clear</button>
+        </div>
+        <small id="payDateHint" style="font-size:11.5px;line-height:1.4;color:#64748b"></small>
+      </div>
+      <div class="control-field">
         <label for="paySearch">Search Employee</label>
         <input type="text" id="paySearch" placeholder="SAP ID or employee name">
       </div>
@@ -4419,6 +4429,34 @@ function populatePayPeriodOptions() {
 }
 el('payPeriod').addEventListener('change', populatePayrollUI);
 
+// Optional date range: keeps only the paid-OT entries dated inside From..To (inclusive) for the selected
+// Payroll Period. Totals are recomputed, employees with nothing left drop out, and the same filtered list
+// feeds the table, pay slip PDFs, ZIP and Excel. Either end may be left empty (open-ended).
+function getPayDateRange() {
+  const from = parseIsoDate(el('payDateFrom').value), to = parseIsoDate(el('payDateTo').value);
+  return { from, to, active: from !== null || to !== null, invalid: from !== null && to !== null && from > to };
+}
+function payDateRangeText() {
+  const r = getPayDateRange();
+  if (!r.active || r.invalid) return '';
+  const f = v => formatRosterDate(new Date(v).toISOString().slice(0, 10).split('-').reverse().join('.'));
+  return (r.from !== null ? f(r.from) : 'start') + ' to ' + (r.to !== null ? f(r.to) : 'end');
+}
+function applyPayDateRange(list) {
+  const r = getPayDateRange(), hint = el('payDateHint');
+  if (r.invalid) { hint.style.color = '#b91c1c'; hint.textContent = 'From date is after To date - the range is ignored until it is fixed.'; return list; }
+  if (!r.active) { hint.style.color = '#64748b'; hint.textContent = ''; return list; }
+  const out = list.map(e => {
+    const entries = e.entries.filter(x => { const d = parseRosterDate(x.date); return d !== null && (r.from === null || d >= r.from) && (r.to === null || d <= r.to); });
+    return { ...e, entries, totalMin: entries.reduce((n, x) => n + x.minutes, 0), positions: new Set(entries.map(x => String(x.position || '').trim()).filter(Boolean)) };
+  }).filter(e => e.entries.length && e.totalMin > 0);
+  hint.style.color = '#64748b';
+  hint.textContent = 'Showing paid OT dated ' + payDateRangeText() + ' - ' + out.length + ' employee(s).';
+  return out;
+}
+['payDateFrom', 'payDateTo'].forEach(id => el(id).addEventListener('change', populatePayrollUI));
+el('payDateClear').addEventListener('click', () => { el('payDateFrom').value = ''; el('payDateTo').value = ''; populatePayrollUI(); });
+
 // Human-readable label for whichever Payroll Period is currently selected —
 // used anywhere the period needs to be displayed (e.g. printed on a PDF
 // pay slip), since the dropdown's raw .value is just an internal batchId /
@@ -4426,7 +4464,8 @@ el('payPeriod').addEventListener('change', populatePayrollUI);
 function payPeriodLabel() {
   const sel = el('payPeriod');
   const opt = sel.selectedOptions && sel.selectedOptions[0];
-  return opt ? opt.textContent : '';
+  const base = opt ? opt.textContent : '', rng = payDateRangeText();
+  return rng ? base + ' | Date range: ' + rng : base;
 }
 
 function populatePayrollUI() {
@@ -4438,6 +4477,7 @@ function populatePayrollUI() {
   } else {
     payrollEmployees = buildPayrollData();
   }
+  payrollEmployees = applyPayDateRange(payrollEmployees);
   populatePayrollFilterOptions();
   applyPayrollFiltersAndRender();
 }

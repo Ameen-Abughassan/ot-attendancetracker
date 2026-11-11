@@ -1167,10 +1167,6 @@ header .brand-mark{width:64px;height:64px;flex:none}
 
 #frTable td.fr-over,#frHrsTable td.fr-over{color:#b91c1c;font-weight:700;background:#fef2f2}
 #frTable td small{color:#64748b;font-weight:500}
-
-/* Sidebar: never wrap tabs into a hidden second column on short windows - scroll instead (keeps the Claims tab reachable) */
-main>.app-tabs{flex-wrap:nowrap !important}
-@media(min-width:901px){main>.app-tabs{overflow-y:auto !important;overflow-x:hidden !important;contain:none !important;height:auto !important;max-height:calc(100vh - 32px) !important}main>.app-tabs .app-tab{flex:0 0 auto !important}}
 </style>
 </head>
 <body class="auth-locked">
@@ -1315,6 +1311,10 @@ main>.app-tabs{flex-wrap:nowrap !important}
       <span class="tab-ico-wrap" aria-hidden="true"><svg class="tab-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path><rect x="9" y="3" width="6" height="4" rx="1"></rect><path d="m9 14 2 2 4-4"></path></svg></span>
       <span class="tab-label">Overtime</span>
     </button>
+    <button class="app-tab" id="tabMaintenance" data-tab="maintenance" type="button" role="tab" aria-selected="false" aria-controls="validatorPanel">
+      <span class="tab-ico-wrap" aria-hidden="true"><svg class="tab-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg></span>
+      <span class="tab-label">Maintenance OT</span>
+    </button>
     <button class="app-tab" id="tabBiometric" data-tab="biometric" type="button" role="tab" aria-selected="false" aria-controls="bvPanel">
       <span class="tab-ico-wrap" aria-hidden="true"><svg class="tab-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><polyline points="16 11 18 13 22 9"></polyline></svg></span>
       <span class="tab-label">Biometric Validation</span>
@@ -1383,6 +1383,14 @@ main>.app-tabs{flex-wrap:nowrap !important}
 </section>
 
   <section class="tab-panel" id="validatorPanel" role="tabpanel" aria-labelledby="tabValidator">
+  <div id="maintBanner" hidden style="margin:0 0 14px;padding:12px 16px;border-radius:10px;background:#fff7ed;border:1px solid #fdba74;color:#7c2d12;font-size:13px;line-height:1.5"><b>Maintenance overtime verification.</b> Upload and verify the Maintenance roster here. Batches saved from this view go to their own Maintenance history &mdash; they do <b>not</b> appear in the Overview, Claim Validation or Payslips, and Operations history never mixes into this list.</div>
+  <div id="maintHistCard" hidden style="margin:0 0 16px;padding:14px 16px;border-radius:10px;border:1px solid #e2e8f0;background:#fff">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap"><h3 style="margin:0;font-size:14px">Saved Maintenance OT batches</h3><span id="maintHistMeta" style="font-size:12px;color:#64748b"></span></div>
+    <div style="overflow-x:auto;margin-top:8px"><table style="width:100%;border-collapse:collapse;font-size:12.5px">
+      <thead><tr style="text-align:left;color:#64748b"><th style="padding:6px 8px">Batch</th><th style="padding:6px 8px">Period</th><th style="padding:6px 8px;text-align:right">Employees</th><th style="padding:6px 8px;text-align:right">Days</th><th style="padding:6px 8px;text-align:right">Records</th><th style="padding:6px 8px">Saved on</th><th></th></tr></thead>
+      <tbody id="maintHistBody"><tr><td colspan="7" style="padding:10px 8px;color:#64748b">No Maintenance OT saved yet &mdash; load a Maintenance roster, analyse it, then click &ldquo;Save to Maintenance OT History&rdquo;.</td></tr></tbody>
+    </table></div>
+  </div>
   <p class="panel-intro">Upload the monthly overtime roster. This checks every dispatched entry against two rules, flags mismatches against the recorded Overtime column, and builds a corrected workbook with an OT Correction column beside each day and a live Corrected Total OT column at the end.</p>
   <div class="top-grid">
     <div class="rules-panel">
@@ -4226,7 +4234,7 @@ function normalizeRuleLabel(rawRule) {
 }
 
 function buildPayrollData() {
-  if (!analysis || !workbook) return [];
+  if (!analysis || !workbook || OT_DEPT === 'maint') return [];
   const ws = workbook.Sheets[sheetName];
   const employees = new Map();
 
@@ -4389,14 +4397,14 @@ function populatePayPeriodOptions() {
   const sel = el('payPeriod');
   const prevValue = sel.value;
   const options = [];
-  if (blocks.length && analysis) {
+  if (blocks.length && analysis && OT_DEPT !== 'maint') {
     const range = `${formatRosterDate(blocks[0].dateVal)} → ${formatRosterDate(blocks[blocks.length-1].dateVal)}`;
     options.push({ value: '__current__', label: `Current Roster (${range})` });
   }
   otHistoryBatches.forEach(b => {
     options.push({ value: b.batchId, label: `${b.label || b.batchId}${b.period ? ' (' + b.period + ')' : ''}` });
   });
-  if (otHistoryBatches.length > 1 || (otHistoryBatches.length && blocks.length && analysis)) {
+  if (otHistoryBatches.length > 1 || (otHistoryBatches.length && blocks.length && analysis && OT_DEPT !== 'maint')) {
     options.push({ value: '__all__', label: 'All Saved + Current (combined)' });
   }
   if (!options.length) {
@@ -4707,22 +4715,72 @@ async function downloadPayrollExcel() {
 }
 
 el('tabValidator').addEventListener('click',()=>switchTab('validator'));
+el('tabMaintenance').addEventListener('click',()=>switchTab('maintenance'));
 el('tabPayslip').addEventListener('click',()=>switchTab('payslip'));
 el('tabUndertime').addEventListener('click',()=>switchTab('undertime'));
 el('tabNight').addEventListener('click',()=>switchTab('night'));
 el('tabFatigue').addEventListener('click',()=>switchTab('fatigue'));
 el('tabClaim').addEventListener('click',()=>switchTab('claim'));
 el('tabBiometric').addEventListener('click',()=>switchTab('biometric'));
-const TAB_ORDER = ['command','validator','biometric','undertime','night','fatigue','payslip','claim'];
-const TAB_PANEL_ID = { command:'ccPanel', validator:'validatorPanel', payslip:'payslipPanel', undertime:'undertimePanel', night:'nightPanel', fatigue:'fatiguePanel', claim:'claimPanel', biometric:'bvPanel' };
-const TAB_BTN_ID = { command:'tabCommand', validator:'tabValidator', payslip:'tabPayslip', undertime:'tabUndertime', night:'tabNight', fatigue:'tabFatigue', claim:'tabClaim', biometric:'tabBiometric' };
+var OT_DEPT = 'ops';   // 'ops' | 'maint' - which department the Overtime verification screen is working on
+function isMaintBatch(b) { return !!b && (b.dept === 'maint' || /^\s*\[Maintenance\]/i.test(String(b.label || ''))); }   // the label prefix survives cloud sync
+var maintHistoryBatches = [];
+function otResetLoaded() {
+  analysis = null; workbook = null; rawFileBuffer = null; blocks = []; otMasterReference = null; currentOtFileName = '';
+  el('results').style.display = 'none'; el('filename').style.display = 'none'; el('filename').textContent = '';
+  ['downloadBtn', 'downloadDiscrepBtn', 'downloadSkipBtn', 'saveHistoryBtn', 'analyzeBtn'].forEach(i => { if (el(i)) el(i).disabled = true; });
+  try { el('fileInput').value = ''; } catch (e) { /* ignore */ }
+  setStatus('');
+  try { updateClaimMasterStatus(); populatePayPeriodOptions(); populatePayrollUI(); ccRefresh(); } catch (e) { /* ignore */ }
+}
+function applyDeptUI() {
+  const m = OT_DEPT === 'maint';
+  el('maintBanner').hidden = !m; el('maintHistCard').hidden = !m;
+  const b = el('saveHistoryBtn'); if (!b.dataset.opsText) b.dataset.opsText = b.textContent;
+  b.textContent = m ? '\u2713\u00A0 Save to Maintenance OT History' : b.dataset.opsText;
+  renderMaintHistory();
+}
+function renderMaintHistory() {
+  const body = el('maintHistBody'); if (!body) return;
+  el('maintHistMeta').textContent = maintHistoryBatches.length ? maintHistoryBatches.length + ' saved batch(es)' : '';
+  if (!maintHistoryBatches.length) { body.innerHTML = '<tr><td colspan="7" style="padding:10px 8px;color:#64748b">No Maintenance OT saved yet &mdash; load a Maintenance roster, analyse it, then click &ldquo;Save to Maintenance OT History&rdquo;.</td></tr>'; return; }
+  const td = 'padding:6px 8px;border-top:1px solid #eef2f7';
+  body.innerHTML = maintHistoryBatches.slice().sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0)).map(b => `<tr>
+    <td style="${td}">${esc(String(b.label || '').replace(/^\s*\[Maintenance\]\s*/i, ''))}</td><td style="${td}">${esc(b.period || '--')}</td>
+    <td style="${td};text-align:right">${b.employeeCount ?? '--'}</td><td style="${td};text-align:right">${b.dayCount ?? '--'}</td><td style="${td};text-align:right">${b.recordCount ?? '--'}</td>
+    <td style="${td}">${b.savedAt ? new Date(b.savedAt).toLocaleString() : '--'}</td>
+    <td style="${td}"><button class="btn-secondary maint-del" data-batch-id="${esc(b.batchId)}" style="padding:5px 10px;font-size:10.5px">Delete</button></td></tr>`).join('');
+  body.querySelectorAll('.maint-del').forEach(btn => btn.addEventListener('click', async () => {
+    const id = btn.getAttribute('data-batch-id'), b = maintHistoryBatches.find(x => x.batchId === id);
+    if (!window.confirm('Delete the saved Maintenance batch "' + String(b ? b.label : id).replace(/^\s*\[Maintenance\]\s*/i, '') + '"? This cannot be undone.')) return;
+    btn.disabled = true; btn.textContent = 'Deleting...';
+    try { await idbDeleteBatch(id); await refreshOtHistoryCache(); setStatus('Maintenance batch deleted.', 'ok'); }
+    catch (err) { console.error(err); setStatus('Failed to delete batch: ' + err.message, 'error'); btn.disabled = false; btn.textContent = 'Delete'; }
+  }));
+}
+const TAB_ORDER = ['command','validator','maintenance','biometric','undertime','night','fatigue','payslip','claim'];
+const TAB_PANEL_ID = { command:'ccPanel', validator:'validatorPanel', maintenance:'validatorPanel', payslip:'payslipPanel', undertime:'undertimePanel', night:'nightPanel', fatigue:'fatiguePanel', claim:'claimPanel', biometric:'bvPanel' };
+const TAB_BTN_ID = { command:'tabCommand', validator:'tabValidator', maintenance:'tabMaintenance', payslip:'tabPayslip', undertime:'tabUndertime', night:'tabNight', fatigue:'tabFatigue', claim:'tabClaim', biometric:'tabBiometric' };
 function switchTab(name){
   // Role gate: a restricted role (HR Advisor) can only ever land on its permitted tabs, whatever calls this.
   const _role = window.OTATS_ROLE;
   if (_role && _role.allowedTabs && !_role.allowedTabs.includes(name)) name = _role.defaultTab;
+  // Operations and Maintenance share one verification screen; the mode decides where saved batches go and
+  // keeps a Maintenance roster out of the Overview, Claims and Payslips.
+  if (name === 'validator' || name === 'maintenance') {
+    const want = name === 'maintenance' ? 'maint' : 'ops';
+    if (want !== OT_DEPT) {
+      if (workbook || analysis) {
+        if (!window.confirm('Switching to ' + (want === 'maint' ? 'Maintenance' : 'Operations') + ' overtime clears the ' + (OT_DEPT === 'maint' ? 'Maintenance' : 'Operations') + ' roster currently loaded here (saved history is not affected).\n\nContinue?')) return;
+        otResetLoaded();
+      }
+      OT_DEPT = want;
+    }
+    applyDeptUI();
+  }
   TAB_ORDER.forEach(key => {
     const active = key === name;
-    el(TAB_PANEL_ID[key]).classList.toggle('active', active);
+    el(TAB_PANEL_ID[key]).classList.toggle('active', TAB_PANEL_ID[key] === TAB_PANEL_ID[name]);
     el(TAB_BTN_ID[key]).classList.toggle('active', active);
     el(TAB_BTN_ID[key]).setAttribute('aria-selected', String(active));
   });
@@ -4734,7 +4792,7 @@ function switchTab(name){
 const ccState={page:1,size:10};
 function ccIso(v){if(v instanceof Date&&!isNaN(v))return v.toISOString().slice(0,10);if(typeof v==='number'&&v>20000&&v<80000)return new Date(Math.round((v-25569)*864e5)).toISOString().slice(0,10);return v==null?'':String(v)}
 function wsGet(){return{q:(el('wsQ').value||'').trim().toLowerCase(),from:el('wsFrom').value,to:el('wsTo').value,st:el('wsSt').value}}
-function ccAll(){const a=analysis;if(!a)return[];return a.mismatches.map(m=>({id:m.sap,name:m.name,pos:m.position||'',date:ccIso(m.date),rec:m.recordedOt,calc:m.calcOt,over:m.recordedOtMin>m.calcOtMin}))}
+function ccAll(){const a=(OT_DEPT==='maint'?null:analysis);if(!a)return[];return a.mismatches.map(m=>({id:m.sap,name:m.name,pos:m.position||'',date:ccIso(m.date),rec:m.recordedOt,calc:m.calcOt,over:m.recordedOtMin>m.calcOtMin}))}
 function ccFiltered(){const f=wsGet();return ccAll().filter(r=>{
   if(f.q&&!(String(r.id)+' '+r.name).toLowerCase().includes(f.q))return false;
   if(/^\d{4}-\d{2}-\d{2}$/.test(r.date)){if(f.from&&r.date<f.from)return false;if(f.to&&r.date>f.to)return false}
@@ -4755,8 +4813,8 @@ function ccAnalysis(){
   if(sel.options.length!==bs.length+1){const cur=sel.value;sel.innerHTML='<option value="">All saved batches</option>'+bs.map(b=>`<option value="${esc(b.batchId)}">${esc(b.label||'')}${b.period?' ('+esc(b.period)+')':''}</option>`).join('');sel.value=bs.some(b=>b.batchId===cur)?cur:''}
   el('nvBatches').innerHTML=bs.length?bs.map(b=>`<div class="nv-b" tabindex="0" role="button" onclick="switchTab('payslip')" onkeydown="if(event.key==='Enter')switchTab('payslip')"><div class="nv-ic"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18M9 16l2 2 4-4"/></svg></div><p>${esc(b.period||b.label||'')}<small>${Number(b.employeeCount||0).toLocaleString()} employees, ${Number(b.recordCount||0).toLocaleString()} records${b.savedAt?' · saved '+new Date(b.savedAt).toLocaleDateString():''}</small></p><em>Open</em></div>`).join(''):'<p class="ov-sm" style="margin-top:8px">No saved batches yet. Choose Save to OT History in Overtime.</p>';
   const v=sel.value,recs=[...otHistoryMap.values()].filter(r=>!v||r.batchId===v);
-  try{const cb=bs.find(x=>x.batchId===v);el('anScope').textContent=(v&&cb?'Batch: '+(cb.period||cb.label||''):'All '+bs.length+' saved batches combined')+'. Total corrected OT per employee, in hours:minutes.'}catch(e){}
-  let live=null;try{if(analysis&&analysis.mismatches.length)live=analysis.mismatches}catch(e){}
+  try{const cb=bs.find(x=>x.batchId===v);el('anScope').textContent=(v&&cb?'Batch: '+(cb.period||cb.label||''):'All '+bs.length+' saved batches combined')+'. Operations only - Maintenance OT is kept in its own tab. Total corrected OT per employee, in hours:minutes.'}catch(e){}
+  let live=null;try{if(OT_DEPT!=='maint'&&analysis&&analysis.mismatches.length)live=analysis.mismatches}catch(e){}
   const noBio=recs.filter(r=>r.noBiometric).length,al=el('nvAlert');
   if(live){const up=live.filter(m=>m.recordedOtMin>m.calcOtMin).length;T('nvAlertT',live.length.toLocaleString()+' discrepancies need review');T('nvAlertS',up+' recorded above calculated, '+(live.length-up)+' below');el('nvAlertGo').onclick=()=>switchTab('validator');al.hidden=false}
   else if(noBio){T('nvAlertT',noBio.toLocaleString()+' entries have no biometric verification');T('nvAlertS','Check them in Biometric Validation');el('nvAlertGo').onclick=()=>switchTab('biometric');al.hidden=false}
@@ -4791,7 +4849,7 @@ function ccAnalysis(){
 }
 function ccRefresh(){
   const t=(id,v)=>{const e=el(id);if(e)e.textContent=v};const f=n=>Number(n).toLocaleString();
-  const a=analysis,rows=(typeof dataEndRow==='number'&&typeof dataStartRow==='number')?dataEndRow-dataStartRow+1:0;
+  const a=(OT_DEPT==='maint'?null:analysis),rows=(typeof dataEndRow==='number'&&typeof dataStartRow==='number')?dataEndRow-dataStartRow+1:0;
   const hasLive=!!(a&&blocks.length&&rows);el('ovLive').hidden=!hasLive;el('ovEmpty').hidden=hasLive;
   el('wsBar').hidden=!hasLive;if(!hasLive)t('ccSub','Your saved OT history is shown below. Analyse a roster in Overtime to see live discrepancies.');
   try{ccAnalysis()}catch(e){console.error(e)}
@@ -4835,7 +4893,7 @@ function wsMenu(){const act=document.querySelector('.tab-panel.active'),m=el('ws
   const ex=all.filter(b=>/download|export|excel|zip/i.test(b.textContent)),ver=all.filter(b=>!ex.includes(b)&&/validate|verify|analy[sz]e|check/i.test(b.textContent));
   m.innerHTML='';const add=(txt,fn,dis)=>{const b=document.createElement('button');b.type='button';b.textContent=txt;if(dis)b.setAttribute('aria-disabled','true');b.onclick=()=>{if(dis)return;fn();m.hidden=true;el('wsAct').setAttribute('aria-expanded','false')};m.appendChild(b)};
   const sec=t=>{const s=document.createElement('small');s.textContent=t;m.appendChild(s)};
-  if(act.id==='ccPanel'){sec('Export');add('Outstanding discrepancies (CSV)',wsCsv,!ccFiltered().length);sec('Verify');[['validator','Open Overtime'],['biometric','Open Biometric Validation'],['claim','Open Claims']].forEach(x=>add(x[1],()=>switchTab(x[0])))}
+  if(act.id==='ccPanel'){sec('Export');add('Outstanding discrepancies (CSV)',wsCsv,!ccFiltered().length);sec('Verify');[['validator','Open Overtime'],['maintenance','Open Maintenance OT'],['biometric','Open Biometric Validation'],['claim','Open Claims']].forEach(x=>add(x[1],()=>switchTab(x[0])))}
   else{if(ver.length){sec('Verify');ver.forEach(b=>add(lab(b),()=>b.click(),b.disabled))}if(ex.length){sec('Export');ex.forEach(b=>add(lab(b),()=>b.click(),b.disabled))}if(!ver.length&&!ex.length){sec('No actions on this page yet');}}
 }
 (function(){
@@ -5481,6 +5539,10 @@ async function _refreshOtHistoryCacheInner() {
     console.error(err);
     setClaimStatus('Could not read OT History: ' + err.message, 'error');
   }
+  maintHistoryBatches = batches.filter(isMaintBatch).sort((a,b) => (a.savedAt||0) - (b.savedAt||0));
+  const maintIds = new Set(maintHistoryBatches.map(b => b.batchId));
+  batches = batches.filter(b => !maintIds.has(b.batchId));          // Operations history only from here on
+  records = records.filter(r => !maintIds.has(r.batchId));
   otHistoryBatches = batches.sort((a,b) => (a.savedAt||0) - (b.savedAt||0));
   const savedAtByBatch = new Map(otHistoryBatches.map(b => [b.batchId, b.savedAt || 0]));
   records.sort((a,b) => (savedAtByBatch.get(a.batchId)||0) - (savedAtByBatch.get(b.batchId)||0));
@@ -5496,6 +5558,7 @@ async function _refreshOtHistoryCacheInner() {
   updateClaimMasterStatus();
   updatePayHistoryBanner();
   populatePayrollUI();
+  try { renderMaintHistory(); } catch (e) { /* ignore */ }
 }
 
 function renderClaimHistoryTable() {
@@ -5540,18 +5603,18 @@ function renderClaimHistoryTable() {
 
 el('clearHistoryBtn').addEventListener('click', async () => {
   if (!otHistoryBatches.length) return;
-  if (!window.confirm(`Clear all ${otHistoryBatches.length} saved OT History batch(es)? This cannot be undone.`)) return;
-  const btn = el('clearHistoryBtn');
-  btn.disabled = true; btn.textContent = 'Clearing…';
+  if (!window.confirm(`Clear all ${otHistoryBatches.length} saved Operations OT History batch(es)? Maintenance OT batches are not touched (manage them in the Maintenance OT tab). This cannot be undone.`)) return;
+  const btn = el('clearHistoryBtn'), orig = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Clearing...';
   try {
-    await idbClearAllHistory();
+    for (const b of otHistoryBatches.slice()) await idbDeleteBatch(b.batchId);
     await refreshOtHistoryCache();
-    setClaimStatus('OT History cleared.', 'ok');
+    setClaimStatus('Operations OT History cleared.', 'ok');
   } catch (err) {
     console.error(err);
     setClaimStatus('Failed to clear OT History: ' + err.message, 'error');
   } finally {
-    btn.textContent = '🗑\u00A0 Clear All History';
+    btn.textContent = orig; btn.disabled = otHistoryBatches.length === 0;
   }
 });
 
@@ -5563,7 +5626,7 @@ el('saveHistoryBtn').addEventListener('click', async () => {
   const defaultLabel = blocks.length
     ? `${formatRosterDate(blocks[0].dateVal)} to ${formatRosterDate(blocks[blocks.length-1].dateVal)}`
     : (currentOtFileName || 'OT batch');
-  const label = window.prompt('Label this saved OT batch (e.g. the month/period it covers):', defaultLabel);
+  const label = window.prompt(OT_DEPT === 'maint' ? 'Label this saved MAINTENANCE OT batch (e.g. the month/period it covers):' : 'Label this saved OT batch (e.g. the month/period it covers):', defaultLabel);
   if (label === null) return; // user cancelled
   const btn = el('saveHistoryBtn');
   const original = btn.textContent;
@@ -5582,7 +5645,8 @@ el('saveHistoryBtn').addEventListener('click', async () => {
     const periodLabel = blocks.length ? `${formatRosterDate(blocks[0].dateVal)} → ${formatRosterDate(blocks[blocks.length-1].dateVal)}` : '';
     const batchMeta = {
       batchId,
-      label: (label.trim() || defaultLabel),
+      label: (OT_DEPT === 'maint' ? '[Maintenance] ' : '') + (label.trim().replace(/^\s*\[Maintenance\]\s*/i, '') || defaultLabel),
+      dept: OT_DEPT === 'maint' ? 'maint' : 'ops',
       period: periodLabel,
       employeeCount: otMasterReference.employeeCount,
       dayCount: otMasterReference.dayCount,
@@ -5592,7 +5656,8 @@ el('saveHistoryBtn').addEventListener('click', async () => {
     };
     await idbSaveBatch(batchMeta, records);
     await refreshOtHistoryCache();
-    setStatus(`Saved "${batchMeta.label}" to OT History (${records.length} records) — now available for Claim Validation.` + (typeof OT_CLOUD_NOTE === 'function' ? OT_CLOUD_NOTE() : ''), 'ok');
+    if (OT_DEPT === 'maint') setStatus(`Saved "${batchMeta.label.replace(/^\[Maintenance\]\s*/, '')}" to Maintenance OT History (${records.length} records) -- kept separate from Operations (not shown in Overview, Claims or Payslips).` + (typeof OT_CLOUD_NOTE === 'function' ? OT_CLOUD_NOTE() : ''), 'ok');
+    else setStatus(`Saved "${batchMeta.label}" to OT History (${records.length} records) — now available for Claim Validation.` + (typeof OT_CLOUD_NOTE === 'function' ? OT_CLOUD_NOTE() : ''), 'ok');
   } catch (err) {
     console.error(err);
     setStatus('Failed to save to OT History: ' + err.message, 'error');
@@ -5609,7 +5674,7 @@ function getCombinedMasterLookup() {
   const map = new Map(otHistoryMap);
   const employeeKeys = new Set(otHistoryEmployeeKeys);
   const employeeNames = new Map(otHistoryEmployeeNames);
-  if (otMasterReference) {
+  if (otMasterReference && OT_DEPT !== 'maint') {
     otMasterReference.map.forEach((v, k) => map.set(k, v));
     otMasterReference.employeeKeys.forEach(k => employeeKeys.add(k));
     otMasterReference.employeeNames.forEach((v, k) => employeeNames.set(k, v));
@@ -5685,7 +5750,7 @@ function updateClaimMasterStatus() {
   const banner = el('claimMasterBanner');
   const combined = getCombinedMasterLookup();
   const histReady = otHistoryEmployeeKeys.size > 0;
-  const sessReady = otMasterReference && otMasterReference.employeeKeys.size > 0;
+  const sessReady = otMasterReference && otMasterReference.employeeKeys.size > 0 && OT_DEPT !== 'maint';
   if (!combined.employeeKeys.size) {
     banner.textContent = 'No OT reference available yet — analyze an OT file in the OT Validator tab, then click "Save to OT History" to build a lasting reference (the current session\'s analysis is also usable immediately, even before saving).';
     banner.classList.remove('ready');
@@ -9634,7 +9699,6 @@ const SB = (function () {
       if (r.error) throw fail('Could not save punches', r.error);
       if (rows.length > SB_CONFIG.chunk) msg(`Uploading to cloud… ${Math.min(i + SB_CONFIG.chunk, rows.length).toLocaleString()} / ${rows.length.toLocaleString()}`);
     }
-    await client.from('biometric_batches').update({ punches: punches.length }).eq('id', id);   // completion signal for live sync
   }
   async function localBatchPunches(id) {
     const db = await bvhOpen();
@@ -9747,7 +9811,7 @@ const SB = (function () {
         pushedSet.add(newId); savePushed(pushedSet); pushed++;
       }
       for (const cb of cr.data) {
-        if (groups.has(cb.id) || tooFresh(cb.uploaded_at)) continue;
+        if (groups.has(cb.id)) continue;
         await pullBatch(cb); pushedSet.add(cb.id); pulled++;
       }
       savePushed(pushedSet);
@@ -9819,14 +9883,15 @@ const SB = (function () {
 
   out.onSignedIn = async function () {
     out.ready = true;
-    if (!out.__boot) { out.__boot = true; try { await out.syncSettings(); } catch (e) {} startAuto(); }
     const db = document.getElementById('sbDateSyncBtn'); if (db) { db.style.display = ''; if (!db.__wired) { db.__wired = true; db.addEventListener('click', () => out.syncDates(true)); } }
     out.syncDates();   // dates first (tiny) so the analysis rules are right while the big history syncs run
     const btn = document.getElementById('sbSyncBtn'); if (btn) { btn.style.display = ''; if (!btn.__wired) { btn.__wired = true; btn.addEventListener('click', () => out.syncAll(true)); } }
     const pill = document.querySelector('#bvhCard .bvh-pill'); if (pill) pill.textContent = 'cloud + this browser';
     const ob = document.getElementById('sbOtSyncBtn'); if (ob) { ob.style.display = ''; if (!ob.__wired) { ob.__wired = true; ob.addEventListener('click', () => out.syncOt()); } }
     const ab = document.getElementById('sbAttSyncBtn'); if (ab) { ab.style.display = ''; if (!ab.__wired) { ab.__wired = true; ab.addEventListener('click', () => out.syncAtt()); } }
-    await Promise.all([out.syncAll(), out.syncOt(), out.syncAtt()]);
+    await out.syncAll();
+    await out.syncOt();
+    await out.syncAtt();
   };
 
   // ---- hooks into the existing history functions (their callers are unchanged) -----------------
@@ -9904,7 +9969,6 @@ const SB = (function () {
       if (r.error) throw fail('Could not save OT records', r.error);
       if (rows.length > SB_CONFIG.chunk) otMsg(`Uploading OT history… ${Math.min(i + SB_CONFIG.chunk, rows.length).toLocaleString()} / ${rows.length.toLocaleString()}`);
     }
-    await client.from('ot_history_batches').update({ record_count: records.length }).eq('id', id);   // completion signal for live sync
     return { sent: rows.length, skipped };
   }
   async function localOtRecords(id) {
@@ -9920,23 +9984,13 @@ const SB = (function () {
     rq.onsuccess = () => { const c = rq.result; if (c) { const v = c.value; v.batchId = newId; c.update(v); c.continue(); } };
     await idbTxDone(tx);
   }
-  async function pullOtBatch(cb, onPage) {
+  async function pullOtBatch(cb) {
     const recs = [];
-    let last = null;   // keyset paging (id > last): every page is an index seek, so it stays fast however large the batch is
-    for (;;) {
-      let r;
-      for (let a = 0; a < 4; a++) {
-        r = await (last === null
-          ? client.from('ot_history_records').select('*').eq('batch_id', cb.id).order('id').limit(SB_CONFIG.chunk)
-          : client.from('ot_history_records').select('*').eq('batch_id', cb.id).gt('id', last).order('id').limit(SB_CONFIG.chunk));
-        if (!r.error) break;
-        await new Promise(res => setTimeout(res, 400 * Math.pow(2, a)));
-      }
+    for (let from = 0; ; from += SB_CONFIG.chunk) {
+      const r = await client.from('ot_history_records').select('*').eq('batch_id', cb.id).order('id').range(from, from + SB_CONFIG.chunk - 1);
       if (r.error) throw fail('Could not download OT records', r.error);
       r.data.forEach(x => recs.push(otRecFromCloud(x, cb.id)));
-      if (onPage) onPage(r.data.length);
       if (r.data.length < SB_CONFIG.chunk) break;
-      last = r.data[r.data.length - 1].id;
     }
     await _origOtSave({ batchId: cb.id, label: cb.label, period: cb.period, employeeCount: cb.employee_count, dayCount: cb.day_count,
       recordCount: recs.length, savedAt: Date.parse(cb.saved_at), sourceFileName: cb.source_file_name || '' }, recs);
@@ -9969,18 +10023,10 @@ const SB = (function () {
         await pushOtBatch(newId, lb, recs);
         pushedSet.add(newId); saveOtPushed(pushedSet); pushed++;
       }
-      const todo = cr.data.filter(cb => !localIds.has(cb.id) && !tooFresh(cb.saved_at)), totalB = todo.length;
-      let nRec = 0;
-      const worker = async () => {
-        while (todo.length) {
-          const cb = todo.shift();
-          await pullOtBatch(cb, n => { nRec += n; otMsg(`Downloading OT history… ${pulled}/${totalB} batches done, ${nRec.toLocaleString()} records`); });
-          pushedSet.add(cb.id); saveOtPushed(pushedSet); pulled++;
-          otMsg(`Downloading OT history… ${pulled}/${totalB} batches done, ${nRec.toLocaleString()} records`);
-          try { await refreshOtHistoryCache(); } catch (e) {}   // show each batch as soon as it has arrived
-        }
-      };
-      await Promise.all([worker(), worker(), worker()]);
+      for (const cb of cr.data) {
+        if (localIds.has(cb.id)) continue;
+        await pullOtBatch(cb); pushedSet.add(cb.id); pulled++;
+      }
       saveOtPushed(pushedSet);
       await refreshOtHistoryCache();
       otMsg(`OT history synced — ${pushed} batch${pushed === 1 ? '' : 'es'} sent, ${pulled} downloaded${removed ? `, ${removed} removed (deleted on another device)` : ''}. ${new Date().toLocaleTimeString()}`, 'ok');
@@ -10053,7 +10099,6 @@ const SB = (function () {
       if (r.error) throw fail('Could not save the schedule rows', r.error);
       if (list.length > SB_CONFIG.chunk) attMsg(`Uploading schedule… ${Math.min(i + SB_CONFIG.chunk, list.length).toLocaleString()} / ${list.length.toLocaleString()}`);
     }
-    await client.from('attendance_batches').update({ uploaded_at: new Date(meta.at || Date.now()).toISOString() }).eq('id', id);   // completion signal for live sync
     return list.length;
   }
   async function pullAttBatch(cb) {
@@ -10089,7 +10134,7 @@ const SB = (function () {
         await pushAttBatch(lb.id, lb, await attRowsOfBatch(lb.id));
         pushedSet.add(lb.id); saveAttPushed(pushedSet); pushed++;
       }
-      for (const cb of cr.data) { if (localIds.has(cb.id) || tooFresh(cb.uploaded_at)) continue; await pullAttBatch(cb); pushedSet.add(cb.id); pulled++; }
+      for (const cb of cr.data) { if (localIds.has(cb.id)) continue; await pullAttBatch(cb); pushedSet.add(cb.id); pulled++; }
       saveAttPushed(pushedSet);
       attMsg(`Schedules synced — ${pushed} upload${pushed === 1 ? '' : 's'} sent, ${pulled} downloaded${removed ? `, ${removed} removed` : ''}. ${new Date().toLocaleTimeString()}`, 'ok');
       try { await utbRefreshInfo(); } catch (e) {}
@@ -10118,71 +10163,6 @@ const SB = (function () {
     }
     return _origAttDelete(id);
   };
-  // ======================= SHARED SETTINGS (table app_settings) =======================
-  // Night-shift window / excluded codes, Time Range Eligibility and follow-up report config used to live only in each
-  // browser's localStorage. They are now kept in Supabase: pulled at sign-in, pushed whenever they are saved.
-  const SET_KEYS = ['nsNightWindowV1', 'nsExcCodesV1', 'nsTimeRangeV1', 'frCfgV1'], SET_FLAG = 'otats.settingsReloaded';
-  async function pushSetting(k) {
-    if (!out.ready || out.readOnlyOt) return;
-    try {
-      const v = localStorage.getItem(k); if (v === null) return;
-      const r = await client.from('app_settings').upsert({ key: k, value: v, updated_at: new Date().toISOString() }, { onConflict: 'key' });
-      if (r.error) console.warn('Could not save setting ' + k + ' to the cloud:', r.error.message);
-    } catch (e) { console.warn('Setting sync failed', e); }
-  }
-  out.syncSettings = async function (live) {
-    if (!out.ready) return;
-    const cr = await client.from('app_settings').select('key,value').in('key', SET_KEYS);
-    if (cr.error) { console.warn('Settings sync skipped (create the app_settings table):', cr.error.message); return; }
-    const cloud = new Map(cr.data.map(r => [r.key, r.value]));
-    let changed = false;
-    for (const k of SET_KEYS) {
-      const local = localStorage.getItem(k);
-      if (cloud.has(k)) { if (cloud.get(k) !== local) { localStorage.setItem(k, cloud.get(k)); changed = true; } }
-      else if (local !== null) await pushSetting(k);   // first time: seed the cloud from this browser
-    }
-    if (changed && live) showSettingsNotice();
-    else if (changed && !sessionStorage.getItem(SET_FLAG)) { sessionStorage.setItem(SET_FLAG, '1'); location.reload(); }   // reload once so the new values take effect
-    else if (!changed) sessionStorage.removeItem(SET_FLAG);
-  };
-  [['nsWinSave', 'nsNightWindowV1'], ['nsExcSave', 'nsExcCodesV1'], ['treSave', 'nsTimeRangeV1'], ['frCfgSave', 'frCfgV1']].forEach(([fn, key]) => {
-    const orig = window[fn]; if (typeof orig !== 'function') return;
-    window[fn] = function () { const r = orig.apply(this, arguments); pushSetting(key); return r; };
-  });
-
-  const tooFresh = ts => !out.__rtPull && !!ts && (Date.now() - Date.parse(ts)) < 180000;
-  function showSettingsNotice() {
-    if (document.getElementById('sbSettingsNotice')) return;
-    const d = document.createElement('div'); d.id = 'sbSettingsNotice';
-    d.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:99999;background:#1f2937;color:#fff;padding:12px 14px;border-radius:10px;font:13px system-ui,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.3)';
-    d.innerHTML = 'Settings were updated by another user. <button style="margin-left:8px;padding:4px 10px;border:0;border-radius:6px;cursor:pointer">Reload to apply</button>';
-    d.querySelector('button').onclick = () => location.reload();
-    document.body.appendChild(d);
-  }
-  // ---- real-time: Supabase Realtime pushes changes to every open page, which then syncs within seconds ----
-  function startRealtime() {
-    if (out.__live) return; out.__live = true;
-    const timers = {};
-    const later = (name, fn) => { clearTimeout(timers[name]); timers[name] = setTimeout(async () => { out.__rtPull = true; try { await fn(); } catch (e) { console.warn('Live sync', e); } finally { out.__rtPull = false; } }, 2000); };
-    const ch = client.channel('otats-live');
-    [['biometric_batches', () => out.syncAll(), true], ['ot_history_batches', () => out.syncOt(), true], ['attendance_batches', () => out.syncAtt(), true],
-     ['ot_date_config', () => out.syncDates(), false], ['app_settings', () => out.syncSettings(true), false]].forEach(([table, fn, skipInsert]) => {
-      ch.on('postgres_changes', { event: '*', schema: 'public', table }, pl => { if (skipInsert && pl.eventType === 'INSERT') return; later(table, fn); });   // INSERT = upload just started; the UPDATE that follows = finished
-    });
-    ch.subscribe(st => { if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT') console.warn('Realtime unavailable (' + st + ') - falling back to 5-minute polling'); });
-  }
-  // ---- background re-sync: when the tab regains focus (and every 5 min while visible) pick up other people's uploads ----
-  function startAuto() {
-    let last = Date.now();
-    const tick = force => {
-      if (!out.ready || document.hidden || (!force && Date.now() - last < 300000)) return;
-      last = Date.now(); out.syncAll(); out.syncOt(); out.syncAtt();
-    };
-    window.addEventListener('focus', () => tick(false));
-    document.addEventListener('visibilitychange', () => tick(false));
-    setInterval(() => tick(true), 300000);
-    startRealtime();
-  }
   return out;
 })();
 window.SB = SB;   // a top-level const is not a window property; the sign-in layer reads window.SB
@@ -10240,17 +10220,14 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
   // ---- roles -------------------------------------------------------------------------------
   // '' = full access (Administrator and every existing role, unchanged). 'hr_advisor' = restricted.
   const ROLE_HR = 'hr_advisor', HR_TABS = ['biometric', 'undertime', 'night'];
-  const ALL_TABS = ['command', 'validator', 'biometric', 'undertime', 'night', 'fatigue', 'payslip', 'claim'];
-  const TAB_BTN = { command: 'tabCommand', validator: 'tabValidator', biometric: 'tabBiometric', undertime: 'tabUndertime', night: 'tabNight', fatigue: 'tabFatigue', payslip: 'tabPayslip', claim: 'tabClaim' };
-  const TAB_PANEL = { command: 'ccPanel', validator: 'validatorPanel', biometric: 'bvPanel', undertime: 'undertimePanel', night: 'nightPanel', fatigue: 'fatiguePanel', payslip: 'payslipPanel', claim: 'claimPanel' };
+  const ALL_TABS = ['command', 'validator', 'maintenance', 'biometric', 'undertime', 'night', 'fatigue', 'payslip', 'claim'];
+  const TAB_BTN = { command: 'tabCommand', validator: 'tabValidator', maintenance: 'tabMaintenance', biometric: 'tabBiometric', undertime: 'tabUndertime', night: 'tabNight', fatigue: 'tabFatigue', payslip: 'tabPayslip', claim: 'tabClaim' };
+  const TAB_PANEL = { command: 'ccPanel', validator: 'validatorPanel', maintenance: 'validatorPanel', biometric: 'bvPanel', undertime: 'undertimePanel', night: 'nightPanel', fatigue: 'fatiguePanel', payslip: 'payslipPanel', claim: 'claimPanel' };
   const roleKeyOf = r => String(r || '').trim().toLowerCase().replace(/[\s-]+/g, '_') === ROLE_HR ? ROLE_HR : '';
   window.OTATS_ROLE = { key: '', allowedTabs: null, defaultTab: 'command' };
 
   const LS_ACCOUNT = 'otats.localAccess.v1', LS_LOCK = 'otats.authLock.v1';
   const SS_SESSION = 'otats.session.v1', SS_TOKEN = 'otats.token.v1';
-  const LS_SEEN = 'otats.lastSeen.v1', RESTORE_MIN = 480;   // auto sign-in allowed if the user was active within the last 8 h
-  const seenAt = () => { try { return Number(localStorage.getItem(LS_SEEN)) || 0; } catch (e) { return 0; } };
-  const markSeen = () => { try { localStorage.setItem(LS_SEEN, String(Date.now())); } catch (e) {} };
   const $ = id => document.getElementById(id);
   const serverMode = !!AUTH_CONFIG.loginUrl;
   const sbMode = !!(window.SB && window.SB.enabled);   // Supabase Auth (set SB_CONFIG above)
@@ -10435,7 +10412,7 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
     document.body.classList.remove('auth-locked');
     document.title = 'Overtime & Attendance Tracking System';
     $('authPass').value = ''; $('authConfirm').value = '';
-    lastActive = Date.now(); markSeen(); startIdleWatch();
+    lastActive = Date.now(); startIdleWatch();
     window.scrollTo(0, 0);
     if (sbMode) { try { window.SB.readOnlyOt = (rk === ROLE_HR); window.SB.onSignedIn(); } catch (e) { console.warn('Cloud sync could not start', e); } }
   }
@@ -10446,7 +10423,7 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
     enforceCooldown();
     setTimeout(() => { try { (view === 'login' && $('authUser').value ? $('authPass') : $('authUser')).focus(); } catch (e) {} }, 60);
   }
-  function clearSession() { SS.del(SS_SESSION); SS.del(SS_TOKEN); try { localStorage.removeItem(LS_SEEN); } catch (e) {} currentUser = null; }
+  function clearSession() { SS.del(SS_SESSION); SS.del(SS_TOKEN); currentUser = null; }
   function logoutServer() {
     if (serverMode && AUTH_CONFIG.logoutUrl) { try { fetch(AUTH_CONFIG.logoutUrl, { method: 'POST', credentials: AUTH_CONFIG.sendCookies ? 'include' : 'same-origin' }).catch(() => {}); } catch (e) {} }
   }
@@ -10464,7 +10441,7 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
   }
   function startIdleWatch() {
     stopIdleWatch(); if (!AUTH_CONFIG.idleTimeoutMin) return;
-    idleTimer = setInterval(() => { if (Date.now() - lastActive > AUTH_CONFIG.idleTimeoutMin * 60000) lockForIdle(); else if (Date.now() - lastActive < 60000) markSeen(); }, 15000);
+    idleTimer = setInterval(() => { if (Date.now() - lastActive > AUTH_CONFIG.idleTimeoutMin * 60000) lockForIdle(); }, 15000);
   }
   function stopIdleWatch() { clearInterval(idleTimer); idleTimer = null; }
   ['mousemove', 'keydown', 'click', 'touchstart', 'scroll'].forEach(ev => window.addEventListener(ev, () => { lastActive = Date.now(); }, { passive: true }));
@@ -10543,18 +10520,6 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
         unlock({ name: saved.name, role: saved.role }); return;
       }
       clearSession();
-    }
-    // New tab / new window / reopened browser: a valid Supabase session + recent activity signs the user in automatically.
-    if (!fresh && sbMode && (Date.now() - seenAt()) < RESTORE_MIN * 60000) {
-      try {
-        const sess = await window.SB.getSession();
-        if (sess && sess.user) {
-          const am = sess.user.app_metadata || {}, um = sess.user.user_metadata || {};
-          const nm = um.full_name || um.name || sess.user.email || 'User', rl = am.role || 'Signed in';
-          SS.set(SS_SESSION, JSON.stringify({ name: nm, role: rl, mode: 'sb', at: Date.now() }));
-          unlock({ name: nm, role: rl }); return;
-        }
-      } catch (e) { /* fall through to the login screen */ }
     }
     showLogin();
   })();

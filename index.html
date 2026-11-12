@@ -11066,7 +11066,7 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
   function impAction(i) {
     if (!S.isAdmin) return '';
     const n = impUse(i.id);
-    return n ? '<span class="sub" title="Opening balances still belong to this upload, so it cannot be deleted">in use by ' + n.toLocaleString() + ' balance(s)</span>'
+    return n ? '<span class="sub" title="Opening balances still belong to this upload">in use by ' + n.toLocaleString() + ' balance(s)</span> <button type="button" class="btn-secondary toil-danger" data-pdelimpall="' + esc(i.id) + '"' + (canWrite() ? '' : ' disabled') + ' title="Delete this upload together with its opening balances (only if no transactions exist for them)">Delete upload + balances</button>'
       : '<button type="button" class="btn-secondary toil-danger" data-pdelimp="' + esc(i.id) + '"' + (canWrite() ? '' : ' disabled') + ' title="Physically remove this upload-log entry">Delete permanently</button>';
   }
   function delErr(e) {
@@ -11076,6 +11076,7 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
     if (/DELETE_REQUIRES_VOID/.test(t)) return 'Only a voided transaction can be permanently deleted. Void it first.';
     if (/DELETE_REQUIRES_REASON/.test(t)) return 'A reason of at least 3 characters is required.';
     if (/NOT_FOUND/.test(t)) return 'That record no longer exists (it may already have been deleted). Press Refresh.';
+    if (/IMPORT_HAS_TRANSACTIONS/.test(t)) return 'Transactions (active or voided) still exist for balances in this upload. Void them, permanently delete them, then try again.';
     if (/IMPORT_IN_USE/.test(t) || c === '23503') return 'This upload still has opening balances linked to it, so it cannot be deleted.';
     return t.replace(/^[\s\S]*?(TOIL_RECORDS_ARE_PERMANENT)/, '$1') || 'Delete failed.';
   }
@@ -11124,6 +11125,25 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
         if (error) throw error;
         S.imports = S.imports.filter(t => t.id !== id); renderAll();
         msg('Upload-log entry permanently deleted.', 'ok');
+      } });
+  }
+
+  function deleteImportAll(id) {
+    const i = S.imports.find(t => t.id === id); if (!i || !canDelete()) return;
+    const ops = [...S.openings.values()].filter(o => o.import_id === id);
+    const keys = new Set(ops.map(o => o.staff_id + '|' + tyear(o)));
+    const tx = S.txns.filter(x => keys.has(x.staff_id + '|' + tyear(x)));
+    if (tx.length) { msg('Cannot delete: ' + tx.length + ' transaction(s) (active or voided) exist for balances in this upload (' + tx.filter(x => x.status !== 'voided').length + ' active). Void and permanently delete them first.', 'error'); return; }
+    confirmPermanentDelete({
+      title: 'Permanently delete upload and its opening balances',
+      warn: 'This upload-log entry AND the ' + ops.length.toLocaleString() + ' opening balance(s) it created will be physically removed. No transactions exist for them, and no other upload, employee balance or transaction is changed.',
+      details: '<div><b>' + esc(i.file_name || '') + '</b> &middot; balance year ' + (i.toil_year || DEFAULT_YEAR) + '</div><div>' + ops.length.toLocaleString() + ' opening balance(s) will be deleted &middot; 0 transactions affected</div><div class="sub">Uploaded ' + stamp(i.imported_at) + ' by ' + esc(i.imported_by || '') + '. The deleted staff IDs and opening days are kept in the admin-only deletion log.</div>',
+      run: async reason => {
+        const { error } = await sb().rpc('toil_permanent_delete_import_with_balances', { p_id: id, p_reason: reason });
+        if (error) throw error;
+        S.imports = S.imports.filter(t => t.id !== id);
+        ops.forEach(o => S.openings.delete(okey(o.staff_id, tyear(o)))); renderAll();
+        msg('Upload and its ' + ops.length.toLocaleString() + ' opening balance(s) permanently deleted.', 'ok');
       } });
   }
 
@@ -11300,14 +11320,14 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
     $('toilAdd').addEventListener('click', () => openForm(null));
     $('toilExpBal').addEventListener('click', () => exportXlsx('bal')); $('toilExpHist').addEventListener('click', () => exportXlsx('hist'));
     $('toilPanel').addEventListener('click', e => {
-      const t = e.target.closest('[data-sort],[data-pg],[data-add],[data-view],[data-void],[data-pdel],[data-pdelimp]'); if (!t) return;
+      const t = e.target.closest('[data-sort],[data-pg],[data-add],[data-view],[data-void],[data-pdel],[data-pdelimp],[data-pdelimpall]'); if (!t) return;
       if (t.dataset.sort) { const k = t.dataset.sort; S.sort = { k, dir: S.sort.k === k ? -S.sort.dir : 1 }; renderBalances(); }
       else if (t.dataset.pg) { if (t.dataset.pg === 'bal') { S.page += +t.dataset.d; renderBalances(); } else { S.hpage += +t.dataset.d; renderHistory(); } }
       else if (t.dataset.add) openForm(t.dataset.add);
       else if (t.dataset.view) { e.preventDefault(); openDetail(t.dataset.view); }
       else if (t.dataset.void) voidTxn(t.dataset.void);
       else if (t.dataset.pdel) deleteTxn(t.dataset.pdel);
-      else if (t.dataset.pdelimp) deleteImport(t.dataset.pdelimp);
+      else if (t.dataset.pdelimp) deleteImport(t.dataset.pdelimp); else if (t.dataset.pdelimpall) deleteImportAll(t.dataset.pdelimpall);
     });
     $('toilImpYear').addEventListener('input', renderImportPreview);
     $('toilFile').addEventListener('change', async e => {

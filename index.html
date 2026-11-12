@@ -1167,6 +1167,76 @@ header .brand-mark{width:64px;height:64px;flex:none}
 
 #frTable td.fr-over,#frHrsTable td.fr-over{color:#b91c1c;font-weight:700;background:#fef2f2}
 #frTable td small{color:#64748b;font-weight:500}
+/* ---- TOIL Balance Management ---- */
+#toilPanel .toil-msg{display:none;margin:-8px 0 14px;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:600}
+#toilPanel .toil-msg.show{display:block;background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+#toilPanel .toil-msg.ok{background:#f0fdf4;border-color:#bbf7d0;color:#166534}
+#toilPanel .toil-msg.error{background:#fef2f2;border-color:#fecaca;color:#991b1b}
+#toilPanel .claim-master-banner.toil-bad{background:#fef2f2;border-color:#fecaca;color:#991b1b}
+.toil-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px}
+.toil-kpi{background:#fff;border:1px solid #e4eaf1;border-radius:14px;padding:14px 16px}
+.toil-kpi.main{background:linear-gradient(135deg,#eff6ff,#fff);border-color:#bfdbfe}
+.toil-kpi .k{font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.06em}
+.toil-kpi .v{font-size:26px;font-weight:800;margin-top:4px;color:#0f172a}
+.toil-kpi.pos .v{color:#15803d}.toil-kpi.neg .v{color:#b45309}.toil-kpi .v small{font-size:13px;font-weight:700;color:#64748b}
+.toil-kpi .s{font-size:12px;color:#64748b;margin-top:2px}
+.toil-subtabs{display:flex;gap:6px;margin:4px 0 14px;flex-wrap:wrap}
+.toil-subtabs button{border:1px solid #d7e1ee;background:#fff;color:#24426d;border-radius:999px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer}
+.toil-subtabs button.active{background:#1e3a8a;border-color:#1e3a8a;color:#fff}
+.toil-card{background:#fff;border:1px solid #e4eaf1;border-radius:16px;padding:16px;margin-bottom:16px;box-shadow:0 8px 24px rgba(30,50,80,.05)}
+.toil-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.toil-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:12px 0}
+.toil-scroll{overflow:auto;max-height:560px;border:1px solid #eef2f7;border-radius:12px}
+.toil-t{width:100%;border-collapse:collapse;font-size:13px}
+.toil-t th{position:sticky;top:0;background:#f8fafc;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#64748b;padding:9px 10px;border-bottom:1px solid #e2e8f0;white-space:nowrap;z-index:1}
+.toil-t th.sortable{cursor:pointer}.toil-t th.sortable:hover{color:#1e3a8a}
+.toil-t td{padding:8px 10px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+.toil-t .num{text-align:right;white-space:nowrap}.toil-t .mono{font-family:var(--mono,monospace);font-size:12px}
+.toil-t .pos{color:#15803d;font-weight:700}.toil-t .neg{color:#b45309;font-weight:700}
+.toil-t .remarks{min-width:200px;max-width:380px;white-space:pre-wrap}.toil-t .act{text-align:right;white-space:nowrap}
+.toil-t .act .btn-secondary{padding:5px 10px;font-size:11px}
+main .tab-panel .toil-t .act .btn-secondary.toil-danger{color:#b91c1c !important;border:1px solid #fecaca !important;background:#fff !important;margin-left:6px}
+main .tab-panel .toil-t .act .btn-secondary.toil-danger:not(:disabled):hover{background:#fef2f2 !important}
+.toil-t tr.voided td{color:#94a3b8;text-decoration:line-through}.toil-t tr.voided td .sub,.toil-t tr.voided td .toil-badge{text-decoration:none}
+.toil-t .empty{text-align:center;color:#64748b;padding:28px}
+.toil-t .sub,.sub{font-size:11.5px;color:#64748b;font-weight:400}
+.toil-link{color:#1d4ed8;font-weight:700;text-decoration:none}.toil-link:hover{text-decoration:underline}
+.toil-badge{display:inline-block;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:800}
+.toil-badge.available{background:#dcfce7;color:#166534}.toil-badge.nil{background:#f1f5f9;color:#475569}.toil-badge.overdrawn{background:#fee2e2;color:#991b1b}.toil-badge.left{background:#f1f5f9;color:#64748b}
+.toil-foot{font-size:12.5px;color:#475569;margin:12px 2px 4px}
+.toil-pager{display:flex;gap:10px;align-items:center;justify-content:flex-end;font-size:12.5px;color:#475569}
+.toil-pager .btn-secondary{padding:6px 12px;font-size:12px}
+.toil-modal{position:fixed;inset:0;background:rgba(15,23,42,.5);display:flex;align-items:flex-start;justify-content:center;z-index:3000;padding:4vh 14px;overflow:auto}
+.toil-modal[hidden]{display:none}
+.toil-dlg{background:#fff;border-radius:18px;width:100%;max-width:560px;padding:22px;box-shadow:0 30px 80px rgba(15,23,42,.35)}
+.toil-dlg.wide{max-width:900px}
+.toil-dh{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:14px}.toil-dh h3{margin:0;font-size:18px}
+.toil-dlg .control-field{margin-bottom:12px}.toil-dlg textarea{width:100%;border:1px solid #d7e1ee;border-radius:10px;padding:10px;font:inherit;resize:vertical}
+.toil-row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.toil-seg{display:flex;flex-direction:column;gap:6px}.toil-seg label{text-transform:none;letter-spacing:0;font-size:13px;font-weight:600;color:#0f172a;display:flex;gap:8px;align-items:center}
+.toil-sug{border:1px solid #d7e1ee;border-radius:10px;background:#fff;max-height:220px;overflow:auto;box-shadow:0 10px 24px rgba(15,23,42,.12)}
+.toil-sug div{padding:8px 10px;cursor:pointer;font-size:13px;border-bottom:1px solid #f1f5f9}.toil-sug div:hover{background:#eff6ff}
+.toil-card-staff{font-size:12.5px;color:#334155;margin-top:4px;line-height:1.5}
+.toil-prev{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;font-size:13px;min-height:20px;margin-bottom:10px}.toil-prev:empty{display:none}
+.toil-over{display:flex;gap:8px;align-items:center;font-size:13px;color:#b45309;font-weight:700;margin-bottom:10px}
+.toil-err{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:10px}
+.toil-actions{display:flex;justify-content:flex-end}
+.toil-mini{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}.toil-mini .toil-kpi{padding:10px 12px}.toil-mini .toil-kpi .v{font-size:20px}
+.toil-snap{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.7;margin-bottom:14px}.toil-snap .flag{color:#b45309}
+.toil-hd{display:flex;justify-content:space-between;align-items:center;margin:6px 0 10px}
+@media(max-width:720px){.toil-mini{grid-template-columns:1fr 1fr}.toil-row2{grid-template-columns:1fr}}
+
+/* public-holiday header block (same look as the Excel sheet) */
+.toil-t thead tr.r1 th{top:0;height:34px;box-sizing:border-box}
+.toil-t thead tr.r2 th{top:34px;height:34px;box-sizing:border-box}
+.toil-t th.ph-group,.toil-t th.ph{background:#ffc000;color:#1a1a1a;text-align:center;font-weight:800;border-left:1px solid #1a1a1a22}
+.toil-t th.ph-group{letter-spacing:.04em}
+.toil-t th.ph{text-align:center}.toil-t th.ph.num{text-align:center}
+.toil-t td.phc{background:#fffbeb;text-align:center}
+.toil-phrow{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px}
+.toil-phrow div{background:#fff7d6;border:1px solid #f5d77a;border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:2px}
+.toil-phrow span{font-size:10.5px;font-weight:800;color:#7a5a00;letter-spacing:.04em}.toil-phrow b{font-size:17px}
+@media(max-width:720px){.toil-phrow{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body class="auth-locked">
@@ -1338,6 +1408,10 @@ header .brand-mark{width:64px;height:64px;flex:none}
     <button class="app-tab" id="tabClaim" data-tab="claim" type="button" role="tab" aria-selected="false" aria-controls="claimPanel">
       <span class="tab-ico-wrap" aria-hidden="true"><svg class="tab-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg></span>
       <span class="tab-label">Claims</span>
+    </button>
+    <button class="app-tab" id="tabToil" data-tab="toil" type="button" role="tab" aria-selected="false" aria-controls="toilPanel">
+      <span class="tab-ico-wrap" aria-hidden="true"><svg class="tab-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></span>
+      <span class="tab-label">TOIL Balance</span>
     </button>
   </div>
   <div class="ws-bar" id="wsBar" role="search">
@@ -1534,6 +1608,79 @@ header .brand-mark{width:64px;height:64px;flex:none}
 
 
   </section>
+
+  <section class="tab-panel" id="toilPanel" role="tabpanel" aria-labelledby="tabToil">
+  <div class="payslip-intro">
+    <div>
+      <div class="eyebrow" style="color:#2563eb;margin-bottom:7px">Planning &middot; Time Off in Lieu</div>
+      <h2>TOIL Balance Management</h2>
+      <p>The TOIL balances uploaded from Excel are the <b>opening balance</b> for their year (2026, plus earlier years such as 2025) and are never overwritten. Every accrual &mdash; always tied to a public holiday &mdash; or consumption is saved as its own transaction in the shared database, the balance is recalculated after each one, and every entry keeps who recorded it and when.</p>
+    </div>
+    <button type="button" class="btn-secondary" id="toilRefresh">Refresh</button>
+  </div>
+  <div class="claim-master-banner" id="toilBanner">Open this tab to load TOIL data.</div>
+  <div class="toil-msg" id="toilMsg" role="status"></div>
+  <div class="toil-kpis" id="toilKpis"></div>
+
+  <div class="toil-subtabs" role="tablist">
+    <button type="button" class="active" data-sub="bal">Balances</button>
+    <button type="button" data-sub="hist">Transaction history</button>
+    <button type="button" data-sub="imp">Initial upload</button>
+  </div>
+
+  <div id="toilSubBal">
+    <div class="toil-card">
+      <div class="toil-filters">
+        <div class="control-field"><label for="toilQ">Search staff ID or name</label><input id="toilQ" type="search" placeholder="e.g. 1005925 or Almutaeb"></div>
+        <div class="control-field"><label for="toilYear">Balance year</label><select id="toilYear"><option value="">All years</option></select></div>
+        <div class="control-field"><label for="toilDept">Department</label><select id="toilDept"><option value="">All</option></select></div>
+        <div class="control-field"><label for="toilPos">Position</label><select id="toilPos"><option value="">All</option></select></div>
+        <div class="control-field"><label for="toilStatus">TOIL status</label><select id="toilStatus"><option value="">All</option><option value="Available">Available (&gt; 0)</option><option value="Nil">Nil (= 0)</option><option value="Overdrawn">Overdrawn (&lt; 0)</option></select></div>
+        <div class="control-field"><label for="toilEmp">Employment</label><select id="toilEmp"><option value="">All staff</option><option value="active">Still employed</option><option value="left">Leaving date reached</option></select></div>
+      </div>
+      <div class="toil-toolbar">
+        <button type="button" class="btn-secondary" id="toilClear">Clear filters</button>
+        <span style="flex:1"></span>
+        <button type="button" class="btn-secondary" id="toilExpBal">Export to Excel</button>
+        <button type="button" class="btn-primary" id="toilAdd" disabled>+ Record accrual / consumption</button>
+      </div>
+      <div class="toil-scroll"><table class="toil-t"><thead id="toilBalHead"></thead><tbody id="toilBalBody"><tr><td class="empty">Loading&hellip;</td></tr></tbody></table></div>
+      <div class="toil-foot" id="toilBalFoot"></div>
+      <div class="toil-pager" id="toilBalPager"></div>
+    </div>
+  </div>
+
+  <div id="toilSubHist" hidden>
+    <div class="toil-card">
+      <div class="toil-filters">
+        <div class="control-field"><label for="toilHQ">Search staff ID or name</label><input id="toilHQ" type="search"></div>
+        <div class="control-field"><label for="toilHYear">Balance year</label><select id="toilHYear"><option value="">All years</option></select></div>
+        <div class="control-field"><label for="toilHType">Type</label><select id="toilHType"><option value="">All</option><option>Accrual</option><option>Consumption</option></select></div>
+        <div class="control-field"><label for="toilHFrom">From date</label><input id="toilHFrom" type="date"></div>
+        <div class="control-field"><label for="toilHTo">To date</label><input id="toilHTo" type="date"></div>
+        <div class="control-field"><label>&nbsp;</label><label style="text-transform:none;letter-spacing:0;font-weight:600;font-size:13px;display:flex;gap:8px;align-items:center"><input type="checkbox" id="toilHVoid"> Include voided entries</label></div>
+      </div>
+      <div class="toil-toolbar"><span style="flex:1"></span><button type="button" class="btn-secondary" id="toilExpHist">Export to Excel</button></div>
+      <div class="toil-scroll"><table class="toil-t"><thead><tr><th>Date</th><th>Year</th><th>Staff ID</th><th>Name</th><th>Type</th><th>Holiday</th><th class="num">Amount</th><th class="num">Updated balance</th><th>Remarks</th><th>Planner</th><th>Recorded</th><th></th></tr></thead><tbody id="toilHistBody"></tbody></table></div>
+      <div class="toil-foot" id="toilHistFoot"></div>
+      <div class="toil-pager" id="toilHistPager"></div>
+    </div>
+  </div>
+
+  <div id="toilSubImp" hidden>
+    <div class="toil-card">
+      <h3 style="margin:0 0 6px;font-size:15px">Upload TOIL balances for a year</h3>
+      <p class="sub" style="margin:0 0 12px">Choose the TOIL Excel file in the same layout as the 2026 one (SAP ID, NAME, the four public-holiday columns, total accrued, used, remaining). Set the <b>balance year</b> the figures belong to &mdash; upload your 2025 accumulated balances with 2025 and they sit beside 2026, and the Year filter separates them. Each staff member is matched by SAP ID. You see a preview and a list of anything unusual before anything is saved. A staff member who already has a balance for that year is skipped, so uploading again can never overwrite it.</p>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end">
+        <div class="control-field" style="width:150px"><label for="toilImpYear">Balance year</label><input id="toilImpYear" type="number" min="2000" max="2100" value="2026"></div>
+        <div class="control-field" style="flex:1;min-width:260px;max-width:420px"><label for="toilFile">Excel file (.xlsx)</label><input id="toilFile" type="file" accept=".xlsx,.xlsm,.xls"></div>
+      </div>
+      <div id="toilImpPrev" style="margin-top:14px"></div>
+      <div class="toil-toolbar" style="margin-top:12px"><button type="button" class="btn-primary" id="toilImpGo" disabled>Import</button></div>
+    </div>
+    <div class="toil-card"><h3 style="margin:0 0 10px;font-size:15px">Upload log</h3><div id="toilImpLog" class="toil-scroll"></div></div>
+  </div>
+</section>
 
   <section class="tab-panel" id="payslipPanel" role="tabpanel" aria-labelledby="tabPayslip">
     <div class="payslip-intro">
@@ -4761,6 +4908,7 @@ el('tabUndertime').addEventListener('click',()=>switchTab('undertime'));
 el('tabNight').addEventListener('click',()=>switchTab('night'));
 el('tabFatigue').addEventListener('click',()=>switchTab('fatigue'));
 el('tabClaim').addEventListener('click',()=>switchTab('claim'));
+el('tabToil').addEventListener('click',()=>switchTab('toil'));
 el('tabBiometric').addEventListener('click',()=>switchTab('biometric'));
 var OT_DEPT = 'ops';   // 'ops' | 'maint' - which department the Overtime verification screen is working on
 function isMaintBatch(b) { return !!b && (b.dept === 'maint' || /^\s*\[Maintenance\]/i.test(String(b.label || ''))); }   // the label prefix survives cloud sync
@@ -4798,9 +4946,9 @@ function renderMaintHistory() {
     catch (err) { console.error(err); setStatus('Failed to delete batch: ' + err.message, 'error'); btn.disabled = false; btn.textContent = 'Delete'; }
   }));
 }
-const TAB_ORDER = ['command','validator','maintenance','biometric','undertime','night','fatigue','payslip','claim'];
-const TAB_PANEL_ID = { command:'ccPanel', validator:'validatorPanel', maintenance:'validatorPanel', payslip:'payslipPanel', undertime:'undertimePanel', night:'nightPanel', fatigue:'fatiguePanel', claim:'claimPanel', biometric:'bvPanel' };
-const TAB_BTN_ID = { command:'tabCommand', validator:'tabValidator', maintenance:'tabMaintenance', payslip:'tabPayslip', undertime:'tabUndertime', night:'tabNight', fatigue:'tabFatigue', claim:'tabClaim', biometric:'tabBiometric' };
+const TAB_ORDER = ['command','validator','maintenance','biometric','undertime','night','fatigue','payslip','claim','toil'];
+const TAB_PANEL_ID = { command:'ccPanel', validator:'validatorPanel', maintenance:'validatorPanel', payslip:'payslipPanel', undertime:'undertimePanel', night:'nightPanel', fatigue:'fatiguePanel', claim:'claimPanel', biometric:'bvPanel', toil:'toilPanel' };
+const TAB_BTN_ID = { command:'tabCommand', validator:'tabValidator', maintenance:'tabMaintenance', payslip:'tabPayslip', undertime:'tabUndertime', night:'tabNight', fatigue:'tabFatigue', claim:'tabClaim', biometric:'tabBiometric', toil:'tabToil' };
 function switchTab(name){
   // Role gate: a restricted role (HR Advisor) can only ever land on its permitted tabs, whatever calls this.
   const _role = window.OTATS_ROLE;
@@ -4818,6 +4966,7 @@ function switchTab(name){
     }
     applyDeptUI();
   }
+  if (name === 'toil' && window.TOIL) setTimeout(() => window.TOIL.show(), 0);
   TAB_ORDER.forEach(key => {
     const active = key === name;
     el(TAB_PANEL_ID[key]).classList.toggle('active', TAB_PANEL_ID[key] === TAB_PANEL_ID[name]);
@@ -10260,9 +10409,9 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
   // ---- roles -------------------------------------------------------------------------------
   // '' = full access (Administrator and every existing role, unchanged). 'hr_advisor' = restricted.
   const ROLE_HR = 'hr_advisor', HR_TABS = ['biometric', 'undertime', 'night'];
-  const ALL_TABS = ['command', 'validator', 'maintenance', 'biometric', 'undertime', 'night', 'fatigue', 'payslip', 'claim'];
-  const TAB_BTN = { command: 'tabCommand', validator: 'tabValidator', maintenance: 'tabMaintenance', biometric: 'tabBiometric', undertime: 'tabUndertime', night: 'tabNight', fatigue: 'tabFatigue', payslip: 'tabPayslip', claim: 'tabClaim' };
-  const TAB_PANEL = { command: 'ccPanel', validator: 'validatorPanel', maintenance: 'validatorPanel', biometric: 'bvPanel', undertime: 'undertimePanel', night: 'nightPanel', fatigue: 'fatiguePanel', payslip: 'payslipPanel', claim: 'claimPanel' };
+  const ALL_TABS = ['command', 'validator', 'maintenance', 'biometric', 'undertime', 'night', 'fatigue', 'payslip', 'claim', 'toil'];
+  const TAB_BTN = { command: 'tabCommand', validator: 'tabValidator', maintenance: 'tabMaintenance', biometric: 'tabBiometric', undertime: 'tabUndertime', night: 'tabNight', fatigue: 'tabFatigue', payslip: 'tabPayslip', claim: 'tabClaim', toil: 'tabToil' };
+  const TAB_PANEL = { command: 'ccPanel', validator: 'validatorPanel', maintenance: 'validatorPanel', biometric: 'bvPanel', undertime: 'undertimePanel', night: 'nightPanel', fatigue: 'fatiguePanel', payslip: 'payslipPanel', claim: 'claimPanel', toil: 'toilPanel' };
   const roleKeyOf = r => String(r || '').trim().toLowerCase().replace(/[\s-]+/g, '_') === ROLE_HR ? ROLE_HR : '';
   window.OTATS_ROLE = { key: '', allowedTabs: null, defaultTab: 'command' };
 
@@ -10564,6 +10713,613 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
     showLogin();
   })();
 })();
+</script>
+<script>
+/* ============================================================================
+   TOIL BALANCE MANAGEMENT  (shared Supabase database)  -  v2
+   opening balances per staff AND year (uploaded Excel, immutable) + transactions (accrual / consumption, one row each)
+   balance (per year) = opening + accruals - consumption   (voided transactions are ignored but stay in the audit trail)
+   accruals are always tied to one of the four public holidays
+   ============================================================================ */
+(function () {
+  'use strict';
+  const HOURS_PER_DAY = 8;                 // 1 TOIL day = 8 hours: used for hour entries and text such as "3 HOURS"
+  const DEFAULT_YEAR = 2026, PAGE_SIZE = 50, CHUNK = 500;
+  const HOLIDAYS = [
+    { key: 'fd', name: 'Foundation Day', label: 'FOUNDATION DAY', col: 'ph_foundation_day', hd: /^foundation day$/i },
+    { key: 'ef', name: 'Eid Al Fitr', label: 'EID UL FITR', col: 'ph_eid_fitr', hd: /^eid (ul|al) fitr$/i },
+    { key: 'ea', name: 'Eid Al Adha', label: 'EID UL ADHA', col: 'ph_eid_adha', hd: /^eid (ul|al) adha$/i },
+    { key: 'nd', name: 'National Day', label: 'NATIONAL DAY', col: 'ph_national_day', hd: /^national day$/i }];
+  const SETUP_SQL = "-- ============================================================================\n-- TOIL Balance Management - database setup / update   (v2: balance years + public holidays)\n-- Run in Supabase: Dashboard -> SQL Editor -> New query -> paste -> Run.\n-- Safe to run on a fresh database AND on top of the first version: existing data is kept.\n-- ============================================================================\ncreate extension if not exists pgcrypto;\n\n-- 1. Upload log ---------------------------------------------------------------\ncreate table if not exists public.toil_imports (\n  id            uuid primary key default gen_random_uuid(),\n  file_name     text,\n  rows_read     int,\n  staff_added   int,\n  staff_skipped int,\n  imported_by   text,\n  imported_at   timestamptz not null default now()\n);\nalter table public.toil_imports add column if not exists toil_year int;\n\n-- 2. Opening balances per staff and year = the uploaded Excel (never updated, never deleted) ----\ncreate table if not exists public.toil_opening (\n  staff_id          text not null,\n  toil_year         int  not null default 2026,\n  staff_name        text not null,\n  roster            text,\n  department        text,\n  position          text,\n  leaving_date      date,\n  ph_foundation_day numeric(10,4),\n  ph_eid_fitr       numeric(10,4),\n  ph_eid_adha       numeric(10,4),\n  ph_national_day   numeric(10,4),\n  accrued_file      numeric(10,4) not null default 0,   -- \"TOTAL NUMBER OF TOIL ACCRUED\" in the file\n  used_file         numeric(10,4) not null default 0,   -- \"Used\" in the file\n  opening_days      numeric(10,4) not null,             -- \"Remaining TOIL\" = that year's opening balance\n  file_remarks      text,\n  file_note         text,\n  import_flags      text,\n  import_id         uuid references public.toil_imports(id),\n  source_file       text,\n  imported_by       text,\n  imported_at       timestamptz not null default now(),\n  primary key (staff_id, toil_year)\n);\nalter table public.toil_opening add column if not exists toil_year int not null default 2026;\nalter table public.toil_opening alter column ph_foundation_day type numeric(10,4);\nalter table public.toil_opening alter column ph_eid_fitr       type numeric(10,4);\nalter table public.toil_opening alter column ph_eid_adha       type numeric(10,4);\nalter table public.toil_opening alter column ph_national_day   type numeric(10,4);\n\n-- 3. Transactions: one row per accrual / consumption ----------------------------\ncreate table if not exists public.toil_transactions (\n  id             uuid primary key default gen_random_uuid(),\n  txn_key        text not null unique,                       -- one-time key per form submission (double-click / retry safe)\n  fingerprint    text not null,                              -- staff|year|type|holiday|date|days|remarks, blocks look-alike duplicates\n  staff_id       text not null,\n  toil_year      int  not null default 2026,                 -- which year's balance this entry belongs to\n  staff_name     text not null,\n  txn_date       date not null,\n  txn_type       text not null check (txn_type in ('Accrual','Consumption')),\n  holiday        text,                                       -- public holiday the TOIL was earned on (accruals)\n  entered_amount numeric(10,4) not null check (entered_amount > 0),\n  entered_unit   text not null check (entered_unit in ('days','hours')),\n  hours_per_day  numeric(5,2) not null,\n  days           numeric(10,4) not null check (days > 0),    -- amount in TOIL days (sign comes from txn_type)\n  allow_overdraw boolean not null default false,\n  balance_after  numeric(10,4),                              -- that year's balance right after this entry, set by the database\n  remarks        text not null check (length(btrim(remarks)) >= 3),\n  planner        text not null,\n  planner_email  text,\n  planner_id     uuid,\n  created_at     timestamptz not null default now(),\n  status         text not null default 'active' check (status in ('active','voided')),\n  voided_by      text,\n  voided_at      timestamptz,\n  void_reason    text\n);\nalter table public.toil_transactions add column if not exists toil_year int not null default 2026;\nalter table public.toil_transactions add column if not exists holiday text;\n\n-- keys: composite (staff, year) on opening; transactions point at (staff, year)\ndo $$\nbegin\n  if exists (select 1 from pg_constraint where conrelid = 'public.toil_opening'::regclass and contype = 'p' and array_length(conkey, 1) = 1) then\n    alter table public.toil_transactions drop constraint if exists toil_transactions_staff_id_fkey;\n    alter table public.toil_opening drop constraint toil_opening_pkey;\n    alter table public.toil_opening add primary key (staff_id, toil_year);\n  end if;\n  if not exists (select 1 from pg_constraint where conname = 'toil_txn_staff_year_fkey') then\n    alter table public.toil_transactions add constraint toil_txn_staff_year_fkey\n      foreign key (staff_id, toil_year) references public.toil_opening(staff_id, toil_year);\n  end if;\n  if not exists (select 1 from pg_constraint where conname = 'toil_txn_holiday_chk') then\n    alter table public.toil_transactions add constraint toil_txn_holiday_chk\n      check (holiday is null or holiday in ('Foundation Day','Eid Al Fitr','Eid Al Adha','National Day'));\n  end if;\n  if not exists (select 1 from pg_constraint where conname = 'toil_txn_accrual_holiday_chk') then\n    alter table public.toil_transactions add constraint toil_txn_accrual_holiday_chk\n      check (txn_type <> 'Accrual' or holiday is not null) not valid;   -- applies to new entries\n  end if;\nend $$;\n\ncreate index if not exists toil_txn_staff_idx on public.toil_transactions(staff_id, toil_year);\ncreate unique index if not exists toil_txn_fingerprint_active\n  on public.toil_transactions(fingerprint) where status = 'active';\n\n-- 4. Rules enforced by the database itself -------------------------------------\ncreate or replace function public.toil_txn_before_insert() returns trigger\nlanguage plpgsql security definer set search_path = public as $$\ndeclare op numeric; cur numeric;\nbegin\n  select opening_days into op from public.toil_opening\n    where staff_id = new.staff_id and toil_year = new.toil_year for update;   -- serialises concurrent planners\n  if not found then raise exception 'UNKNOWN_STAFF: no % opening balance for %', new.toil_year, new.staff_id; end if;\n  select op + coalesce(sum(case when txn_type = 'Accrual' then days else -days end), 0) into cur\n    from public.toil_transactions where staff_id = new.staff_id and toil_year = new.toil_year and status = 'active';\n  new.balance_after := round(cur + case when new.txn_type = 'Accrual' then new.days else -new.days end, 4);\n  if new.txn_type = 'Consumption' and new.balance_after < 0 and not new.allow_overdraw then\n    raise exception 'INSUFFICIENT_BALANCE: available %, requested %', round(cur, 4), new.days;\n  end if;\n  new.status := 'active'; new.created_at := now();\n  new.planner_id := auth.uid();\n  new.planner_email := coalesce(auth.jwt() ->> 'email', new.planner_email);\n  new.voided_by := null; new.voided_at := null; new.void_reason := null;\n  return new;\nend $$;\ndrop trigger if exists toil_txn_bi on public.toil_transactions;\ncreate trigger toil_txn_bi before insert on public.toil_transactions\n  for each row execute function public.toil_txn_before_insert();\n\ncreate or replace function public.toil_txn_guard_update() returns trigger\nlanguage plpgsql security definer set search_path = public as $$\ndeclare op numeric; cur numeric;\nbegin\n  if old.status <> 'active' then raise exception 'ALREADY_VOIDED'; end if;\n  if new.status <> 'voided' or new.void_reason is null or length(btrim(new.void_reason)) < 3 then\n    raise exception 'VOID_REQUIRES_REASON'; end if;\n  if (to_jsonb(new) - 'status' - 'voided_by' - 'voided_at' - 'void_reason')\n     is distinct from (to_jsonb(old) - 'status' - 'voided_by' - 'voided_at' - 'void_reason') then\n    raise exception 'TRANSACTIONS_ARE_IMMUTABLE: only voiding is allowed'; end if;\n  if old.txn_type = 'Accrual' then\n    select opening_days into op from public.toil_opening\n      where staff_id = old.staff_id and toil_year = old.toil_year for update;\n    select op + coalesce(sum(case when txn_type = 'Accrual' then days else -days end), 0) into cur\n      from public.toil_transactions\n      where staff_id = old.staff_id and toil_year = old.toil_year and status = 'active' and id <> old.id;\n    if cur < 0 then raise exception 'VOID_WOULD_OVERDRAW: voiding this accrual would leave the balance at %', round(cur, 4); end if;\n  end if;\n  new.voided_at := now(); new.voided_by := coalesce(new.voided_by, old.planner);\n  return new;\nend $$;\ndrop trigger if exists toil_txn_bu on public.toil_transactions;\ncreate trigger toil_txn_bu before update on public.toil_transactions\n  for each row execute function public.toil_txn_guard_update();\n\ncreate or replace function public.toil_block_change() returns trigger\nlanguage plpgsql as $$\nbegin raise exception 'TOIL_RECORDS_ARE_PERMANENT: % is not allowed on %', tg_op, tg_table_name; end $$;\ndrop trigger if exists toil_open_lock on public.toil_opening;\ncreate trigger toil_open_lock before update or delete on public.toil_opening\n  for each row execute function public.toil_block_change();\ndrop trigger if exists toil_txn_nodelete on public.toil_transactions;\ncreate trigger toil_txn_nodelete before delete on public.toil_transactions\n  for each row execute function public.toil_block_change();\n\n-- 5. Access: signed-in users only (same model as the biometric tables) ----------\nalter table public.toil_imports      enable row level security;\nalter table public.toil_opening      enable row level security;\nalter table public.toil_transactions enable row level security;\nrevoke all on public.toil_imports, public.toil_opening, public.toil_transactions from anon;\ngrant select, insert on public.toil_imports, public.toil_opening to authenticated;\ngrant select, insert, update on public.toil_transactions to authenticated;\n\ndrop policy if exists toil_imports_read   on public.toil_imports;\ndrop policy if exists toil_imports_insert on public.toil_imports;\ndrop policy if exists toil_open_read      on public.toil_opening;\ndrop policy if exists toil_open_insert    on public.toil_opening;\ndrop policy if exists toil_txn_read       on public.toil_transactions;\ndrop policy if exists toil_txn_insert     on public.toil_transactions;\ndrop policy if exists toil_txn_update     on public.toil_transactions;\ncreate policy toil_imports_read   on public.toil_imports      for select to authenticated using (true);\ncreate policy toil_imports_insert on public.toil_imports      for insert to authenticated with check (true);\ncreate policy toil_open_read      on public.toil_opening      for select to authenticated using (true);\ncreate policy toil_open_insert    on public.toil_opening      for insert to authenticated with check (true);\ncreate policy toil_txn_read       on public.toil_transactions for select to authenticated using (true);\ncreate policy toil_txn_insert     on public.toil_transactions for insert to authenticated with check (true);\ncreate policy toil_txn_update     on public.toil_transactions for update to authenticated using (true) with check (true);\n\nnotify pgrst, 'reload schema';\n";
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const r4 = n => Math.round((+n + Number.EPSILON) * 10000) / 10000;
+  const fmt = n => { const v = r4(n); return (v === 0 ? 0 : v).toLocaleString('en-GB', { maximumFractionDigits: 3 }); };
+  const cell = n => (r4(n) ? fmt(n) : '\u2013');
+  const sgn = n => (n > 0 ? '+' : n < 0 ? '\u2212' : '') + fmt(Math.abs(n));
+  const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); }));
+  const todayIso = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  const dmy = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ''); return m ? m[3] + '-' + m[2] + '-' + m[1] : (iso || ''); };
+  const stamp = iso => { const d = new Date(iso); return isNaN(d) ? '' : dmy(d.toISOString().slice(0, 10)) + ' ' + d.toTimeString().slice(0, 5); };
+  const norm = s => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const tyear = x => +(x.toil_year || DEFAULT_YEAR);          // rows saved before years existed count as 2026
+  const okey = (id, y) => id + '|' + y;
+
+  const S = { openings: new Map(), txns: [], imports: [], loaded: false, loading: false, issue: '', email: '', bound: false, lastLoad: 0, isAdmin: false,
+    sort: { k: 'id', dir: 1 }, page: 1, hpage: 1, imp: null, formKey: null, form: null };
+
+  const sb = () => (window.SB && window.SB.enabled && window.SB.client) || null;
+  const planner = () => { const u = window.OTATS_AUTH && window.OTATS_AUTH.getUser && window.OTATS_AUTH.getUser(); return (u && u.name) || S.email || ''; };
+  const canWrite = () => S.loaded && !S.issue && !!planner();
+  const isMissing = e => e && (e.code === '42P01' || e.code === 'PGRST205' || /relation .* does not exist|schema cache|Could not find the table/i.test(e.message || ''));
+  const isOldSchema = e => e && (e.code === '42703' || e.code === 'PGRST204' || /toil_year|holiday/i.test(e.message || '') && /column|schema cache/i.test(e.message || ''));
+  const years = () => [...new Set([...S.openings.values()].map(tyear))].sort((a, b) => b - a);
+  const staffCount = () => new Set([...S.openings.values()].map(o => o.staff_id)).size;
+
+  function msg(text, kind) {
+    const m = $('toilMsg'); if (!m) return;
+    m.textContent = text || ''; m.className = 'toil-msg' + (text ? ' show ' + (kind || '') : '');
+    clearTimeout(msg._t); if (text && kind !== 'error') msg._t = setTimeout(() => { m.className = 'toil-msg'; }, 7000);
+  }
+
+  // ---------------------------------------------------------------- data access
+  async function fetchAll(table, orders) {
+    const out = [];
+    for (let from = 0; ; from += 1000) {
+      let q = sb().from(table).select('*');
+      orders.forEach(o => { q = q.order(o, { ascending: true }); });
+      const { data, error } = await q.range(from, from + 999);
+      if (error) throw error;
+      out.push(...data);
+      if (data.length < 1000) break;
+    }
+    return out;
+  }
+  // Administrator check for Permanent Delete. The database decides (toil_is_admin() reads the toil_admins table);
+  // if the function is not installed yet, or the call fails, the delete buttons simply stay hidden.
+  async function loadAdmin() {
+    try { const { data, error } = await sb().rpc('toil_is_admin'); S.isAdmin = !error && data === true; }
+    catch (e) { S.isAdmin = false; }
+  }
+  async function load() {
+    if (S.loading) return;
+    S.loading = true; renderBanner(); renderAll();
+    try {
+      if (!(window.SB && window.SB.enabled)) throw Object.assign(new Error('nocloud'), { toil: 'nocloud' });
+      const sess = await window.SB.getSession();
+      if (!sess) throw Object.assign(new Error('nosession'), { toil: 'nosession' });
+      S.email = (sess.user && sess.user.email) || '';
+      const probe = await sb().from('toil_opening').select('toil_year').limit(1);            // is the v2 schema (years + holidays) in place?
+      if (probe.error) throw probe.error;
+      const pr2 = await sb().from('toil_transactions').select('holiday,toil_year').limit(1);
+      if (pr2.error) throw pr2.error;
+      const [o, t, i] = await Promise.all([fetchAll('toil_opening', ['staff_id', 'toil_year']), fetchAll('toil_transactions', ['created_at', 'id']), fetchAll('toil_imports', ['imported_at'])]);
+      S.openings = new Map(o.map(r => [okey(r.staff_id, tyear(r)), r])); S.txns = t; S.imports = i.reverse();
+      await loadAdmin();
+      S.loaded = true; S.issue = ''; S.lastLoad = Date.now();
+    } catch (e) {
+      S.loaded = false;
+      S.issue = e.toil || (isMissing(e) ? 'notables' : isOldSchema(e) ? 'needsupdate' : 'error:' + (e.message || e));
+    } finally {
+      S.loading = false; fillFilters(); renderBanner(); renderAll();
+    }
+  }
+
+  // ---------------------------------------------------------------- balances (per staff, for the chosen year or all years)
+  function compute(yf) {
+    if (yf === undefined) yf = $('toilYear') ? $('toilYear').value : '';
+    const today = todayIso(), by = new Map(), recs = [...S.openings.values()].sort((a, b) => tyear(a) - tyear(b));
+    recs.forEach(o => {
+      if (yf && String(tyear(o)) !== String(yf)) return;
+      let b = by.get(o.staff_id);
+      if (!b) { b = { id: o.staff_id, name: '', dept: '', pos: '', roster: '', left: false, open: 0, accr: 0, cons: 0, bal: 0, fileAcc: 0, fileUsed: 0, ph: { fd: 0, ef: 0, ea: 0, nd: 0 }, recs: [] }; by.set(o.staff_id, b); }
+      b.name = o.staff_name || b.name; if (o.department) b.dept = o.department; if (o.position) b.pos = o.position; if (o.roster) b.roster = o.roster;
+      b.left = !!(o.leaving_date && o.leaving_date <= today);
+      b.open += +o.opening_days; b.fileAcc += +o.accrued_file; b.fileUsed += +o.used_file;
+      HOLIDAYS.forEach(h => { b.ph[h.key] += +o[h.col] || 0; }); b.recs.push(o);
+    });
+    S.txns.forEach(t => {
+      if (t.status !== 'active') return; if (yf && String(tyear(t)) !== String(yf)) return;
+      const b = by.get(t.staff_id); if (!b) return;
+      if (t.txn_type === 'Accrual') { b.accr += +t.days; const h = HOLIDAYS.find(x => x.name === t.holiday); if (h) b.ph[h.key] += +t.days; } else b.cons += +t.days;
+    });
+    by.forEach(b => {
+      b.open = r4(b.open); b.accr = r4(b.accr); b.cons = r4(b.cons); HOLIDAYS.forEach(h => { b.ph[h.key] = r4(b.ph[h.key]); });
+      b.tot = r4(b.fileAcc + b.accr); b.used = r4(b.fileUsed + b.cons); b.other = r4(b.tot - HOLIDAYS.reduce((n, h) => n + b.ph[h.key], 0)); b.bal = r4(b.open + b.accr - b.cons);
+      b.fd = b.ph.fd; b.ef = b.ph.ef; b.ea = b.ph.ea; b.nd = b.ph.nd;
+    });
+    return by;
+  }
+  const statusOf = b => (b.bal > 0 ? 'Available' : b.bal < 0 ? 'Overdrawn' : 'Nil');
+  const yearLabel = () => { const y = $('toilYear') && $('toilYear').value; return y ? y : 'all years'; };
+
+  // ---------------------------------------------------------------- rendering: banner, KPIs, filters
+  function renderBanner() {
+    const b = $('toilBanner'); if (!b) return;
+    let t = '', cls = 'claim-master-banner', extra = '';
+    const i = S.issue, copyBtn = ' <button type="button" class="btn-secondary" id="toilCopySql" style="padding:6px 12px;font-size:11px;margin-left:8px">Copy setup SQL</button>';
+    if (S.loading) t = 'Loading TOIL data from the shared database\u2026';
+    else if (i === 'nocloud') { t = 'The cloud database is not connected (Supabase is switched off or did not load), so TOIL cannot be saved or shared. Reload with an internet connection and without an ad-blocker.'; cls += ' toil-bad'; }
+    else if (i === 'nosession') { t = 'Sign in with your server account to use TOIL. A local login cannot reach the shared database.'; cls += ' toil-bad'; }
+    else if (i === 'notables') { t = 'The TOIL tables are not in the database yet. Run the one-time setup (about 10 seconds): copy the SQL, paste it in Supabase \u2192 SQL Editor \u2192 Run, then press Refresh.'; cls += ' toil-bad'; extra = copyBtn; }
+    else if (i === 'needsupdate') { t = 'The TOIL database needs a one-time update for balance years and public holidays. Your existing data is kept. Copy the SQL, run it in Supabase \u2192 SQL Editor, then press Refresh.'; cls += ' toil-bad'; extra = copyBtn; }
+    else if (i) { t = 'Could not load TOIL data: ' + i.replace(/^error:/, ''); cls += ' toil-bad'; }
+    else if (S.loaded && !S.openings.size) t = 'Connected to the shared database. No opening balances yet \u2014 open the \u201cInitial upload\u201d tab and import a TOIL Excel file.';
+    else if (S.loaded) { cls += ' ready'; t = 'Connected to the shared database \u00b7 ' + staffCount().toLocaleString() + ' staff \u00b7 years loaded: ' + years().join(', ') + ' \u00b7 ' + S.txns.filter(x => x.status === 'active').length.toLocaleString() + ' transactions \u00b7 balances in TOIL days (1 day = ' + HOURS_PER_DAY + ' h) \u00b7 signed in as ' + (planner() || 'unknown'); }
+    else t = 'Open this tab to load TOIL data.';
+    b.className = cls; b.innerHTML = esc(t) + extra;
+    const c = $('toilCopySql'); if (c) c.onclick = async () => { try { await navigator.clipboard.writeText(SETUP_SQL); msg('Setup SQL copied \u2014 paste it into Supabase \u2192 SQL Editor and click Run.', 'ok'); } catch (e) { msg('Copy failed \u2014 open the toil_setup.sql file and copy it from there.', 'error'); } };
+    ['toilAdd', 'toilImpGo'].forEach(id => { const x = $(id); if (x) x.disabled = !canWrite() || (id === 'toilAdd' && !S.openings.size); });
+  }
+
+  const rowsAll = () => [...compute().values()];
+  function filterState() { return { q: norm($('toilQ').value), dept: $('toilDept').value, pos: $('toilPos').value, st: $('toilStatus').value, emp: $('toilEmp').value }; }
+  function applyFilters(rows) {
+    const f = filterState();
+    return rows.filter(b => (!f.q || b.id.toLowerCase().includes(f.q) || norm(b.name).includes(f.q)) && (!f.dept || b.dept === f.dept) && (!f.pos || b.pos === f.pos) &&
+      (!f.st || statusOf(b) === f.st) && (!f.emp || (f.emp === 'left' ? b.left : !b.left)));
+  }
+  function fillFilters() {
+    const keep = { d: $('toilDept').value, p: $('toilPos').value, y: $('toilYear').value, hy: $('toilHYear').value };
+    const all = [...compute('').values()], uniq = k => [...new Set(all.map(r => r[k]).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    const opt = (list, cur, first) => '<option value="">' + first + '</option>' + list.map(v => '<option' + (String(v) === String(cur) ? ' selected' : '') + '>' + esc(v) + '</option>').join('');
+    $('toilDept').innerHTML = opt(uniq('dept'), keep.d, 'All'); $('toilPos').innerHTML = opt(uniq('pos'), keep.p, 'All');
+    $('toilYear').innerHTML = opt(years(), keep.y, 'All years'); $('toilHYear').innerHTML = opt(years(), keep.hy, 'All years');
+  }
+  function kpi(k, v, s, cls) { return '<div class="toil-kpi ' + (cls || '') + '"><div class="k">' + k + '</div><div class="v">' + v + '</div><div class="s">' + (s || '') + '</div></div>'; }
+  function renderKpis(rows) {
+    const sum = k => r4(rows.reduce((n, b) => n + b[k], 0)), yl = yearLabel();
+    const avail = rows.filter(b => b.bal > 0).length, nil = rows.filter(b => b.bal === 0).length, neg = rows.filter(b => b.bal < 0).length;
+    $('toilKpis').innerHTML = kpi('Opening balance \u00b7 ' + yl, fmt(sum('open')) + ' <small>d</small>', 'uploaded Excel \u00b7 never overwritten') +
+      kpi('Accumulated TOIL', '+' + fmt(sum('accr')) + ' <small>d</small>', 'accruals recorded since opening', 'pos') +
+      kpi('Consumed TOIL', '\u2212' + fmt(sum('cons')) + ' <small>d</small>', 'consumption recorded since opening', 'neg') +
+      kpi('Outstanding balance', fmt(sum('bal')) + ' <small>d</small>', rows.length.toLocaleString() + ' staff \u00b7 ' + avail + ' available \u00b7 ' + nil + ' nil' + (neg ? ' \u00b7 <b style="color:#b91c1c">' + neg + ' overdrawn</b>' : ''), 'main');
+  }
+  function renderAll() { renderBanner(); const rows = rowsAll(); renderKpis(rows); renderBalances(rows); renderHistory(); renderImports(); }
+
+  function badge(b) { const s = statusOf(b); return '<span class="toil-badge ' + s.toLowerCase() + '">' + s + '</span>'; }
+  function pager(id, page, total) {
+    const pages = Math.max(1, Math.ceil(total / PAGE_SIZE)), a = total ? (page - 1) * PAGE_SIZE + 1 : 0, z = Math.min(total, page * PAGE_SIZE);
+    return '<span>' + a + '\u2013' + z + ' of ' + total.toLocaleString() + '</span><button type="button" class="btn-secondary" data-pg="' + id + '" data-d="-1"' + (page <= 1 ? ' disabled' : '') + '>Prev</button><span>Page ' + page + ' / ' + pages +
+      '</span><button type="button" class="btn-secondary" data-pg="' + id + '" data-d="1"' + (page >= pages ? ' disabled' : '') + '>Next</button>';
+  }
+  function renderBalances(all) {
+    all = all || rowsAll();
+    const rows = applyFilters(all), k = S.sort.k, dir = S.sort.dir;
+    const key = { id: b => b.id, name: b => norm(b.name), dept: b => b.dept, pos: b => b.pos, fd: b => b.fd, ef: b => b.ef, ea: b => b.ea, nd: b => b.nd, other: b => b.other, tot: b => b.tot, used: b => b.used, bal: b => b.bal }[k] || (b => b.id);
+    rows.sort((a, b) => { const x = key(a), y = key(b); return (x < y ? -1 : x > y ? 1 : 0) * dir || (a.id < b.id ? -1 : 1); });
+    const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE)); if (S.page > pages) S.page = pages;
+    const slice = rows.slice((S.page - 1) * PAGE_SIZE, S.page * PAGE_SIZE);
+    const ar = kk => (S.sort.k === kk ? (S.sort.dir > 0 ? ' \u25B2' : ' \u25BC') : '');
+    const th = (kk, label, o) => '<th' + (o && o.rs ? ' rowspan="2"' : '') + ' class="sortable' + (o && o.num ? ' num' : '') + (o && o.cls ? ' ' + o.cls : '') + '" data-sort="' + kk + '"' + (o && o.title ? ' title="' + esc(o.title) + '"' : '') + '>' + label + ar(kk) + '</th>';
+    $('toilBalHead').innerHTML = '<tr class="r1">' + th('id', 'Staff ID', { rs: 1 }) + th('name', 'Name', { rs: 1 }) + th('dept', 'Department', { rs: 1 }) + th('pos', 'Position', { rs: 1 }) + '<th colspan="4" class="ph-group">Public Holidays</th>' +
+      th('other', 'Other', { rs: 1, num: 1, title: 'Accrued TOIL in the uploaded file that is not tied to one of the four holidays (additional accrual, hours, adjustments)' }) + th('tot', 'Total accrued', { rs: 1, num: 1 }) + th('used', 'Used', { rs: 1, num: 1 }) + th('bal', 'Balance', { rs: 1, num: 1 }) + '<th rowspan="2">Status</th><th rowspan="2"></th></tr>' +
+      '<tr class="r2">' + HOLIDAYS.map(h => th(h.key, h.label, { num: 1, cls: 'ph' })).join('') + '</tr>';
+    $('toilBalBody').innerHTML = slice.length ? slice.map(b => '<tr><td class="mono">' + esc(b.id) + '</td><td><a href="#" class="toil-link" data-view="' + esc(b.id) + '">' + esc(b.name) + '</a>' + (b.left ? ' <span class="toil-badge left" title="Leaving date reached">left</span>' : '') + '</td><td>' + esc(b.dept) + '</td><td>' + esc(b.pos) + '</td>' +
+      HOLIDAYS.map(h => '<td class="num phc">' + cell(b[h.key]) + '</td>').join('') + '<td class="num">' + cell(b.other) + '</td><td class="num"><b>' + fmt(b.tot) + '</b></td><td class="num">' + cell(b.used) + '</td><td class="num"><b>' + fmt(b.bal) + '</b></td><td>' + badge(b) +
+      '</td><td class="act"><button type="button" class="btn-secondary" data-add="' + esc(b.id) + '"' + (canWrite() ? '' : ' disabled') + '>+ Record</button></td></tr>').join('')
+      : '<tr><td colspan="14" class="empty">' + (S.openings.size ? 'No staff match the filters.' : 'No data yet.') + '</td></tr>';
+    const sum = kk => r4(rows.reduce((n, b) => n + b[kk], 0));
+    $('toilBalFoot').innerHTML = 'Filtered (' + esc(yearLabel()) + '): <b>' + rows.length.toLocaleString() + '</b> staff \u00b7 ' + HOLIDAYS.map(h => esc(h.name) + ' <b>' + fmt(sum(h.key)) + '</b>').join(' \u00b7 ') + ' \u00b7 total accrued <b>' + fmt(sum('tot')) + '</b> \u00b7 used <b>' + fmt(sum('used')) + '</b> \u00b7 balance <b>' + fmt(sum('bal')) + '</b> days';
+    $('toilBalPager').innerHTML = pager('bal', S.page, rows.length);
+    S._balRows = rows;
+  }
+
+  function histFiltered() {
+    const q = norm($('toilHQ').value), ty = $('toilHType').value, yr = $('toilHYear').value, f = $('toilHFrom').value, t = $('toilHTo').value, inc = $('toilHVoid').checked;
+    return S.txns.filter(x => (inc || x.status === 'active') && (!ty || x.txn_type === ty) && (!yr || String(tyear(x)) === yr) && (!q || x.staff_id.toLowerCase().includes(q) || norm(x.staff_name).includes(q)) && (!f || x.txn_date >= f) && (!t || x.txn_date <= t))
+      .sort((a, b) => (a.txn_date < b.txn_date ? 1 : a.txn_date > b.txn_date ? -1 : (a.created_at < b.created_at ? 1 : -1)));
+  }
+  function amountCell(x) {
+    const s = x.txn_type === 'Accrual' ? 1 : -1, orig = x.entered_unit === 'hours' ? ' <span class="sub">(' + fmt(x.entered_amount) + ' h)</span>' : '';
+    return '<span class="' + (s > 0 ? 'pos' : 'neg') + '">' + sgn(s * x.days) + ' d</span>' + orig;
+  }
+  function renderHistory() {
+    const rows = histFiltered(), pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE)); if (S.hpage > pages) S.hpage = pages;
+    const slice = rows.slice((S.hpage - 1) * PAGE_SIZE, S.hpage * PAGE_SIZE);
+    $('toilHistBody').innerHTML = slice.length ? slice.map(x => '<tr class="' + (x.status === 'voided' ? 'voided' : '') + '"><td>' + dmy(x.txn_date) + '</td><td>' + tyear(x) + '</td><td class="mono">' + esc(x.staff_id) + '</td><td>' + esc(x.staff_name) + '</td><td><span class="toil-badge ' + (x.txn_type === 'Accrual' ? 'available' : 'overdrawn') + '">' + x.txn_type + '</span></td><td>' + esc(x.holiday || '\u2013') + '</td><td class="num">' + amountCell(x) + '</td><td class="num"><b>' + fmt(x.balance_after) + '</b></td><td class="remarks">' + esc(x.remarks) +
+      (x.status === 'voided' ? '<div class="sub">Voided by ' + esc(x.voided_by || '') + ' on ' + stamp(x.voided_at) + ': ' + esc(x.void_reason || '') + '</div>' : '') + '</td><td>' + esc(x.planner) + '<div class="sub">' + esc(x.planner_email || '') + '</div></td><td>' + stamp(x.created_at) + '</td><td class="act">' +
+      (x.status === 'active' ? '<button type="button" class="btn-secondary" data-void="' + esc(x.id) + '"' + (canWrite() ? '' : ' disabled') + '>Void</button>' : '<span class="toil-badge left">voided</span>' + (S.isAdmin ? '<button type="button" class="btn-secondary toil-danger" data-pdel="' + esc(x.id) + '"' + (canWrite() ? '' : ' disabled') + ' title="Physically remove this voided record from the database">Delete permanently</button>' : '')) + '</td></tr>').join('')
+      : '<tr><td colspan="12" class="empty">' + (S.txns.length ? 'No transactions match the filters.' : 'No transactions recorded yet.') + '</td></tr>';
+    $('toilHistPager').innerHTML = pager('hist', S.hpage, rows.length);
+    const act = rows.filter(x => x.status === 'active');
+    $('toilHistFoot').innerHTML = 'Showing <b>' + rows.length.toLocaleString() + '</b> transaction(s) \u00b7 accruals <b>+' + fmt(act.filter(x => x.txn_type === 'Accrual').reduce((n, x) => n + +x.days, 0)) + '</b> \u00b7 consumption <b>\u2212' + fmt(act.filter(x => x.txn_type === 'Consumption').reduce((n, x) => n + +x.days, 0)) + '</b> days (active only). \u201cUpdated balance\u201d is that balance year\u2019s balance right after the entry was recorded.';
+  }
+
+  // ---------------------------------------------------------------- modal helpers
+  function modal(html, wide) {
+    let m = $('toilModal');
+    if (!m) { m = document.createElement('div'); m.id = 'toilModal'; m.className = 'toil-modal'; m.hidden = true; document.body.appendChild(m);
+      m.addEventListener('mousedown', e => { if (e.target === m) closeModal(); }); document.addEventListener('keydown', e => { if (e.key === 'Escape' && !m.hidden) closeModal(); }); }
+    m.innerHTML = '<div class="toil-dlg' + (wide ? ' wide' : '') + '" role="dialog" aria-modal="true">' + html + '</div>'; m.hidden = false; return m;
+  }
+  function closeModal() { const m = $('toilModal'); if (m) { m.hidden = true; m.innerHTML = ''; } S.form = null; }
+
+  // ---------------------------------------------------------------- staff detail
+  function openDetail(id) {
+    const b = compute().get(id); if (!b) return;
+    const tx = S.txns.filter(x => x.staff_id === id && (!$('toilYear').value || String(tyear(x)) === $('toilYear').value)).sort((a, c) => (a.created_at < c.created_at ? 1 : -1));
+    const snaps = b.recs.slice().sort((a, c) => tyear(c) - tyear(a)).map(o => '<div class="toil-snap"><b>' + tyear(o) + ' uploaded balance (opening, read-only)</b><div>' +
+      HOLIDAYS.map(h => esc(h.name) + ': <b>' + (o[h.col] == null ? '\u2013' : fmt(o[h.col])) + '</b>').join(' \u00b7 ') + '</div><div>Accrued in file: <b>' + fmt(o.accrued_file) + '</b> \u00b7 Used in file: <b>' + fmt(o.used_file) + '</b> \u00b7 Remaining (= opening): <b>' + fmt(o.opening_days) + '</b></div>' +
+      (o.file_remarks ? '<div>Remarks in file: ' + esc(o.file_remarks) + '</div>' : '') + (o.file_note ? '<div>Note in file: ' + esc(o.file_note) + '</div>' : '') + (o.import_flags ? '<div class="flag">Import notes: ' + esc(o.import_flags) + '</div>' : '') +
+      '<div class="sub">Imported ' + stamp(o.imported_at) + ' by ' + esc(o.imported_by || '') + ' \u00b7 ' + esc(o.source_file || '') + '</div></div>').join('');
+    const m = modal('<div class="toil-dh"><div><div class="eyebrow">Staff ' + esc(b.id) + ' \u00b7 ' + esc(yearLabel()) + '</div><h3>' + esc(b.name) + '</h3><div class="sub">' + esc([b.dept, b.pos, b.roster].filter(Boolean).join(' \u00b7 ')) + '</div></div><button type="button" class="btn-secondary" data-close>Close</button></div>' +
+      '<div class="toil-mini">' + kpi('Opening', fmt(b.open), 'days') + kpi('Accrued', '+' + fmt(b.accr), 'since opening', 'pos') + kpi('Consumed', '\u2212' + fmt(b.cons), 'since opening', 'neg') + kpi('Balance', fmt(b.bal), statusOf(b), 'main') + '</div>' +
+      '<div class="toil-phrow">' + HOLIDAYS.map(h => '<div><span>' + h.label + '</span><b>' + cell(b[h.key]) + '</b></div>').join('') + '<div><span>OTHER</span><b>' + cell(b.other) + '</b></div></div>' + snaps +
+      '<div class="toil-hd"><b>Transactions (' + tx.length + ')</b><button type="button" class="btn-primary" data-add="' + esc(id) + '"' + (canWrite() ? '' : ' disabled') + '>+ Record accrual / consumption</button></div>' +
+      '<div class="toil-scroll"><table class="toil-t"><thead><tr><th>Date</th><th>Year</th><th>Type</th><th>Holiday</th><th class="num">Amount</th><th class="num">Updated balance</th><th>Remarks</th><th>Planner</th></tr></thead><tbody>' +
+      (tx.length ? tx.map(x => '<tr class="' + (x.status === 'voided' ? 'voided' : '') + '"><td>' + dmy(x.txn_date) + '</td><td>' + tyear(x) + '</td><td>' + x.txn_type + (x.status === 'voided' ? ' (voided)' : '') + '</td><td>' + esc(x.holiday || '\u2013') + '</td><td class="num">' + amountCell(x) + '</td><td class="num">' + fmt(x.balance_after) + '</td><td class="remarks">' + esc(x.remarks) + '</td><td>' + esc(x.planner) + '<div class="sub">' + stamp(x.created_at) + '</div></td></tr>').join('') : '<tr><td colspan="8" class="empty">No transactions yet.</td></tr>') + '</tbody></table></div>', true);
+    m.onclick = e => { const t = e.target.closest('[data-close],[data-add]'); if (!t) return; if (t.hasAttribute('data-close')) closeModal(); else openForm(t.getAttribute('data-add')); };
+  }
+
+  // ---------------------------------------------------------------- record accrual / consumption
+  const staffYears = id => [...S.openings.values()].filter(o => o.staff_id === id).map(tyear).sort((a, b) => b - a);
+  const yearRec = (id, y) => (y ? compute(String(y)).get(id) : null);
+  function openForm(staffId) {
+    if (!canWrite()) { msg(S.issue ? 'TOIL is not connected to the database.' : 'Sign in with your server account to record TOIL.', 'error'); return; }
+    S.formKey = uuid(); S.form = { id: staffId || null, year: null };
+    const ys = years(), minY = ys.length ? ys[ys.length - 1] : DEFAULT_YEAR, maxY = ys.length ? ys[0] : DEFAULT_YEAR, t0 = todayIso();
+    const m = modal('<div class="toil-dh"><h3>Record TOIL transaction</h3><button type="button" class="btn-secondary" data-close>Cancel</button></div>' +
+      '<div class="control-field"><label for="tfStaff">Staff (ID or name)</label><input id="tfStaff" type="text" autocomplete="off" placeholder="Type a staff ID or name\u2026"><div id="tfSug" class="toil-sug" hidden></div><div id="tfCard" class="toil-card-staff"></div></div>' +
+      '<div class="toil-row2"><div class="control-field"><label>Type</label><div class="toil-seg"><label><input type="radio" name="tfType" value="Accrual" checked> Accrual (+)</label><label><input type="radio" name="tfType" value="Consumption"> Consumption (\u2212)</label></div></div>' +
+      '<div class="control-field"><label for="tfYear">Balance year</label><select id="tfYear"><option value="">Pick a staff member first</option></select></div></div>' +
+      '<div class="toil-row2"><div class="control-field"><label for="tfDate">Transaction date</label><input id="tfDate" type="date" min="' + minY + '-01-01" max="' + maxY + '-12-31" value="' + (t0 >= minY + '-01-01' && t0 <= maxY + '-12-31' ? t0 : maxY + '-01-01') + '"></div>' +
+      '<div class="control-field" id="tfPHField"><label for="tfPH">Public holiday worked (required)</label><select id="tfPH"><option value="">Select\u2026</option>' + HOLIDAYS.map(h => '<option>' + h.name + '</option>').join('') + '</select></div></div>' +
+      '<div class="toil-row2"><div class="control-field"><label for="tfAmt">Amount</label><input id="tfAmt" type="number" min="0" step="0.01" placeholder="e.g. 1"></div>' +
+      '<div class="control-field"><label for="tfUnit">Unit</label><select id="tfUnit"><option value="days">Days</option><option value="hours">Hours (' + HOURS_PER_DAY + ' h = 1 day)</option></select></div></div>' +
+      '<div class="control-field"><label for="tfRem">Remarks (required)</label><textarea id="tfRem" rows="2" placeholder="Accrual: what was worked, e.g. rostered on National Day 23 Sep.  Consumption: the dates taken."></textarea></div>' +
+      '<div id="tfPrev" class="toil-prev"></div><label id="tfOverRow" class="toil-over" hidden><input type="checkbox" id="tfOver"> Allow this to take the balance below zero</label><div id="tfErr" class="toil-err" hidden></div>' +
+      '<div class="toil-actions"><button type="button" class="btn-primary" id="tfSave">Save transaction</button></div>');
+    m.onclick = e => { if (e.target.closest('[data-close]')) closeModal(); };
+    const inp = $('tfStaff'), sug = $('tfSug');
+    const pick = id => {
+      S.form.id = id; const all = compute('').get(id); inp.value = all ? all.id + ' \u2014 ' + all.name : ''; sug.hidden = true;
+      const ys2 = staffYears(id); S.form.year = ys2[0] || null;
+      $('tfYear').innerHTML = ys2.map(y => { const r = yearRec(id, y); return '<option value="' + y + '">' + y + (r ? ' (balance ' + fmt(r.bal) + ' d)' : '') + '</option>'; }).join('') || '<option value="">No balance year</option>'; prev();
+    };
+    inp.addEventListener('input', () => {
+      S.form.id = null; S.form.year = null; $('tfYear').innerHTML = '<option value="">Pick a staff member first</option>'; const q = norm(inp.value); if (!q) { sug.hidden = true; prev(); return; }
+      const hits = [...compute('').values()].filter(b => b.id.toLowerCase().includes(q) || norm(b.name).includes(q)).slice(0, 8);
+      sug.innerHTML = hits.map(b => '<div data-p="' + esc(b.id) + '"><b>' + esc(b.id) + '</b> ' + esc(b.name) + ' <span class="sub">' + esc(b.dept) + ' \u00b7 balance ' + fmt(b.bal) + '</span></div>').join('') || '<div class="sub">No match</div>';
+      sug.hidden = false; prev();
+    });
+    sug.addEventListener('mousedown', e => { const d = e.target.closest('[data-p]'); if (d) { e.preventDefault(); pick(d.getAttribute('data-p')); } });
+    $('tfYear').addEventListener('change', () => { S.form.year = +$('tfYear').value || null; prev(); });
+    ['tfDate', 'tfAmt', 'tfUnit', 'tfRem', 'tfOver', 'tfPH'].forEach(id => $(id).addEventListener('input', prev));
+    document.querySelectorAll('input[name=tfType]').forEach(r => r.addEventListener('change', prev));
+    $('tfSave').addEventListener('click', submitForm);
+    if (staffId) pick(staffId); else { prev(); setTimeout(() => inp.focus(), 30); }
+  }
+  function formVals() {
+    const type = document.querySelector('input[name=tfType]:checked').value, unit = $('tfUnit').value, amt = parseFloat($('tfAmt').value);
+    const days = isFinite(amt) && amt > 0 ? r4(unit === 'hours' ? amt / HOURS_PER_DAY : amt) : NaN;
+    return { type, unit, amt, days, date: $('tfDate').value, rem: $('tfRem').value.trim(), over: $('tfOver').checked, ph: $('tfPH').value, year: S.form && S.form.year };
+  }
+  function prev() {
+    const v = formVals(), id = S.form && S.form.id, b = id ? yearRec(id, v.year) : null;
+    $('tfPHField').hidden = v.type !== 'Accrual';
+    const perYear = id ? staffYears(id).map(y => y + ': <b>' + fmt(yearRec(id, y).bal) + '</b>').join(' \u00b7 ') : '';
+    const any = id ? compute('').get(id) : null;
+    $('tfCard').innerHTML = any ? '<b>' + esc(any.name) + '</b> \u00b7 ' + esc([any.dept, any.pos].filter(Boolean).join(' \u00b7 ')) + '<br>Balance by year \u2014 ' + perYear + ' \u00b7 total <b>' + fmt(any.bal) + ' days</b>' : '';
+    let t = '', over = false;
+    if (b && isFinite(v.days)) {
+      const nb = r4(b.bal + (v.type === 'Accrual' ? v.days : -v.days));
+      t = v.year + ' balance: <b>' + fmt(b.bal) + '</b> ' + (v.type === 'Accrual' ? '+ ' : '\u2212 ') + fmt(v.days) + ' = <b>' + fmt(nb) + ' days</b>' + (v.unit === 'hours' ? ' \u00b7 ' + fmt(v.amt) + ' h = ' + fmt(v.days) + ' d' : '');
+      over = v.type === 'Consumption' && nb < 0;
+      if (over) t += ' <span style="color:#b91c1c">\u2014 more than the available balance</span>';
+    }
+    $('tfPrev').innerHTML = t; $('tfOverRow').hidden = !over; if (!over) $('tfOver').checked = false;
+    $('tfErr').hidden = true;
+  }
+  const fingerprint = (id, yr, type, ph, date, days, rem) => [id, yr, type, ph || '-', date, r4(days).toFixed(4), norm(rem)].join('|');
+  async function submitForm() {
+    const err = t => { const e = $('tfErr'); e.textContent = t; e.hidden = false; };
+    const v = formVals(), id = S.form && S.form.id, b = id ? yearRec(id, v.year) : null;
+    if (!id) return err('Pick a staff member from the list.');
+    if (!b) return err('This staff member has no opening balance for the selected year.');
+    if (!isFinite(v.days)) return err('Enter an amount greater than zero.');
+    if (v.days > 366) return err('That amount looks too large - please check it.');
+    if (!v.date) return err('Enter the transaction date.');
+    const dy = +v.date.slice(0, 4);
+    if (v.type === 'Accrual' && dy !== v.year) return err('An accrual must be dated within its balance year (' + v.year + '). Choose the matching balance year or date.');
+    if (v.type === 'Consumption' && dy < v.year) return err('A consumption cannot be dated before the balance year it draws from (' + v.year + ').');
+    if (v.type === 'Accrual' && !HOLIDAYS.some(h => h.name === v.ph)) return err('Select the public holiday this TOIL was earned on.');
+    if (v.rem.length < 3) return err('Remarks are required.');
+    const nb = r4(b.bal + (v.type === 'Accrual' ? v.days : -v.days));
+    if (v.type === 'Consumption' && nb < 0 && !v.over) return err('The ' + v.year + ' balance is ' + fmt(b.bal) + ' days. Pick another balance year, or tick \u201cAllow this to take the balance below zero\u201d if that is intended.');
+    const ph = v.type === 'Accrual' ? v.ph : null, fp = fingerprint(b.id, v.year, v.type, ph, v.date, v.days, v.rem);
+    if (S.txns.some(x => x.status === 'active' && x.fingerprint === fp)) return err('This looks like a duplicate: the same staff, year, type, date, amount and remarks are already recorded. Change the remarks if it is a genuinely separate entry.');
+    const row = { txn_key: S.formKey, fingerprint: fp, staff_id: b.id, toil_year: v.year, staff_name: b.name, txn_date: v.date, txn_type: v.type, holiday: ph, entered_amount: v.amt, entered_unit: v.unit,
+      hours_per_day: HOURS_PER_DAY, days: v.days, allow_overdraw: !!v.over, remarks: v.rem, planner: planner(), planner_email: S.email || null };
+    const btn = $('tfSave'); btn.disabled = true; btn.textContent = 'Saving\u2026';
+    try {
+      const { data, error } = await sb().from('toil_transactions').insert(row).select().single();
+      if (error) throw error;
+      S.txns.push(data); closeModal(); renderAll();
+      msg('Recorded ' + v.type.toLowerCase() + ' of ' + fmt(v.days) + ' day(s) for ' + b.name + (ph ? ' (' + ph + ')' : '') + '. ' + v.year + ' balance is now ' + fmt(data.balance_after) + ' days.', 'ok');
+    } catch (e) {
+      let text = e.message || String(e);
+      if (e.code === '23505') {
+        const r = await sb().from('toil_transactions').select('*').eq('txn_key', row.txn_key).maybeSingle();
+        if (r.data) { S.txns.push(r.data); closeModal(); renderAll(); msg('This entry had already been saved - nothing was added twice.', 'ok'); return; }
+        text = 'Duplicate: another planner has just recorded the same entry. Refresh to see it.';
+      } else if (/INSUFFICIENT_BALANCE/.test(text)) text = 'The balance changed while you were typing (' + text.replace(/^.*INSUFFICIENT_BALANCE:\s*/, '') + '). Refresh and check again.';
+      else if (isMissing(e) || isOldSchema(e)) text = 'The TOIL database needs the latest setup SQL (years and public holidays). Press Refresh for instructions.';
+      err(text); btn.disabled = false; btn.textContent = 'Save transaction';
+    }
+  }
+  async function voidTxn(id) {
+    const x = S.txns.find(t => t.id === id); if (!x || !canWrite()) return;
+    const reason = window.prompt('Void this ' + x.txn_type.toLowerCase() + ' of ' + fmt(x.days) + ' day(s) for ' + x.staff_name + ' (' + dmy(x.txn_date) + ')?\nThe entry stays in the history as voided and is excluded from the balance.\n\nReason (required):', '');
+    if (reason === null) return;
+    if (reason.trim().length < 3) { msg('A reason of at least 3 characters is required to void.', 'error'); return; }
+    const { data, error } = await sb().from('toil_transactions').update({ status: 'voided', voided_by: planner(), void_reason: reason.trim() }).eq('id', id).eq('status', 'active').select().single();
+    if (error) { msg('Could not void: ' + String(error.message).replace(/^.*?(VOID_WOULD_OVERDRAW|ALREADY_VOIDED|VOID_REQUIRES_REASON)/, '$1'), 'error'); return; }
+    Object.assign(x, data); renderAll(); msg('Transaction voided. The balance was recalculated.', 'ok');
+  }
+
+  // ---------------------------------------------------------------- permanent delete (administrators only)
+  // Void stays as it was. Permanent delete physically removes ONE voided transaction (or one unused upload-log row)
+  // through a database function that re-checks administrator rights; the old DELETE block stays in force for everything else.
+  const canDelete = () => canWrite() && S.isAdmin;
+  const impUse = id => [...S.openings.values()].filter(o => o.import_id === id).length;
+  function impAction(i) {
+    if (!S.isAdmin) return '';
+    const n = impUse(i.id);
+    return n ? '<span class="sub" title="Opening balances still belong to this upload, so it cannot be deleted">in use by ' + n.toLocaleString() + ' balance(s)</span>'
+      : '<button type="button" class="btn-secondary toil-danger" data-pdelimp="' + esc(i.id) + '"' + (canWrite() ? '' : ' disabled') + ' title="Physically remove this upload-log entry">Delete permanently</button>';
+  }
+  function delErr(e) {
+    const t = String((e && e.message) || e || ''), c = e && e.code;
+    if (c === 'PGRST202' || c === '42883' || /could not find the function|schema cache/i.test(t)) return 'Permanent delete is not installed in the database yet. Run toil_permanent_delete.sql in Supabase (SQL Editor), then press Refresh.';
+    if (/NOT_AUTHORISED/.test(t) || c === '42501') return 'Only authorised TOIL administrators can delete permanently.';
+    if (/DELETE_REQUIRES_VOID/.test(t)) return 'Only a voided transaction can be permanently deleted. Void it first.';
+    if (/DELETE_REQUIRES_REASON/.test(t)) return 'A reason of at least 3 characters is required.';
+    if (/NOT_FOUND/.test(t)) return 'That record no longer exists (it may already have been deleted). Press Refresh.';
+    if (/IMPORT_IN_USE/.test(t) || c === '23503') return 'This upload still has opening balances linked to it, so it cannot be deleted.';
+    return t.replace(/^[\s\S]*?(TOIL_RECORDS_ARE_PERMANENT)/, '$1') || 'Delete failed.';
+  }
+  function confirmPermanentDelete(o) {
+    const m = modal('<div class="toil-dh"><h3>' + esc(o.title) + '</h3><button type="button" class="btn-secondary" data-close>Cancel</button></div>' +
+      '<div class="toil-err" style="margin-bottom:12px"><b>This cannot be undone.</b> ' + o.warn + '</div>' +
+      '<div class="toil-snap">' + o.details + '</div>' +
+      '<div class="control-field"><label for="pdReason">Reason for permanent deletion (required)</label><textarea id="pdReason" rows="2" placeholder="e.g. entered against the wrong staff member"></textarea></div>' +
+      '<div class="control-field"><label for="pdWord">Type DELETE to confirm</label><input id="pdWord" type="text" autocomplete="off" spellcheck="false"></div>' +
+      '<div id="pdErr" class="toil-err" hidden></div>' +
+      '<div class="toil-actions"><button type="button" class="btn-primary" id="pdGo" style="background:#b91c1c;border-color:#b91c1c" disabled>Delete permanently</button></div>');
+    m.onclick = e => { if (e.target.closest('[data-close]')) closeModal(); };
+    const reason = $('pdReason'), word = $('pdWord'), go = $('pdGo'), err = $('pdErr');
+    const sync = () => { go.disabled = !(word.value.trim() === 'DELETE' && reason.value.trim().length >= 3); };
+    reason.addEventListener('input', sync); word.addEventListener('input', sync);
+    go.addEventListener('click', async () => {
+      go.disabled = true; go.textContent = 'Deleting...'; err.hidden = true;
+      try { await o.run(reason.value.trim()); closeModal(); }
+      catch (e) { err.textContent = delErr(e); err.hidden = false; go.textContent = 'Delete permanently'; sync(); }
+    });
+    setTimeout(() => reason.focus(), 30);
+  }
+  function deleteTxn(id) {
+    const x = S.txns.find(t => t.id === id); if (!x || !canDelete()) return;
+    if (x.status !== 'voided') { msg('Only a voided transaction can be permanently deleted. Void it first.', 'error'); return; }
+    confirmPermanentDelete({
+      title: 'Permanently delete transaction',
+      warn: 'This voided record will be physically removed from the database. It already has no effect on any balance, and no other transaction or employee record is changed.',
+      details: '<div><b>' + esc(x.staff_name) + '</b> (' + esc(x.staff_id) + ') &middot; balance year ' + tyear(x) + '</div><div>' + esc(x.txn_type) + ' of ' + fmt(x.days) + ' day(s)' + (x.holiday ? ' &middot; ' + esc(x.holiday) : '') + ' &middot; dated ' + dmy(x.txn_date) + '</div><div>Remarks: ' + esc(x.remarks) + '</div><div class="sub">Recorded by ' + esc(x.planner) + ' on ' + stamp(x.created_at) + '. Voided by ' + esc(x.voided_by || '') + ': ' + esc(x.void_reason || '') + '</div>',
+      run: async reason => {
+        const { error } = await sb().rpc('toil_permanent_delete_transaction', { p_id: id, p_reason: reason });
+        if (error) throw error;
+        S.txns = S.txns.filter(t => t.id !== id); renderAll();
+        msg('Transaction permanently deleted from the database for ' + x.staff_name + '. Balances are unchanged.', 'ok');
+      } });
+  }
+  function deleteImport(id) {
+    const i = S.imports.find(t => t.id === id); if (!i || !canDelete()) return;
+    if (impUse(id)) { msg('This upload still has opening balances linked to it, so it cannot be deleted.', 'error'); return; }
+    confirmPermanentDelete({
+      title: 'Permanently delete upload-log entry',
+      warn: 'Only this entry in the upload log is removed. No opening balance, staff record or transaction is touched.',
+      details: '<div><b>' + esc(i.file_name || '') + '</b> &middot; balance year ' + (i.toil_year || DEFAULT_YEAR) + '</div><div>' + (i.rows_read || 0) + ' rows read &middot; ' + (i.staff_added || 0) + ' staff added</div><div class="sub">Uploaded ' + stamp(i.imported_at) + ' by ' + esc(i.imported_by || '') + '</div>',
+      run: async reason => {
+        const { error } = await sb().rpc('toil_permanent_delete_import', { p_id: id, p_reason: reason });
+        if (error) throw error;
+        S.imports = S.imports.filter(t => t.id !== id); renderAll();
+        msg('Upload-log entry permanently deleted.', 'ok');
+      } });
+  }
+
+  // ---------------------------------------------------------------- initial upload (one balance year per file)
+  function parseText(v) {
+    const s = String(v).toLowerCase().trim(); let d = 0, h = 0, hit = false;
+    const md = s.match(/(\d+(?:\.\d+)?)\s*toils?/); if (md) { d = +md[1]; hit = true; }
+    const mh = s.match(/(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)\b/); if (mh) { h = +mh[1]; hit = true; }
+    if (hit) return { days: r4(d + h / HOURS_PER_DAY) };
+    const n = parseFloat(s); return isFinite(n) && /^[\d.\s-]+$/.test(s) ? { days: n } : null;
+  }
+  const clean = v => String(v == null ? '' : v).replace(/[\s\u00a0]+/g, ' ').trim();
+  const sapOf = v => String(v == null ? '' : v).replace(/[\s\u00a0]/g, '');
+  // ---- reading a TOIL sheet. Two layouts are understood:
+  //   2026 style: one count column per public holiday (FOUNDATION DAY / EID UL FITR / EID UL ADHA / NATIONAL DAY)
+  //   2025 style: one column per holiday DATE (1 / 0 flags) under merged holiday headings (Founding Day, EID AL FITR, ...), counts = sum of those flags
+  // Header labels may sit in any of several stacked header rows and may be merged, so the whole header band is read.
+  const MONTHS = 'jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec';
+  const isDateHdr = v => v instanceof Date || (typeof v === 'string' && new RegExp('^\\s*\\d{1,2}[-/. ](' + MONTHS + '|\\d{1,2})[-/. ]\\d{2,4}\\s*$', 'i').test(v)) || (typeof v === 'number' && v > 35000 && v < 60000);
+  const holidayOf = t => (/found/i.test(t) ? 'fd' : /fit[er]|fetr/i.test(t) ? 'ef' : /adh?a|azha/i.test(t) ? 'ea' : /national/i.test(t) ? 'nd' : null);
+  function parseSheet(wb, sheetName, toilNames, master, known, out, skipped) {
+    const ws = wb.Sheets[sheetName], ref = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null, blankrows: true });
+    (ws['!merges'] || []).forEach(m => {                                   // spread merged header cells over their whole range
+      const r0 = m.s.r - ref.s.r, c0 = m.s.c - ref.s.c; if (r0 < 0 || r0 > 40) return; const v = rows[r0] && rows[r0][c0]; if (v == null || v === '') return;
+      for (let r = r0; r <= Math.min(m.e.r - ref.s.r, 40); r++) for (let c = c0; c <= m.e.c - ref.s.c; c++) { rows[r] = rows[r] || []; if (rows[r][c] == null) rows[r][c] = v; }
+    });
+    const h = rows.findIndex((r, i) => i < 40 && r && r.some(c => /^sap\s*id$/i.test(clean(c))));
+    const fail = (kind, m) => Object.assign(new Error(m), { kind });
+    if (h < 0) throw fail('nosap', 'Sheet "' + sheetName + '" has no "SAP ID" column.');
+    const sapCol = rows[h].findIndex(c => /^sap\s*id$/i.test(clean(c)));
+    const d0 = rows.findIndex((r, i) => i > h && r && /^\d{4,}$/.test(sapOf(r[sapCol])));
+    if (d0 < 0) throw fail('norows', 'Sheet "' + sheetName + '" has a SAP ID heading but no staff rows (numeric SAP IDs) under it.');
+    const band = []; for (let i = Math.max(0, h - 3); i < d0; i++) band.push(rows[i] || []);
+    const width = Math.max(...band.map(r => r.length), 0), labels = [], dateCols = [];
+    for (let c = 0; c < width; c++) {
+      const L = [], isD = band.some(r => isDateHdr(r[c]));
+      band.forEach(r => { const t = clean(r[c]); if (t && !isDateHdr(r[c])) L.push(t); });
+      labels[c] = L; if (isD) dateCols.push(c);
+    }
+    const colBy = (re, skipDates) => { for (let c = 0; c < width; c++) { if (skipDates && dateCols.includes(c)) continue; if (labels[c].some(t => re.test(t))) return c; } return -1; };
+    const col = { sap: sapCol, name: colBy(/^(employee |staff )?name$/i), roster: colBy(/^roster$/i), acc: colBy(/total.*(accrued|toil)/i), add: colBy(/additional accrued/i), used: colBy(/^used(\s*toils?)?$/i), rem: colBy(/^remarks?$/i), left: colBy(/remaining(\s*toils?)?/i) };
+    HOLIDAYS.forEach(x => { col[x.key] = colBy(x.hd, true); });
+    const need = ['sap', 'name', 'acc', 'used', 'left'].filter(k => col[k] < 0);
+    if (need.length) throw fail(['acc', 'used', 'left'].every(k => need.includes(k)) ? 'nototals' : 'missing', 'Missing column(s) in sheet "' + sheetName + '": ' + need.map(k => ({ sap: 'SAP ID', name: 'NAME', acc: 'TOTAL ACCRUED TOIL', used: 'USED TOIL', left: 'Remaining TOIL' }[k])).join(', ') + '. Header text seen: ' + labels.flat().filter((t, i, a) => a.indexOf(t) === i).slice(0, 30).join(' | '));
+    const dateOf = {}; let last = null;                                     // holiday of each per-date column (heading to its left carries over)
+    dateCols.forEach(c => { const hk = labels[c].map(holidayOf).find(Boolean) || last; if (hk) { dateOf[c] = hk; last = hk; } });
+    const dateCols4 = k => dateCols.filter(c => dateOf[c] === k);
+    const perDate = HOLIDAYS.filter(x => col[x.key] < 0 && dateCols4(x.key).length);
+    const num = (v, flags, label) => { if (v == null || v === '') return null; if (typeof v === 'number') return v; const p = parseText(v); if (p) { flags.push(label + ' was text "' + clean(v) + '" \u2192 ' + fmt(p.days) + ' days (' + HOURS_PER_DAY + ' h/day)'); return p.days; } flags.push(label + ' could not be read ("' + clean(v) + '")'); return null; };
+    let rowsRead = 0;
+    for (let i = d0; i < rows.length; i++) {
+      const r = rows[i] || [], id = sapOf(r[col.sap]); if (!id) continue; rowsRead++;
+      if (!/^\d+$/.test(id)) { if (clean(r[col.name])) skipped.push({ row: i + 1, id, name: clean(r[col.name]), why: 'SAP ID is not a number' }); continue; }
+      const flags = []; if (typeof r[col.sap] === 'string' && r[col.sap] !== id) flags.push('SAP ID had extra spaces (cleaned)');
+      const acc = num(r[col.acc], flags, 'Accrued') ?? 0, used = num(r[col.used], flags, 'Used') ?? 0; let remRaw = r[col.left], rem = num(remRaw, flags, 'Remaining');
+      if (rem == null) { rem = r4(acc - used); flags.push('Remaining was empty \u2192 used Accrued \u2212 Used'); }
+      else if (typeof remRaw === 'number' && Math.abs(rem - (acc - used)) > 0.0001) flags.push('Remaining (' + fmt(rem) + ') differs from Accrued \u2212 Used (' + fmt(acc - used) + ') \u2014 file value kept');
+      if (rem < 0) flags.push('Negative opening balance (' + fmt(rem) + ')');
+      const note = col.add >= 0 && typeof r[col.add] === 'string' ? clean(r[col.add]) : null;
+      if (note) flags.push('Additional-accrual note "' + note + '" is informational; the file\u2019s Remaining figure is used');
+      const m = master.get(id), k = known.get(id);
+      const rec = { staff_id: id, staff_name: clean(r[col.name]), roster: (col.roster >= 0 && typeof r[col.roster] === 'string' && !/^#/.test(r[col.roster]) ? clean(r[col.roster]) : '') || (m && m.roster) || (k && k.roster) || '',
+        department: (m && m.dept) || (k && k.department) || '', position: (m && m.pos) || (k && k.position) || '', leaving_date: (m && m.left) || (k && k.leaving_date) || null,
+        accrued_file: r4(acc), used_file: r4(used), opening_days: r4(rem), file_remarks: col.rem >= 0 && r[col.rem] != null ? clean(r[col.rem]) : null, file_note: note, _flags: flags, _rows: [sheetName + ' row ' + (i + 1)] };
+      HOLIDAYS.forEach(x => {
+        if (col[x.key] >= 0) rec[x.col] = typeof r[col[x.key]] === 'number' ? r[col[x.key]] : null;
+        else if (dateCols4(x.key).length) rec[x.col] = r4(dateCols4(x.key).reduce((n, c) => n + (typeof r[c] === 'number' && r[c] > 0 ? r[c] : 0), 0));
+        else rec[x.col] = null;
+      });
+      if (HOLIDAYS.some(x => rec[x.col] != null)) { const ps = HOLIDAYS.reduce((n, x) => n + (rec[x.col] || 0), 0); if (Math.abs(ps - acc) > 0.0001) rec._flags.push('Holiday columns add up to ' + fmt(ps) + ' but Total accrued is ' + fmt(acc) + ' (the difference shows under \u201cOther\u201d)'); }
+      if (!m && !k) rec._flags.push('Not found in a staff master sheet (department / position blank)');
+      if (out.has(id)) { const p = out.get(id); p._rows.push(...rec._rows); p._flags.push('SAP ID appears more than once (' + p._rows.join(', ') + ') \u2014 merged');
+        if (rec.staff_name.length > p.staff_name.length) p.staff_name = rec.staff_name;
+        ['accrued_file', 'used_file', 'opening_days'].forEach(kk => { p[kk] = r4(p[kk] + rec[kk]); }); HOLIDAYS.forEach(x => { if (rec[x.col] != null) p[x.col] = (p[x.col] || 0) + rec[x.col]; });
+        p.file_remarks = [p.file_remarks, rec.file_remarks].filter(Boolean).join(' | ') || null; p._flags.push(...rec._flags); }
+      else out.set(id, rec);
+    }
+    return { rowsRead, layout: HOLIDAYS.map(x => x.name + ': ' + (col[x.key] >= 0 ? 'count column' : dateCols4(x.key).length ? dateCols4(x.key).length + ' date column(s) summed' : 'not found')).join(' \u00b7 '), hasHoliday: HOLIDAYS.some(x => col[x.key] >= 0 || dateCols4(x.key).length), perDate: perDate.length > 0 };
+  }
+  function parseWorkbook(wb) {
+    // every visible sheet that has a SAP ID column with TOIL totals is read (a workbook can hold several groups / depots)
+    const hidden = new Set(); ((wb.Workbook && wb.Workbook.Sheets) || []).forEach((x, i) => { if (x && x.Hidden) hidden.add(wb.SheetNames[i]); });
+    const cand = wb.SheetNames.filter(n => !hidden.has(n));
+    // staff master (department / position / roster / leaving date) - any other sheet with Personnel number + Depot
+    const master = new Map();
+    wb.SheetNames.forEach(n => {
+      if (master.size) return; const r = XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: true, defval: null, blankrows: false, cellDates: true }); const hh = r[0] || [];
+      const ix = re => hh.findIndex(c => re.test(clean(c))); const pn = ix(/^personnel number$/i), dp = ix(/^depot$/i), rl = ix(/^role/i), ro = ix(/^roster$/i), lv = ix(/^leaving date$/i);
+      if (pn < 0 || dp < 0) return;
+      for (let i = 1; i < r.length; i++) { const id = sapOf(r[i][pn]); if (!/^\d+$/.test(id)) continue;
+        const lvd = lv >= 0 && r[i][lv] instanceof Date ? r[i][lv].toISOString().slice(0, 10) : null;
+        master.set(id, { dept: clean(r[i][dp]), pos: clean(r[i][rl]).replace(/\s*\(Unlimited.*\)\s*$/i, '').trim(), roster: ro >= 0 ? clean(r[i][ro]) : '', left: lvd }); }
+    });
+    const known = new Map(); [...S.openings.values()].sort((a, b) => tyear(a) - tyear(b)).forEach(o => known.set(o.staff_id, o));   // details already held for staff from another year
+    const out = new Map(), skipped = [], read = [], errors = [], notes = [], notRead = [];
+    cand.forEach(n => { try { const r = parseSheet(wb, n, cand, master, known, out, skipped); read.push({ n, r }); notes.push('\u201c' + n + '\u201d \u2014 ' + r.rowsRead.toLocaleString() + ' staff rows \u2014 ' + r.layout); } catch (e) { if (e.kind === 'nototals') notRead.push(e); else if (e.kind !== 'nosap') errors.push(e.message); } });
+    if (!read.length) throw new Error(errors.length || notRead.length ? errors.concat(notRead.map(e => e.message)).join(' ') : 'No sheet in this workbook has a \u201cSAP ID\u201d column with TOIL totals (total accrued, used, remaining).');
+    if (notRead.length) notes.push('Other sheet(s) with a SAP ID column but no TOIL totals (not read): ' + notRead.map(e => (/sheet "([^"]+)"/.exec(e.message) || [])[1]).join(', '));
+    if (hidden.size) notes.push('Hidden sheet(s) not read: ' + [...hidden].join(', '));
+    const yrs = [...new Set(read.map(x => (/(?:^|\D)(20\d\d)(?:\D|$)/.exec(x.n) || [])[1]).filter(Boolean))];
+    return { sheetName: read.map(x => x.n).join(' + '), staff: [...out.values()], skipped, masterRows: master.size, rowsRead: read.reduce((n, x) => n + x.r.rowsRead, 0), sheetYear: yrs.length === 1 ? +yrs[0] : null, sheetYears: yrs,
+      hasHolidayCols: read.some(x => x.r.hasHoliday), notes, sheetErrors: errors };
+  }
+  const impYear = () => { const y = parseInt($('toilImpYear').value, 10); return y >= 2000 && y <= 2100 ? y : null; };
+  function renderImportPreview() {
+    const p = S.imp, box = $('toilImpPrev'); if (!p) { box.innerHTML = ''; $('toilImpGo').disabled = true; $('toilImpGo').textContent = 'Import'; return; }
+    const yr = impYear();
+    const fresh = yr ? p.staff.filter(s => !S.openings.has(okey(s.staff_id, yr))) : [], have = p.staff.length - fresh.length, flagged = p.staff.filter(s => s._flags.length);
+    p.fresh = fresh; p.year = yr;
+    const tot = k => r4(fresh.reduce((n, s) => n + s[k], 0));
+    box.innerHTML = '<div class="toil-kpis">' + kpi('Staff in file', p.staff.length.toLocaleString(), p.rowsRead.toLocaleString() + ' rows read \u00b7 sheet \u201c' + esc(p.sheetName) + '\u201d') + kpi('To be imported for ' + (yr || '?'), fresh.length.toLocaleString(), 'opening balance ' + fmt(tot('opening_days')) + ' days', 'main') +
+      kpi('Already have ' + (yr || '?') + ' balance', have.toLocaleString(), have ? 'left untouched' : 'none') + kpi('Need a look', flagged.length.toLocaleString(), 'see the list below', flagged.length ? 'neg' : '') + '</div>' +
+      (!yr ? '<div class="claim-master-banner toil-bad">Enter the balance year these figures belong to.</div>' : '') +
+      (yr && p.sheetYear && p.sheetYear !== yr ? '<div class="claim-master-banner toil-bad">The sheet is called \u201c' + esc(p.sheetName) + '\u201d but the balance year is set to ' + yr + '. Check the year before importing.</div>' : '') +
+      (p.sheetYears && p.sheetYears.length > 1 ? '<div class="claim-master-banner toil-bad">The sheets name different years (' + p.sheetYears.join(', ') + '). Everything in one upload is saved under a single balance year, so upload each year\u2019s file separately.</div>' : '') +
+      (!p.hasHolidayCols ? '<div class="claim-master-banner">No public-holiday columns were found in this file, so the holiday split will be blank (everything shows under \u201cOther\u201d).</div>' : '') +
+      '<p class="sub"><b>How the file was read:</b> ' + p.notes.map(esc).join('<br>') + (p.sheetErrors && p.sheetErrors.length ? '<br><span style="color:#b45309">Skipped sheet(s): ' + p.sheetErrors.map(esc).join(' ') + '</span>' : '') + '</p>' +
+      '<p class="sub">These figures are saved as the <b>' + (yr || '?') + '</b> opening balance = the file\u2019s <b>Remaining TOIL</b> column. Staff who already have a ' + (yr || '') + ' balance are never changed; to correct someone, record an accrual or consumption. Department and position come from the staff-master sheet when the workbook has one, otherwise from balances already loaded.' +
+      (p.skipped.length ? ' <b>' + p.skipped.length + ' row(s) skipped</b> (no usable SAP ID).' : '') + '</p>' +
+      (flagged.length ? '<div class="toil-scroll" style="max-height:280px"><table class="toil-t"><thead><tr><th>SAP ID</th><th>Name</th><th class="num">Opening</th><th>What was noticed</th></tr></thead><tbody>' + flagged.map(s => '<tr><td class="mono">' + esc(s.staff_id) + '</td><td>' + esc(s.staff_name) + '</td><td class="num">' + fmt(s.opening_days) + '</td><td class="remarks">' + esc(s._flags.join('; ')) + '</td></tr>').join('') + '</tbody></table></div>' : '');
+    $('toilImpGo').disabled = !canWrite() || !fresh.length; $('toilImpGo').textContent = fresh.length ? 'Import ' + fresh.length.toLocaleString() + ' staff as ' + yr + ' opening balances' : 'Nothing new to import';
+  }
+  async function runImport() {
+    const p = S.imp; if (!p || !p.fresh || !p.fresh.length || !p.year || !canWrite()) return;
+    if (!window.confirm('Import ' + p.fresh.length.toLocaleString() + ' staff as the ' + p.year + ' opening balances?\n\nOpening balances cannot be edited or deleted afterwards - later changes are recorded as transactions.')) return;
+    const btn = $('toilImpGo'); btn.disabled = true;
+    try {
+      const imp = { id: uuid(), file_name: p.file, rows_read: p.rowsRead, staff_added: p.fresh.length, staff_skipped: p.staff.length - p.fresh.length, imported_by: planner(), toil_year: p.year };
+      let r = await sb().from('toil_imports').insert(imp); if (r.error) throw r.error;
+      const rows = p.fresh.map(s => { const o = Object.assign({}, s); delete o._flags; delete o._rows; o.toil_year = p.year; o.import_flags = s._flags.join('; ') || null; o.import_id = imp.id; o.source_file = p.file; o.imported_by = planner(); return o; });
+      for (let i = 0; i < rows.length; i += CHUNK) {
+        btn.textContent = 'Importing\u2026 ' + Math.min(i + CHUNK, rows.length).toLocaleString() + ' / ' + rows.length.toLocaleString();
+        r = await sb().from('toil_opening').upsert(rows.slice(i, i + CHUNK), { onConflict: 'staff_id,toil_year', ignoreDuplicates: true }); if (r.error) throw r.error;
+      }
+      S.imp = null; $('toilFile').value = ''; renderImportPreview(); await load(); msg('Imported ' + rows.length.toLocaleString() + ' ' + p.year + ' opening balances from ' + p.file + '.', 'ok');
+    } catch (e) { msg('Import failed: ' + (e.message || e) + (isMissing(e) || isOldSchema(e) ? ' (run the latest setup SQL first)' : ''), 'error'); btn.disabled = false; renderImportPreview(); }
+  }
+  function renderImports() {
+    const b = $('toilImpLog'); if (!b) return;
+    b.innerHTML = S.imports.length ? '<table class="toil-t"><thead><tr><th>When</th><th>Year</th><th>File</th><th class="num">Rows read</th><th class="num">Added</th><th class="num">Skipped (already present)</th><th>By</th><th></th></tr></thead><tbody>' +
+      S.imports.map(i => '<tr><td>' + stamp(i.imported_at) + '</td><td>' + (i.toil_year || DEFAULT_YEAR) + '</td><td>' + esc(i.file_name) + '</td><td class="num">' + i.rows_read + '</td><td class="num">' + i.staff_added + '</td><td class="num">' + i.staff_skipped + '</td><td>' + esc(i.imported_by) + '</td><td class="act">' + impAction(i) + '</td></tr>').join('') + '</tbody></table>' : '<div class="sub">No uploads yet.</div>';
+  }
+
+  // ---------------------------------------------------------------- export
+  async function exportXlsx(kind) {
+    if (typeof ExcelJS === 'undefined') { msg('Excel export library did not load.', 'error'); return; }
+    const wb = new ExcelJS.Workbook(), ws = wb.addWorksheet(kind === 'bal' ? 'TOIL balances' : 'TOIL transactions');
+    if (kind === 'bal') {
+      ws.columns = [['Staff ID', 12], ['Name', 30], ['Department', 14], ['Position', 24], ['Roster', 16], ['Year', 10], ...HOLIDAYS.map(h => [h.label, 16]), ['Other', 10], ['Total accrued', 14], ['Used', 10], ['Opening (days)', 14], ['Balance (days)', 14], ['Status', 12]].map(c => ({ header: c[0], width: c[1] }));
+      (S._balRows || []).forEach(b => ws.addRow([b.id, b.name, b.dept, b.pos, b.roster, yearLabel(), ...HOLIDAYS.map(h => b[h.key]), b.other, b.tot, b.used, b.open, b.bal, statusOf(b)]));
+    } else {
+      ws.columns = [['Transaction date', 15], ['Balance year', 12], ['Staff ID', 12], ['Staff name', 30], ['Type', 13], ['Public holiday', 16], ['Amount (days)', 14], ['Entered', 14], ['Updated balance (days)', 20], ['Remarks', 44], ['Planner', 24], ['Planner email', 28], ['Recorded at', 18], ['Status', 10], ['Voided by', 20], ['Void reason', 30]].map(c => ({ header: c[0], width: c[1] }));
+      histFiltered().forEach(x => ws.addRow([dmy(x.txn_date), tyear(x), x.staff_id, x.staff_name, x.txn_type, x.holiday || '', (x.txn_type === 'Accrual' ? 1 : -1) * +x.days, fmt(x.entered_amount) + ' ' + x.entered_unit, +x.balance_after, x.remarks, x.planner, x.planner_email || '', stamp(x.created_at), x.status, x.voided_by || '', x.void_reason || '']));
+    }
+    ws.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } }; ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } }; ws.views = [{ state: 'frozen', ySplit: 1 }];
+    const buf = await wb.xlsx.writeBuffer(), a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })); a.download = 'TOIL_' + (kind === 'bal' ? 'balances' : 'transactions') + '_' + todayIso() + '.xlsx'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }
+
+  // ---------------------------------------------------------------- wiring
+  function sub(name) {
+    document.querySelectorAll('#toilPanel .toil-subtabs button').forEach(b => b.classList.toggle('active', b.dataset.sub === name));
+    [['bal', 'toilSubBal'], ['hist', 'toilSubHist'], ['imp', 'toilSubImp']].forEach(([k, id]) => { $(id).hidden = k !== name; });
+  }
+  function bind() {
+    if (S.bound || !$('toilPanel')) return; S.bound = true;
+    document.querySelectorAll('#toilPanel .toil-subtabs button').forEach(b => b.addEventListener('click', () => sub(b.dataset.sub)));
+    $('toilRefresh').addEventListener('click', () => load());
+    ['toilQ', 'toilDept', 'toilPos', 'toilStatus', 'toilEmp'].forEach(id => $(id).addEventListener('input', () => { S.page = 1; renderBalances(); }));
+    $('toilYear').addEventListener('input', () => { S.page = 1; renderAll(); });
+    ['toilHQ', 'toilHType', 'toilHYear', 'toilHFrom', 'toilHTo', 'toilHVoid'].forEach(id => $(id).addEventListener('input', () => { S.hpage = 1; renderHistory(); }));
+    $('toilClear').addEventListener('click', () => { ['toilQ', 'toilDept', 'toilPos', 'toilStatus', 'toilEmp', 'toilYear'].forEach(id => { $(id).value = ''; }); S.page = 1; renderAll(); });
+    $('toilAdd').addEventListener('click', () => openForm(null));
+    $('toilExpBal').addEventListener('click', () => exportXlsx('bal')); $('toilExpHist').addEventListener('click', () => exportXlsx('hist'));
+    $('toilPanel').addEventListener('click', e => {
+      const t = e.target.closest('[data-sort],[data-pg],[data-add],[data-view],[data-void],[data-pdel],[data-pdelimp]'); if (!t) return;
+      if (t.dataset.sort) { const k = t.dataset.sort; S.sort = { k, dir: S.sort.k === k ? -S.sort.dir : 1 }; renderBalances(); }
+      else if (t.dataset.pg) { if (t.dataset.pg === 'bal') { S.page += +t.dataset.d; renderBalances(); } else { S.hpage += +t.dataset.d; renderHistory(); } }
+      else if (t.dataset.add) openForm(t.dataset.add);
+      else if (t.dataset.view) { e.preventDefault(); openDetail(t.dataset.view); }
+      else if (t.dataset.void) voidTxn(t.dataset.void);
+      else if (t.dataset.pdel) deleteTxn(t.dataset.pdel);
+      else if (t.dataset.pdelimp) deleteImport(t.dataset.pdelimp);
+    });
+    $('toilImpYear').addEventListener('input', renderImportPreview);
+    $('toilFile').addEventListener('change', async e => {
+      const f = e.target.files[0]; S.imp = null; renderImportPreview(); if (!f) return;
+      try { const wb = XLSX.read(await f.arrayBuffer(), { type: 'array', cellDates: true }); S.imp = parseWorkbook(wb); S.imp.file = f.name; if (S.imp.sheetYear) $('toilImpYear').value = S.imp.sheetYear; renderImportPreview(); }
+      catch (err) { $('toilImpPrev').innerHTML = '<div class="claim-master-banner toil-bad">' + esc(err.message || err) + '</div>'; }
+    });
+    $('toilImpGo').addEventListener('click', runImport);
+  }
+  window.TOIL = { show() { bind(); if (!S.loaded && !S.loading) load(); else if (Date.now() - S.lastLoad > 60000 && !S.loading) load(); else renderAll(); }, _state: S, _parse: parseWorkbook, _preview: renderImportPreview };
+})();
+
 </script>
 </body>
 </html>

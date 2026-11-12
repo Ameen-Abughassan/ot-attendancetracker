@@ -2925,6 +2925,33 @@ function computeRawSpanMinFromActual(actual) {
   return Math.round(dur);
 }
 
+// Holiday rule helper: the part of the biometric punch (sign-on -> sign-off) that
+// falls INSIDE the Dispatched window (HH:MM - HH:MM on the Dispatched cell's 2nd line).
+// Time worked before the dispatched start or after the dispatched end is not counted.
+// Handles overnight punches and overnight dispatch windows. Returns null when the
+// punch is invalid or the Dispatched cell has no times (caller then falls back).
+function computeDispatchWindowOverlapMin(actual, dispatched) {
+  if (!isValidBiometric(actual)) return null;
+  const dt = parseDispatchedTimes(dispatched);
+  if (!dt) return null;
+  const parts = actual.trim().split(/\s*-\s*/);
+  if (parts.length !== 2) return null;
+  const toMin = t => {
+    const m = t.trim().match(/^(\d{1,2}):(\d{2}):(\d{2})$/);
+    return m ? parseInt(m[1],10)*60 + parseInt(m[2],10) + parseInt(m[3],10)/60 : null;
+  };
+  const a = toMin(parts[0]), b = toMin(parts[1]);
+  if (a === null || b === null) return null;
+  let punchEnd = b; if (punchEnd < a) punchEnd += 1440;          // punch interval [a, punchEnd]
+  const dispDur = ((dt.end - dt.start) % 1440 + 1440) % 1440;
+  let best = 0;
+  for (const shift of [-1440, 0, 1440]) {                        // dispatch window, same day / adjacent day
+    const ws = dt.start + shift, we = ws + dispDur;
+    best = Math.max(best, Math.min(punchEnd, we) - Math.max(a, ws));
+  }
+  return Math.max(0, Math.round(best));
+}
+
 // --- locate day blocks & summary column ---------------------------------
 
 function locateStructure() {
@@ -3640,7 +3667,13 @@ function runAnalysis() {
           const rawSpan = computeRawSpanMinFromActual(actual);
           if (rawSpan !== null) {
             if (rawSpan > MAX_PLAUSIBLE_WORKING_MIN) { implausibleWorking = true; workingMin = null; reasonSkip = 'Working Hrs > 14:00 — treated as invalid biometric'; }
-            else workingMin = Math.min(rawSpan, MAX_OT_WORKING_MIN);
+            else {
+              // Only time worked INSIDE the Dispatched window counts: early arrival before the
+              // dispatched start and time after the dispatched end are excluded. If the Dispatched
+              // cell has no times, fall back to the raw span.
+              const inWindow = computeDispatchWindowOverlapMin(actual, dispatched);
+              workingMin = Math.min(inWindow !== null ? inWindow : rawSpan, MAX_OT_WORKING_MIN);
+            }
           }
         }
         if (isValidBiometric(actual) && workingMin !== null) {

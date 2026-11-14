@@ -1237,6 +1237,11 @@ main .tab-panel .toil-t .act .btn-secondary.toil-danger:not(:disabled):hover{bac
 .toil-phrow div{background:#fff7d6;border:1px solid #f5d77a;border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:2px}
 .toil-phrow span{font-size:10.5px;font-weight:800;color:#7a5a00;letter-spacing:.04em}.toil-phrow b{font-size:17px}
 @media(max-width:720px){.toil-phrow{grid-template-columns:repeat(2,1fr)}}
+
+/* Sidebar navigation: always ONE straight vertical column. When the window is short it scrolls inside itself;
+   it never wraps into extra columns (which pushed the remaining tabs off to the right and hid them). */
+main>.app-tabs{flex-wrap:nowrap !important;flex-direction:column !important;overflow-y:auto !important;overflow-x:hidden !important;scrollbar-width:thin;}
+main>.app-tabs>*{flex-shrink:0 !important;}
 </style>
 </head>
 <body class="auth-locked">

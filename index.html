@@ -1424,6 +1424,15 @@ main .tab-panel .toil-t .act .btn-secondary.toil-danger:not(:disabled):hover{bac
     <div class="ws-mw"><button type="button" id="wsAct" class="ws-b ws-p" aria-haspopup="true" aria-expanded="false">Actions &#9662;</button><div class="ws-menu" id="wsMenu" hidden></div></div>
   </div>
 
+  <div id="sbDeferredNotice" hidden style="margin:0 0 14px;padding:12px 16px;border-radius:10px;background:#fff7ed;border:1px solid #fdba74;color:#7c2d12;font-size:13px;line-height:1.55">
+    <span data-sb-def-text></span>
+    <span style="white-space:nowrap;margin-left:6px">
+      <select id="sbDefMonths" aria-label="How far back to download" style="padding:5px 8px;border-radius:8px;border:1px solid #fdba74;background:#fff;font:inherit;font-size:12px"><option value="6">Last 6 months</option><option value="12">Last 12 months</option><option value="all">Everything</option></select>
+      <button type="button" class="btn-secondary" id="sbDefBtn" style="padding:6px 12px;font-size:11px">Download older months</button>
+    </span>
+    <div data-sb-def-status style="margin-top:6px;font-size:12px"></div>
+  </div>
+
   <section class="tab-panel active" id="ccPanel" role="tabpanel" aria-labelledby="tabCommand">
   <div class="ov-h"><div><h2>Overview</h2><p id="ccSub">Run a tool to populate live figures.</p></div></div>
   
@@ -2329,6 +2338,20 @@ main .tab-panel .toil-t .act .btn-secondary.toil-danger:not(:disabled):hover{bac
           <div class="bvh-sub" id="bvhStats">Checking stored history…</div>
         </div>
         <label class="bvh-auto"><input type="checkbox" id="bvhAuto" checked> Save processed reports automatically</label>
+        <details id="sbStatusBox" style="margin-top:10px">
+          <summary style="cursor:pointer;font-weight:600;font-size:13px">Batch sync status &amp; smart sync</summary>
+          <div style="padding:10px 0;font-size:12.5px;line-height:1.55">
+            <label class="bvh-auto"><input type="checkbox" id="sbSmart"> Smart sync &mdash; download only the latest 2 months automatically and keep older months in the cloud until requested (off = download everything, the original behaviour)</label>
+            <div id="sbStatusInfo" class="sub" style="margin:6px 0"></div>
+            <div class="table-wrap" style="max-height:300px"><table class="rr-t" style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th style="text-align:left;padding:6px 8px">Type</th><th style="text-align:left;padding:6px 8px">Batch</th><th style="text-align:left;padding:6px 8px">Period</th><th style="text-align:left;padding:6px 8px">Records</th><th style="text-align:left;padding:6px 8px">Status</th><th style="padding:6px 8px"></th></tr></thead><tbody id="sbStatusBody"><tr><td colspan="6" style="padding:8px;color:#64748b">Turn smart sync on to see each batch's status.</td></tr></tbody></table></div>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
+              <button type="button" class="btn-secondary" id="sbPrev" style="padding:4px 10px;font-size:11px">&larr;</button>
+              <span id="sbPageInfo" class="sub"></span>
+              <button type="button" class="btn-secondary" id="sbNext" style="padding:4px 10px;font-size:11px">&rarr;</button>
+              <button type="button" class="btn-secondary" id="sbIdxBtn" style="padding:4px 10px;font-size:11px;margin-left:auto" title="Optional: speeds up the cloud date filters. Run once in Supabase &rarr; SQL Editor.">Copy optional index SQL</button>
+            </div>
+          </div>
+        </details>
       </div>
       <div class="bvh-actions">
         <button class="bvh-btn" id="bvhList" type="button">View stored uploads</button>
@@ -2461,7 +2484,7 @@ const POSITION_FIXED_MIN = {
   'GSM': 8*60+30, 'GROUP STATION MASTER': 8*60+30,
   'LSS': 8*60+30, 'LEAD STATION SUPERVISOR': 8*60+30,
   'SS': 8*60+30, 'STATION SUPERVISOR': 8*60+30,
-  'SA': 9*60+30, 'STATION AGENT': 9*60+30,
+  'SA': 9*60+30, 'STATION AGENT': 9*60+30,   // current value (from 1 Apr 2026); earlier dates: see POSITION_FIXED_HISTORY
   'SAMB': 9*60, 'STATION AMBASSADOR': 9*60,
   'P&R': 8*60+30, 'PARK AND RIDE ATTENDANT': 8*60+30, 'PARK AND RIDE ATTENDANTS': 8*60+30,
   'AOCC': 8*60+30, 'AIRPORT OCC': 8*60+30,
@@ -2500,8 +2523,19 @@ function normalizePosition(raw) {
   return s.replace(/&/g, 'AND').replace(/\s+/g, ' ').trim();
 }
 
-function getFixedMinutesForPosition(raw) {
+// Fixed hours that CHANGED over time. A duty date BEFORE `before` (UTC midnight, exclusive) uses `min`;
+// from that date on, the current value in POSITION_FIXED_MIN applies. Keep each list in ascending `before` order.
+const POSITION_FIXED_HISTORY = {
+  'SA':            [{ before: Date.UTC(2026, 3, 1), min: 10*60+30 }],   // Station Agent: 10:30 up to 31 Mar 2026, 9:30 from 1 Apr 2026
+  'STATION AGENT': [{ before: Date.UTC(2026, 3, 1), min: 10*60+30 }],
+};
+// dateMs = the duty date (UTC ms). Without a date the CURRENT value is returned (the previous behaviour).
+function getFixedMinutesForPosition(raw, dateMs) {
   const key = normalizePosition(raw);
+  if (key && typeof dateMs === 'number' && isFinite(dateMs)) {
+    const hist = POSITION_FIXED_HISTORY[key];
+    if (hist) for (const e of hist) if (dateMs < e.before) return e.min;
+  }
   return (key && POSITION_FIXED_MIN[key] !== undefined) ? POSITION_FIXED_MIN[key] : FIXED_STANDARD_MIN;
 }
 const MIN_OT_MIN = 30;                // OT under 30 minutes is not payable
@@ -3691,7 +3725,7 @@ function runAnalysis() {
         // treated as extension duty (paid as "Extended Duty") ONLY when the dispatched duty is longer than the
         // position's normal (fixed) working hours. Like Rule 1, the extension is what is worked beyond the
         // fixed hours — capped at the dispatched duration. A duty not longer than the fixed hours is no extension.
-        const wrFixedMin = getFixedMinutesForPosition(position);
+        const wrFixedMin = getFixedMinutesForPosition(position, parseRosterDate(block.dateVal));
         const wrExtensionDuty = !hasRD && planned === 'WR' && dispatchedDurMin !== null && dispatchedDurMin > wrFixedMin;
         if (!hasRD && !wrExtensionDuty) {
           reasonSkip = 'No RD/RDOT/OT code in Dispatched';
@@ -3748,7 +3782,7 @@ function runAnalysis() {
           reasonSkip = implausibleWorking ? 'Working Hrs > 14:00 — treated as invalid biometric' : 'Working Hrs unavailable (N/A)';
         } else {
           const cappedWorking = Math.min(workingMin, dispatchedDurMin);
-          let calc = Math.max(0, cappedWorking - getFixedMinutesForPosition(position));
+          let calc = Math.max(0, cappedWorking - getFixedMinutesForPosition(position, parseRosterDate(block.dateVal)));
           if (calc < MIN_OT_MIN) calc = 0;
           correctedMin = calc;
           ruleApplied = 'Extended dispatch';
@@ -3781,7 +3815,7 @@ function runAnalysis() {
         // visible trace of why. Now anything reasonSkip was set for shows
         // up here, tagged with which rule it would have applied under.
         const ruleContext = eidActive ? holidayLabel
-          : isWrOverrideCase ? ((planned === 'WR' && !hasRD && dispatchedDurMin !== null && dispatchedDurMin > getFixedMinutesForPosition(position)) ? 'Extended dispatch' : 'WR override')
+          : isWrOverrideCase ? ((planned === 'WR' && !hasRD && dispatchedDurMin !== null && dispatchedDurMin > getFixedMinutesForPosition(position, parseRosterDate(block.dateVal))) ? 'Extended dispatch' : 'WR override')
           : ramadanExtended ? 'Ramadan (IS)'
           : 'Extended dispatch';
         skipRec = { sap, name, position, date: block.dateVal, reason: reasonSkip, rule: ruleContext };
@@ -5350,7 +5384,7 @@ function processUndertimeWorkbook() {
     // someone works, not HOW LONG they owe. Falls back to the app's
     // position-based table (same one the OT Validator uses) only if Column N
     // is blank for this row.
-    const fixedMin = (typeof N === 'number' && N > 0) ? timeCellToMinutes(N) : getFixedMinutesForPosition(position);
+    const fixedMin = (typeof N === 'number' && N > 0) ? timeCellToMinutes(N) : getFixedMinutesForPosition(position, utbDateToMs(dateVal));
     // Under Time is purely a duration comparison — required duty duration
     // (fixedMin) vs actual worked duration (actualMin, already crossover-
     // safe above) — never a function of clock-time start/end differences.
@@ -7667,7 +7701,7 @@ function utbOtSchedule() {
     if (isUtAllocationExcluded(disp.split('\n')[0].trim())) return;  // leave, training, RDOT … — not a normal scheduled duty
     let end = dt.end; if (end <= dt.start) end += 1440;
     rows.push({ id: key.slice(0, sep), sap: v.sap, name: v.name || '', position: v.position || '', line: v.line || '', dateMs,
-      dutyStartMin: dt.start, dutyEndMin: end, dispatched: disp, fixedMin: getFixedMinutesForPosition(v.position), reportUnderMin: null, source: 'OT History (Dispatch)' });
+      dutyStartMin: dt.start, dutyEndMin: end, dispatched: disp, fixedMin: getFixedMinutesForPosition(v.position, dateMs), reportUnderMin: null, source: 'OT History (Dispatch)' });
   });
   return { rows, total, withDisp };
 }
@@ -7781,7 +7815,7 @@ function utbBuildLiveSchedule() {
     else { dutyStartMin = plannedStartMin; dutyEndMin = plannedEndMin; }
     if (dutyStartMin === null) continue;                           // no scheduled shift on this row
 
-    const fixedMin = (typeof N === 'number' && N > 0) ? timeCellToMinutes(N) : getFixedMinutesForPosition(position);
+    const fixedMin = (typeof N === 'number' && N > 0) ? timeCellToMinutes(N) : getFixedMinutesForPosition(position, dateMs);
 
     // what the attendance report itself says (for discrepancy remarks only)
     let reportUnderMin = null;
@@ -8346,7 +8380,7 @@ async function nsLoadSchedule() {
       assumed = true;
       const u = usual.get(x.id);
       if (u) { start = u.s; end = u.e; }
-      else { start = 23 * 60; let fx = 0; try { fx = getFixedMinutesForPosition(x.position) || 0; } catch (e) { fx = 0; } end = start + (fx > 0 ? fx : 510); }
+      else { start = 23 * 60; let fx = 0; try { fx = getFixedMinutesForPosition(x.position, x.dateMs) || 0; } catch (e) { fx = 0; } end = start + (fx > 0 ? fx : 510); }
     }
     all.push({ id: x.id, sap: x.sap || x.id, name: x.name, position: x.position, line: x.line, dateMs: x.dateMs, dutyStartMin: start, dutyEndMin: end,
       duty: x.duty, source: x.source, assumed, rdot: /^RDOT/i.test(x.duty), cls: nsClassify(x.duty, start, end, !assumed) });
@@ -10005,6 +10039,138 @@ const SB = (function () {
     return rows.length;
   }
 
+  // ---- smart (recent-first) sync — OPT-IN, off by default --------------------------------------------
+  // Off  : exactly the original behaviour (every batch in the cloud is downloaded).
+  // On   : batches that end within the latest two months download automatically; older batches stay in the cloud until the
+  //        user asks. Anything already stored in this browser is kept and never re-downloaded. Each batch carries a version
+  //        marker (uploaded_at / saved_at + record count); if the cloud copy changes, the batch shows "Update available"
+  //        (or is refreshed automatically when it is recent). Whole batches only - never partial.
+  const LS_SMART = 'otats.sb.smart.v1', LS_VER = 'otats.sb.batchVer.v1';
+  const SMART_MONTHS = 2, PAGE_ROWS = 25;
+  const smartOn = () => localStorage.getItem(LS_SMART) === '1';
+  const loadVer = () => { try { return JSON.parse(localStorage.getItem(LS_VER) || '{}') || {}; } catch (e) { return {}; } };
+  const saveVer = v => { try { localStorage.setItem(LS_VER, JSON.stringify(v)); } catch (e) {} };
+  const monthsCutoff = n => { const d = new Date(); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - (n - 1), 1); };   // first day of the oldest month that is kept
+  const bioEnd = cb => (cb && cb.max_ts ? fromCloud(cb.max_ts) : NaN);
+  const otEnd = cb => {            // last date of an OT History batch, read from its period label "dd-mm-yyyy → dd-mm-yyyy" (or ISO dates)
+    const str = String((cb && cb.period) || ''); let best = -Infinity, m;
+    const dmy = /(\d{2})-(\d{2})-(\d{4})/g; while ((m = dmy.exec(str))) best = Math.max(best, Date.UTC(+m[3], +m[2] - 1, +m[1]));
+    const iso = /(\d{4})-(\d{2})-(\d{2})/g; while ((m = iso.exec(str))) best = Math.max(best, Date.UTC(+m[1], +m[2] - 1, +m[3]));
+    return isFinite(best) ? best : NaN;
+  };
+  const isRecent = (end, cutoff) => cutoff === null || !isFinite(end) || end >= cutoff;   // unknown dates count as recent (safe side)
+  const bioMarker = cb => (cb.uploaded_at || '') + '|' + (cb.punches == null ? '' : cb.punches);
+  const otMarker = cb => (cb.saved_at || '') + '|' + (cb.record_count == null ? '' : cb.record_count);
+  const smDay = ms => (isFinite(ms) ? new Date(ms).toISOString().slice(0, 10) : '');
+  async function listCloudBatches(table, cols, orderCol) {      // paged, so it never depends on the server's row cap
+    const all = [];
+    for (let from = 0; ; from += 500) {
+      const r = await client.from(table).select(cols).order(orderCol).order('id').range(from, from + 499);
+      if (r.error) return r;
+      all.push(...r.data); if (r.data.length < 500) break;
+    }
+    return { data: all, error: null };
+  }
+  const BIO_COLS = 'id,file_name,punches,staff,min_ts,max_ts,uploaded_at';
+  const OT_COLS = 'id,label,period,employee_count,day_count,record_count,source_file_name,saved_at';
+  out.status = { bio: [], ot: [] };            // one row per cloud batch: { kind, id, label, period, count, state, end }
+  out.cloud = { bio: new Map(), ot: new Map() };
+  let olderBusy = false, statusPage = 0;
+  const bioRow = (cb, state) => ({ kind: 'bio', id: cb.id, label: cb.file_name || 'Biometric upload', period: [smDay(cb.min_ts ? fromCloud(cb.min_ts) : NaN), smDay(bioEnd(cb))].filter(Boolean).join(' → '), count: cb.punches, state, end: bioEnd(cb) });
+  const otRow = (cb, state) => ({ kind: 'ot', id: cb.id, label: String(cb.label || 'OT History').replace(/^\s*\[Maintenance\]\s*/i, ''), period: cb.period || '', count: cb.record_count, state, end: otEnd(cb) });
+  const STATE_TXT = { synced: ['Downloaded', '#15803d'], older: ['In cloud only', '#b45309'], update: ['Update available', '#b91c1c'], busy: ['Downloading…', '#1d4ed8'] };
+  function renderStatus() {
+    const body = document.getElementById('sbStatusBody'); if (!body) return;
+    const rows = [...out.status.bio, ...out.status.ot].sort((a, b) => (isFinite(b.end) ? b.end : 0) - (isFinite(a.end) ? a.end : 0));
+    const pages = Math.max(1, Math.ceil(rows.length / PAGE_ROWS)); statusPage = Math.min(statusPage, pages - 1);
+    const view = rows.slice(statusPage * PAGE_ROWS, statusPage * PAGE_ROWS + PAGE_ROWS);
+    body.innerHTML = view.length ? view.map(r => {
+      const st = STATE_TXT[r.state] || [r.state, '#475569'];
+      const act = r.state === 'older' ? 'Download' : r.state === 'update' ? 'Refresh' : '';
+      return `<tr style="border-top:1px solid #eef2f7"><td style="padding:5px 8px">${r.kind === 'bio' ? 'Biometric' : 'OT History'}</td><td style="padding:5px 8px">${esc(r.label)}</td><td style="padding:5px 8px">${esc(r.period)}</td><td style="padding:5px 8px">${r.count == null ? '' : Number(r.count).toLocaleString()}</td><td style="padding:5px 8px;color:${st[1]};font-weight:600">${st[0]}</td><td style="padding:5px 8px">${act ? `<button type="button" class="btn-secondary" data-sb-act="${r.kind}|${esc(r.id)}" style="padding:3px 10px;font-size:11px">${act}</button>` : ''}</td></tr>`;
+    }).join('') : `<tr><td colspan="6" style="padding:8px;color:#64748b">${smartOn() ? 'No cloud batches yet.' : 'Turn smart sync on to see each batch\'s status.'}</td></tr>`;
+    const pi = document.getElementById('sbPageInfo'); if (pi) pi.textContent = rows.length ? `Page ${statusPage + 1} of ${pages} · ${rows.length} batches` : '';
+    const pv = document.getElementById('sbPrev'), nx = document.getElementById('sbNext'); if (pv) pv.disabled = statusPage <= 0; if (nx) nx.disabled = statusPage >= pages - 1;
+  }
+  function deferredUi(extra) {
+    const on = smartOn();
+    if (!on) out.status = { bio: [], ot: [] };
+    const all = [...out.status.bio, ...out.status.ot];
+    const count = st => all.filter(r => r.state === st).length, older = count('older'), upd = count('update'), have = count('synced');
+    const box = document.getElementById('sbDeferredNotice');
+    if (box) {
+      box.hidden = !(on && (older + upd));
+      const t = box.querySelector('[data-sb-def-text]');
+      if (t) t.textContent = `${older ? `${older} older batch${older === 1 ? '' : 'es'} not downloaded in this browser yet. Payslips, claims and biometric look-ups for those months stay empty until you download them.` : ''}${upd ? ` ${upd} batch${upd === 1 ? ' has' : 'es have'} an update available in the cloud.` : ''}`.trim();
+      const st = box.querySelector('[data-sb-def-status]'); if (st) st.textContent = extra || '';
+    }
+    const info = document.getElementById('sbStatusInfo');
+    if (info) info.textContent = on ? `Latest ${SMART_MONTHS} months sync automatically. ${have} of ${all.length} cloud batches are stored in this browser · ${older} in the cloud only · ${upd} with updates.${extra ? ' ' + extra : ''}` : 'Smart sync is off: every sync downloads all batches (the original behaviour).';
+    renderStatus();
+  }
+  async function pullItem(kind, id) {           // download (or refresh) ONE batch; local data is only replaced after the cloud copy is confirmed reachable
+    const cb = out.cloud[kind].get(id), row = out.status[kind].find(r => r.id === id); if (!cb || !row) return false;
+    const refresh = row.state === 'update', ver = loadVer();
+    row.state = 'busy'; renderStatus();
+    try {
+      if (kind === 'bio') {
+        if (refresh) await _origDelete(id);
+        await pullBatch(cb); ver['b:' + id] = bioMarker(cb);
+        const ps = loadPushed(); ps.add(id); savePushed(ps);
+      } else {
+        if (refresh) await _origOtDelete(id);
+        await pullOtBatch(cb); ver['o:' + id] = otMarker(cb);
+        const ps = loadOtPushed(); ps.add(id); saveOtPushed(ps);
+      }
+      saveVer(ver); row.state = 'synced'; return true;
+    } catch (e) { row.state = refresh ? 'update' : 'older'; throw e; }
+  }
+  async function afterPull(kinds) {
+    if (kinds.has('bio')) { BVH.version++; try { await bvhRefreshCard(); } catch (e) {} }
+    if (kinds.has('ot')) { try { await refreshOtHistoryCache(); } catch (e) {} }
+    try { await utbRefreshInfo(); } catch (e) {}
+  }
+  out.pullOne = async function (kind, id) {
+    if (!out.ready || olderBusy) return;
+    if (syncing || otSyncing) { deferredUi('A sync is running - try again in a moment.'); return; }
+    olderBusy = true;
+    try { await pullItem(kind, id); await afterPull(new Set([kind])); deferredUi('Done.'); }
+    catch (e) { console.error(e); deferredUi('Download failed: ' + e.message + ' - press the button to retry.'); }
+    finally { olderBusy = false; }
+  };
+  out.pullOlder = async function (months) {
+    if (!out.ready || olderBusy) return;
+    if (syncing || otSyncing) { deferredUi('A sync is running - try again in a moment.'); return; }
+    olderBusy = true;
+    const btn = document.getElementById('sbDefBtn'); if (btn) btn.disabled = true;
+    const cutoff = (months === 'all' || !months) ? null : monthsCutoff(+months);
+    const todo = [...out.status.bio, ...out.status.ot].filter(r => r.state === 'update' || (r.state === 'older' && isRecent(r.end, cutoff)));
+    let done = 0; const kinds = new Set();
+    try {
+      for (const r of todo) { deferredUi(`Downloading ${done + 1} of ${todo.length}…`); await pullItem(r.kind, r.id); kinds.add(r.kind); done++; }
+      await afterPull(kinds);
+      deferredUi(done ? `Downloaded ${done} batch${done === 1 ? '' : 'es'}.` : 'Nothing to download for that range.');
+      if (done) { msg(`Older months downloaded. ${new Date().toLocaleTimeString()}`, 'ok'); otMsg(`Older months downloaded. ${new Date().toLocaleTimeString()}`, 'ok'); }
+    } catch (e) { console.error(e); try { await afterPull(kinds); } catch (e2) {} deferredUi('Download failed: ' + e.message + ' - press Download to retry.'); }
+    finally { olderBusy = false; if (btn) btn.disabled = false; }
+  };
+  const INDEX_SQL = "-- Optional: speeds up the cloud date/batch filters used by sync (safe to run more than once)\ncreate index if not exists biometric_punches_batch_ts_idx on public.biometric_punches (batch_id, punched_at);\ncreate index if not exists ot_history_records_batch_idx on public.ot_history_records (batch_id, id);\ncreate index if not exists biometric_batches_max_ts_idx on public.biometric_batches (max_ts);\ncreate index if not exists ot_history_batches_saved_at_idx on public.ot_history_batches (saved_at);\n";
+  function wireSmartUi() {
+    const $ = id => document.getElementById(id);
+    const sm = $('sbSmart'); if (!sm || sm.__wired) return; sm.__wired = true;
+    sm.checked = smartOn();
+    sm.addEventListener('change', async () => {
+      try { localStorage.setItem(LS_SMART, sm.checked ? '1' : '0'); } catch (e) {}
+      if (sm.checked) { deferredUi('Checking the cloud…'); await out.syncAll(); await out.syncOt(); }
+      else { deferredUi(); msg('Smart sync is off. The next sync downloads every batch in the cloud.', 'ok'); }
+    });
+    $('sbDefBtn').addEventListener('click', () => out.pullOlder($('sbDefMonths').value));
+    $('sbPrev').addEventListener('click', () => { statusPage = Math.max(0, statusPage - 1); renderStatus(); });
+    $('sbNext').addEventListener('click', () => { statusPage++; renderStatus(); });
+    $('sbStatusBody').addEventListener('click', e => { const b = e.target.closest('[data-sb-act]'); if (!b) return; const [k, id] = b.getAttribute('data-sb-act').split('|'); out.pullOne(k, id); });
+    $('sbIdxBtn').addEventListener('click', async () => { try { await navigator.clipboard.writeText(INDEX_SQL); deferredUi('Index SQL copied - paste it in Supabase → SQL Editor and click Run.'); } catch (e) { deferredUi('Copy failed.'); } });
+  }
+
   // ---- full two-way sync ------------------------------------------------------------------------
   let syncing = false, again = false;
   out.syncAll = async function (manual) {
@@ -10014,7 +10180,8 @@ const SB = (function () {
     const btn = document.getElementById('sbSyncBtn'); if (btn) btn.disabled = true;
     try {
       msg('Syncing with the cloud…');
-      const cr = await client.from('biometric_batches').select('id,file_name,punches,staff,min_ts,max_ts,uploaded_at').limit(10000);
+      const smart = smartOn();
+      const cr = smart ? await listCloudBatches('biometric_batches', BIO_COLS, 'uploaded_at') : await client.from('biometric_batches').select('id,file_name,punches,staff,min_ts,max_ts,uploaded_at').limit(10000);
       if (cr.error) throw fail('Could not read the cloud history', cr.error);
       const cloud = new Map(cr.data.map(b => [b.id, b]));
       const pushedSet = loadPushed();
@@ -10036,13 +10203,32 @@ const SB = (function () {
         await pushBatch(newId, meta, punches);
         pushedSet.add(newId); savePushed(pushedSet); pushed++;
       }
-      for (const cb of cr.data) {
-        if (groups.has(cb.id)) continue;
-        await pullBatch(cb); pushedSet.add(cb.id); pulled++;
+      if (smart) {
+        const cutoff = monthsCutoff(SMART_MONTHS), ver = loadVer(), status = [];
+        for (const cb of cr.data) {
+          const mk = bioMarker(cb), key = 'b:' + cb.id, recent = isRecent(bioEnd(cb), cutoff);
+          let state = 'synced';
+          if (groups.has(cb.id)) {                                         // already stored in this browser: never downloaded again unless the cloud copy changed
+            if (!ver[key]) ver[key] = mk;                                  // stored before markers existed: adopt the current cloud marker
+            else if (ver[key] !== mk) {
+              if (recent) { await _origDelete(cb.id); await pullBatch(cb); ver[key] = mk; pulled++; }
+              else state = 'update';
+            }
+          } else if (recent) { await pullBatch(cb); ver[key] = mk; pushedSet.add(cb.id); pulled++; }
+          else state = 'older';
+          status.push(bioRow(cb, state));
+        }
+        saveVer(ver); out.status.bio = status; out.cloud.bio = new Map(cr.data.map(b => [b.id, b]));
+      } else {
+        for (const cb of cr.data) {
+          if (groups.has(cb.id)) continue;
+          await pullBatch(cb); pushedSet.add(cb.id); pulled++;
+        }
       }
       savePushed(pushedSet);
+      deferredUi();
       BVH.version++;
-      msg(`Cloud sync complete — ${pushed} upload${pushed === 1 ? '' : 's'} sent, ${pulled} downloaded${removed ? `, ${removed} removed (deleted on another device)` : ''}. Last sync ${new Date().toLocaleTimeString()}.`, 'ok');
+      msg(`Cloud sync complete — ${pushed} upload${pushed === 1 ? '' : 's'} sent, ${pulled} downloaded${removed ? `, ${removed} removed (deleted on another device)` : ''}${smart && out.status.bio.some(r => r.state === 'older') ? `, ${out.status.bio.filter(r => r.state === 'older').length} older upload(s) left in the cloud` : ''}. Last sync ${new Date().toLocaleTimeString()}.`, 'ok');
       try { await bvhRefreshCard(); } catch (e) {}
       try { await utbRefreshInfo(); } catch (e) {}
     } catch (e) {
@@ -10115,6 +10301,19 @@ const SB = (function () {
     const pill = document.querySelector('#bvhCard .bvh-pill'); if (pill) pill.textContent = 'cloud + this browser';
     const ob = document.getElementById('sbOtSyncBtn'); if (ob) { ob.style.display = ''; if (!ob.__wired) { ob.__wired = true; ob.addEventListener('click', () => out.syncOt()); } }
     const ab = document.getElementById('sbAttSyncBtn'); if (ab) { ab.style.display = ''; if (!ab.__wired) { ab.__wired = true; ab.addEventListener('click', () => out.syncAtt()); } }
+    if (localStorage.getItem(LS_SMART) === null) {          // not chosen yet: only a brand-new, empty browser is asked; existing browsers keep the original behaviour
+      try {
+        const db0 = await bvhOpen();
+        const nb = await bvhReq(db0.transaction('batches').objectStore('batches').count());
+        const no = (await idbGetAllBatches()).length;
+        if (nb === 0 && no === 0) {
+          const yes = window.confirm('This browser has no saved data yet.\n\nOK = download only the latest 2 months now (much faster). Older months stay in the cloud and can be downloaded any time from "Batch sync status" in the Biometric tab.\n\nCancel = download everything now (the original behaviour).');
+          localStorage.setItem(LS_SMART, yes ? '1' : '0');
+        }
+      } catch (e) { console.warn(e); }
+    }
+    wireSmartUi();
+    const smEl = document.getElementById('sbSmart'); if (smEl) smEl.checked = smartOn();
     await out.syncAll();
     await out.syncOt();
     await out.syncAtt();
@@ -10211,12 +10410,29 @@ const SB = (function () {
     await idbTxDone(tx);
   }
   async function pullOtBatch(cb) {
-    const recs = [];
-    for (let from = 0; ; from += SB_CONFIG.chunk) {
-      const r = await client.from('ot_history_records').select('*').eq('batch_id', cb.id).order('id').range(from, from + SB_CONFIG.chunk - 1);
-      if (r.error) throw fail('Could not download OT records', r.error);
-      r.data.forEach(x => recs.push(otRecFromCloud(x, cb.id)));
-      if (r.data.length < SB_CONFIG.chunk) break;
+    // Keyset paging (WHERE id > last ORDER BY id LIMIT n) instead of OFFSET pages: every page costs the same however deep it is,
+    // so a big batch no longer runs into the database statement timeout. A failed or timed-out page is retried with a back-off
+    // and a smaller page size before the download gives up.
+    const recs = []; let page = SB_CONFIG.chunk, last = null;
+    for (;;) {
+      let data = null, lastErr = null;
+      for (let a = 0; a < 5 && data === null; a++) {
+        let q = client.from('ot_history_records').select('*').eq('batch_id', cb.id);
+        if (last !== null) q = q.gt('id', last);
+        const r = await q.order('id').limit(page);
+        if (!r.error) { data = r.data; break; }
+        lastErr = r.error; page = Math.max(100, Math.floor(page / 2));
+        await new Promise(res => setTimeout(res, 500 * Math.pow(2, a)));
+      }
+      if (data === null) {
+        const m = String((lastErr && lastErr.message) || lastErr || '');
+        throw fail('Could not download OT records', /timeout|57014|canceling statement/i.test(m) ? { message: m + ' - the database is too slow for this batch. Run the optional index SQL once (Biometric tab > Batch sync status > Copy optional index SQL), then sync again.' } : lastErr);
+      }
+      data.forEach(x => recs.push(otRecFromCloud(x, cb.id)));
+      if (!data.length) break;
+      last = data[data.length - 1].id;
+      if (last === undefined || last === null) throw fail('Could not download OT records', { message: 'records have no id' });
+      if (data.length < page) break;
     }
     await _origOtSave({ batchId: cb.id, label: cb.label, period: cb.period, employeeCount: cb.employee_count, dayCount: cb.day_count,
       recordCount: recs.length, savedAt: Date.parse(cb.saved_at), sourceFileName: cb.source_file_name || '' }, recs);
@@ -10231,7 +10447,8 @@ const SB = (function () {
     const btn = document.getElementById('sbOtSyncBtn'); if (btn) btn.disabled = true;
     try {
       otMsg('Syncing OT history with the cloud…');
-      const cr = await client.from('ot_history_batches').select('id,label,period,employee_count,day_count,record_count,source_file_name,saved_at').limit(10000);
+      const smart = smartOn();
+      const cr = smart ? await listCloudBatches('ot_history_batches', OT_COLS, 'saved_at') : await client.from('ot_history_batches').select('id,label,period,employee_count,day_count,record_count,source_file_name,saved_at').limit(10000);
       if (cr.error) throw fail('Could not read the cloud OT history', cr.error);
       const cloud = new Map(cr.data.map(b => [b.id, b]));
       const pushedSet = loadOtPushed();
@@ -10249,13 +10466,32 @@ const SB = (function () {
         await pushOtBatch(newId, lb, recs);
         pushedSet.add(newId); saveOtPushed(pushedSet); pushed++;
       }
-      for (const cb of cr.data) {
-        if (localIds.has(cb.id)) continue;
-        await pullOtBatch(cb); pushedSet.add(cb.id); pulled++;
+      if (smart) {
+        const cutoff = monthsCutoff(SMART_MONTHS), ver = loadVer(), status = [];
+        for (const cb of cr.data) {
+          const mk = otMarker(cb), key = 'o:' + cb.id, recent = isRecent(otEnd(cb), cutoff);
+          let state = 'synced';
+          if (localIds.has(cb.id)) {
+            if (!ver[key]) ver[key] = mk;
+            else if (ver[key] !== mk) {
+              if (recent) { await _origOtDelete(cb.id); await pullOtBatch(cb); ver[key] = mk; pulled++; }
+              else state = 'update';
+            }
+          } else if (recent) { await pullOtBatch(cb); ver[key] = mk; pushedSet.add(cb.id); pulled++; }
+          else state = 'older';
+          status.push(otRow(cb, state));
+        }
+        saveVer(ver); out.status.ot = status; out.cloud.ot = new Map(cr.data.map(b => [b.id, b]));
+      } else {
+        for (const cb of cr.data) {
+          if (localIds.has(cb.id)) continue;
+          await pullOtBatch(cb); pushedSet.add(cb.id); pulled++;
+        }
       }
       saveOtPushed(pushedSet);
+      deferredUi();
       await refreshOtHistoryCache();
-      otMsg(`OT history synced — ${pushed} batch${pushed === 1 ? '' : 'es'} sent, ${pulled} downloaded${removed ? `, ${removed} removed (deleted on another device)` : ''}. ${new Date().toLocaleTimeString()}`, 'ok');
+      otMsg(`OT history synced — ${pushed} batch${pushed === 1 ? '' : 'es'} sent, ${pulled} downloaded${removed ? `, ${removed} removed (deleted on another device)` : ''}${smart && out.status.ot.some(r => r.state === 'older') ? `, ${out.status.ot.filter(r => r.state === 'older').length} older batch(es) left in the cloud` : ''}. ${new Date().toLocaleTimeString()}`, 'ok');
     } catch (e) {
       console.error(e);
       otMsg('OT history sync failed: ' + e.message + ' — your saved batches are safe in this browser; press “Sync OT history” to retry.', 'error');

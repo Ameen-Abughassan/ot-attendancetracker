@@ -3837,9 +3837,14 @@ function runAnalysis() {
         }
       }
 
+      // RULE: no valid biometric = no OT. Whatever rule was (or was not) applied above, a day without a valid
+      // biometric record never pays OT, so the roster's own recorded OT is not passed through "as recorded".
+      // (A valid punch found later in the Biometric Validation tab re-runs this day with that punch, see below.)
+      let zeroedNoBio = false;
+      if (noBiometricForDay && correctedMin !== null && correctedMin > 0) { correctedMin = 0; zeroedNoBio = true; }
       // "No biometric" is computed once above (noBiometricForDay), for every
       // row+day regardless of which correction rule (if any) applied.
-      const corr = { minutes: correctedMin, changed, rule: ruleApplied, noBiometric: noBiometricForDay };
+      const corr = { minutes: correctedMin, changed: changed || zeroedNoBio, rule: ruleApplied, noBiometric: noBiometricForDay };
       let mismatchRec = null, skipRec = null;
 
       if (changed) {
@@ -5835,6 +5840,35 @@ let otHistoryMap = new Map();
 let otHistoryEmployeeKeys = new Set();
 let otHistoryEmployeeNames = new Map();
 
+// Saved history written BEFORE the SA / Station Agent date rule (10:30 up to 31 Mar 2026, 9:30 from 1 Apr 2026)
+// still holds OT worked out with 9:30. For those records an extended-duty OT can never be more than
+// (dispatched duration - 10:30), so cap it here, in memory only. A correctly saved record already satisfies
+// this cap and is never changed. Re-running and re-saving the month replaces the saved values for good.
+function otHistorySaFix(r) {
+  try {
+    if (!r || !(r.minutes > 0)) return;
+    // Rule: no valid biometric = no OT. Records saved earlier with that flag still carry the roster's OT.
+    if (r.noBiometric) { r.minutesOriginal = r.minutes; r.minutes = 0; return; }
+    if (normalizeRuleLabel(r.rule) !== 'Extended Duty') return;
+    const key = resolvePositionKey(r.position);
+    if (!POSITION_FIXED_HISTORY[key]) return;
+    let ms = rosterDateToMs(r.dateVal);
+    if (ms === null && typeof r.empDateKey === 'string') { const t = Number(r.empDateKey.split('||')[1]); if (isFinite(t)) ms = t; }
+    if (ms === null) return;
+    const fixed = getFixedMinutesForPosition(r.position, ms);
+    if (fixed === getFixedMinutesForPosition(r.position, Date.UTC(2100, 0, 1))) return;   // current hours apply: nothing to fix
+    let d = parseDispatchedDuration(r.dispatched);
+    if ((d === null || d === undefined || !isFinite(d)) && typeof r.dispatched === 'string') {
+      // saved history may hold the duty as "CODE · 05:00 - 15:30" or "CODE 05:00 - 15:30" (line break replaced)
+      const m = r.dispatched.match(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/);
+      if (m) d = ((((+m[3]) * 60 + (+m[4])) - ((+m[1]) * 60 + (+m[2]))) % 1440 + 1440) % 1440;
+    }
+    if (d === null || d === undefined || !isFinite(d)) return;
+    let cap = Math.max(0, d - fixed);
+    if (cap < MIN_OT_MIN) cap = 0;
+    if (r.minutes > cap) { r.minutesOriginal = r.minutes; r.minutes = cap; }
+  } catch (e) { /* leave the record as saved */ }
+}
 async function refreshOtHistoryCache() {
   try { return await _refreshOtHistoryCacheInner(); } finally { try { ccRefresh(); } catch (e) {} }
 }
@@ -5857,6 +5891,7 @@ async function _refreshOtHistoryCacheInner() {
   otHistoryEmployeeKeys = new Set();
   otHistoryEmployeeNames = new Map();
   records.forEach(r => {
+    otHistorySaFix(r);
     otHistoryMap.set(r.empDateKey, r);       // later-saved batches overwrite earlier ones for the same employee+date
     otHistoryEmployeeKeys.add(r.empKey);
     if (!otHistoryEmployeeNames.has(r.empKey)) otHistoryEmployeeNames.set(r.empKey, { sap: r.sap, name: r.name });

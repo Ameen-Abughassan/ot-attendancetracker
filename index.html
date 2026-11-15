@@ -10751,6 +10751,8 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
     extraAccounts: [
       { user: 'hr_advisor', name: 'HR Advisor', role: 'HR Advisor', roleKey: 'hr_advisor', iter: 600000, salt: 'ppuenfOjN7buMmnCm+pHBQ==', hash: 'LFfnxgBCaiQIfs39QRigvAx4vn1G/MJnOT3qZKKFOZw=' },
     ],
+    // Friendly login names: type the username (any letter case) instead of the Supabase account's email.
+    userAliases: { 'rp_team': { email: 'soom.mysmail47@gmail.com', display: 'RP_TEAM' } },
     hrAdvisorEmail: 'hr_advisor@flow.local',   // Supabase sign-in email behind the username "hr_advisor" (create this user in Supabase)
     interimAccount: { user: 'admin', name: 'Admin', iter: 600000, salt: 'MplHPIA9BaN46JHhoXl1kA==', hash: 'yKIetmQz6P99rvBQmJT4hQllSUrd/29eAhqIOnWMbwo=' },
   };
@@ -10885,7 +10887,8 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
   }
   async function sbLogin(u, p) {
     let res;
-    try { res = await window.SB.client.auth.signInWithPassword({ email: (/^hr_advisor$/i.test(u) && AUTH_CONFIG.hrAdvisorEmail) ? AUTH_CONFIG.hrAdvisorEmail : u, password: p }); }
+    const alias = (AUTH_CONFIG.userAliases || {})[String(u).trim().toLowerCase()] || null;
+    try { res = await window.SB.client.auth.signInWithPassword({ email: alias ? alias.email : (/^hr_advisor$/i.test(u) && AUTH_CONFIG.hrAdvisorEmail) ? AUTH_CONFIG.hrAdvisorEmail : u, password: p }); }
     catch (e) { throw new AuthError('Cannot reach the sign-in service. Check your connection and try again.'); }
     if (res.error) {
       const st = res.error.status;
@@ -10895,7 +10898,7 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
       throw new AuthError(res.error.message || 'The sign-in service returned an error. Please try again.');
     }
     const user = res.data.user || {}, um = user.user_metadata || {}, am = user.app_metadata || {};
-    return { name: um.full_name || um.name || user.email || u, role: am.role || 'Signed in' };
+    return { name: um.full_name || um.name || (alias && alias.display) || user.email || u, role: am.role || 'Signed in' };
   }
   async function localSetup(u, p, c) {
     if (!cryptoOk()) throw new AuthError('Secure hashing is unavailable in this browser context (a secure https:// or file:// page is required). Use the server sign-in instead.');

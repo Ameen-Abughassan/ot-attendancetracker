@@ -11162,12 +11162,19 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
   }
   function kpi(k, v, s, cls) { return '<div class="toil-kpi ' + (cls || '') + '"><div class="k">' + k + '</div><div class="v">' + v + '</div><div class="s">' + (s || '') + '</div></div>'; }
   function renderKpis(rows) {
+    // Same basis as the balance table: "Total accrued" and "Total used" include what the uploaded Excel already carried
+    // plus what was recorded in the app since opening. The opening figure (the file's Remaining TOIL) is shown as the
+    // brought-forward note on the Outstanding card, not added again.
     const sum = k => r4(rows.reduce((n, b) => n + b[k], 0)), yl = yearLabel();
     const avail = rows.filter(b => b.bal > 0).length, nil = rows.filter(b => b.bal === 0).length, neg = rows.filter(b => b.bal < 0).length;
-    $('toilKpis').innerHTML = kpi('Opening balance \u00b7 ' + yl, fmt(sum('open')) + ' <small>d</small>', 'uploaded Excel \u00b7 never overwritten') +
-      kpi('Accumulated TOIL', '+' + fmt(sum('accr')) + ' <small>d</small>', 'accruals recorded since opening', 'pos') +
-      kpi('Consumed TOIL', '\u2212' + fmt(sum('cons')) + ' <small>d</small>', 'consumption recorded since opening', 'neg') +
-      kpi('Outstanding balance', fmt(sum('bal')) + ' <small>d</small>', rows.length.toLocaleString() + ' staff \u00b7 ' + avail + ' available \u00b7 ' + nil + ' nil' + (neg ? ' \u00b7 <b style="color:#b91c1c">' + neg + ' overdrawn</b>' : ''), 'main');
+    const totAcc = sum('tot'), totUsed = sum('used'), bal = sum('bal'), bf = sum('open');
+    const off = rows.filter(b => Math.abs(b.open - (b.fileAcc - b.fileUsed)) > 0.0001).length, gap = r4(bal - (totAcc - totUsed));
+    $('toilKpis').innerHTML =
+      kpi('Total accrued TOIL', '+' + fmt(totAcc) + ' <small>d</small>', fmt(sum('fileAcc')) + ' d in the uploaded Excel \u00b7 ' + fmt(sum('accr')) + ' d recorded since opening', 'pos') +
+      kpi('Total used TOIL', '\u2212' + fmt(totUsed) + ' <small>d</small>', fmt(sum('fileUsed')) + ' d in the uploaded Excel \u00b7 ' + fmt(sum('cons')) + ' d recorded since opening', 'neg') +
+      kpi('Outstanding balance', fmt(bal) + ' <small>d</small>', rows.length.toLocaleString() + ' staff \u00b7 ' + avail + ' available \u00b7 ' + nil + ' nil' + (neg ? ' \u00b7 <b style="color:#b91c1c">' + neg + ' overdrawn</b>' : '') +
+        '<br>Brought forward (' + (yearLabel() === 'all years' ? 'opening balances' : esc(yl) + ' opening') + '): ' + fmt(bf) + ' d' +
+        (off && Math.abs(gap) > 0.0001 ? '<br><span style="color:#b45309">' + off + ' staff: the file\u2019s Remaining differs from accrued \u2212 used (' + (gap > 0 ? '+' : '\u2212') + fmt(Math.abs(gap)) + ' d), so the cards do not add up exactly.</span>' : ''), 'main');
   }
   function renderAll() { renderBanner(); const rows = rowsAll(); renderKpis(rows); renderBalances(rows); renderHistory(); renderImports(); }
 

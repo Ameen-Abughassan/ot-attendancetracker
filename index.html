@@ -2543,8 +2543,38 @@ const POSITION_FIXED_HISTORY = {
   'STATION AGENT': [{ before: Date.UTC(2026, 3, 1), min: 10*60+30 }],
 };
 // dateMs = the duty date (UTC ms). Without a date the CURRENT value is returned (the previous behaviour).
+// Resolve a roster position text to a key that exists in the hours tables. Tries the bracketed code first
+// (\"Station Agent (SA)\" -> SA), then the text before the bracket (\"Station Agent (Hybrid)\" -> STATION AGENT),
+// then the whole text, so a different bracket text can no longer drop an SA / Station Agent onto the 8:30 default.
+function resolvePositionKey(raw) {
+  const first = normalizePosition(raw);
+  const known = k => !!k && (POSITION_FIXED_MIN[k] !== undefined || POSITION_FIXED_HISTORY[k] !== undefined);
+  if (known(first)) return first;
+  const s = String(raw || '').trim().toUpperCase();
+  const before = s.replace(/\([^)]*\)\s*$/, '').replace(/&/g, 'AND').replace(/\s+/g, ' ').trim();
+  if (known(before)) return before;
+  const whole = s.replace(/&/g, 'AND').replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (known(whole)) return whole;
+  return first;
+}
+// Roster date cell -> UTC ms. parseRosterDate only accepts exact DD.MM.YYYY text; a header that is an Excel serial,
+// a Date, uses / or -, or carries extra text (e.g. a weekday) used to come back null, which silently applied the
+// CURRENT (9:30) Station Agent hours to January duties. This accepts all of those.
+function rosterDateToMs(v) {
+  let ms = parseRosterDate(v);
+  if (ms !== null) return ms;
+  try { ms = utbDateToMs(v); } catch (e) { ms = null; }
+  if (typeof ms === 'number' && isFinite(ms)) return ms;
+  if (typeof v === 'string') {
+    const m = v.match(/(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})/);
+    if (m) return Date.UTC(+m[3], +m[2] - 1, +m[1]);
+    const iso = v.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (iso) return Date.UTC(+iso[1], +iso[2] - 1, +iso[3]);
+  }
+  return null;
+}
 function getFixedMinutesForPosition(raw, dateMs) {
-  const key = normalizePosition(raw);
+  const key = resolvePositionKey(raw);
   if (key && typeof dateMs === 'number' && isFinite(dateMs)) {
     const hist = POSITION_FIXED_HISTORY[key];
     if (hist) for (const e of hist) if (dateMs < e.before) return e.min;
@@ -3742,7 +3772,7 @@ function runAnalysis() {
         // treated as extension duty (paid as "Extended Duty") ONLY when the dispatched duty is longer than the
         // position's normal (fixed) working hours. Like Rule 1, the extension is what is worked beyond the
         // fixed hours — capped at the dispatched duration. A duty not longer than the fixed hours is no extension.
-        const wrFixedMin = getFixedMinutesForPosition(position, parseRosterDate(block.dateVal));
+        const wrFixedMin = getFixedMinutesForPosition(position, rosterDateToMs(block.dateVal));
         const wrExtensionDuty = !hasRD && planned === 'WR' && dispatchedDurMin !== null && dispatchedDurMin > wrFixedMin;
         if (!hasRD && !wrExtensionDuty) {
           reasonSkip = 'No RD/RDOT/OT code in Dispatched';
@@ -3799,7 +3829,7 @@ function runAnalysis() {
           reasonSkip = implausibleWorking ? 'Working Hrs > 14:00 — treated as invalid biometric' : 'Working Hrs unavailable (N/A)';
         } else {
           const cappedWorking = Math.min(workingMin, dispatchedDurMin);
-          let calc = Math.max(0, cappedWorking - getFixedMinutesForPosition(position, parseRosterDate(block.dateVal)));
+          let calc = Math.max(0, cappedWorking - getFixedMinutesForPosition(position, rosterDateToMs(block.dateVal)));
           if (calc < MIN_OT_MIN) calc = 0;
           correctedMin = calc;
           ruleApplied = 'Extended dispatch';
@@ -3832,7 +3862,7 @@ function runAnalysis() {
         // visible trace of why. Now anything reasonSkip was set for shows
         // up here, tagged with which rule it would have applied under.
         const ruleContext = eidActive ? holidayLabel
-          : isWrOverrideCase ? ((planned === 'WR' && !hasRD && dispatchedDurMin !== null && dispatchedDurMin > getFixedMinutesForPosition(position, parseRosterDate(block.dateVal))) ? 'Extended dispatch' : 'WR override')
+          : isWrOverrideCase ? ((planned === 'WR' && !hasRD && dispatchedDurMin !== null && dispatchedDurMin > getFixedMinutesForPosition(position, rosterDateToMs(block.dateVal))) ? 'Extended dispatch' : 'WR override')
           : ramadanExtended ? 'Ramadan (IS)'
           : 'Extended dispatch';
         skipRec = { sap, name, position, date: block.dateVal, reason: reasonSkip, rule: ruleContext };

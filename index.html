@@ -726,7 +726,15 @@ body.auth-locked #authScreen{display:flex;}
   .auth-hero p{font-size:14px;}
 }
 
-/* ---- HR Advisor role: only Biometric Validation + Under Time are reachable ---- */
+/* ---- HR Advisor role: only Under Time is reachable (Night Shift, Maintenance OT and Biometric Validation removed) ---- */
+body.role-hr #tabMaintenance,body.role-hr #tabNight,body.role-hr #nightPanel,
+body.role-hr .quick-tile[data-goto="tabNight"]{display:none !important;}
+/* HR Advisor is view-only on Biometric Validation and TOIL: hide everything that uploads, saves, restores or deletes */
+body.role-hr #bvSettingsCard,body.role-hr #bvUploadActions,body.role-hr #bvhImportBtn,body.role-hr #bvhClear,body.role-hr #sbIdxBtn,
+body.role-hr #bvhCard .bvh-head>.bvh-auto,body.role-hr #bvhBatches [data-del],
+body.role-hr #toilAdd,body.role-hr #toilSubImp,body.role-hr #toilPanel .toil-subtabs [data-sub="imp"],
+body.role-hr #toilPanel [data-add],body.role-hr #toilPanel [data-title],body.role-hr #toilPanel [data-void],
+body.role-hr #toilPanel [data-pdel],body.role-hr #toilPanel [data-pdelimp],body.role-hr #toilPanel [data-pdelimpall]{display:none !important;}
 body.role-hr #tabCommand,body.role-hr #tabValidator,body.role-hr #tabPayslip,body.role-hr #tabClaim,body.role-hr #tabFatigue,
 body.role-hr #ccPanel,body.role-hr #validatorPanel,body.role-hr #payslipPanel,body.role-hr #claimPanel,body.role-hr #fatiguePanel,
 body.role-hr .quick-tile[data-goto="tabValidator"],body.role-hr .quick-tile[data-goto="tabClaim"],body.role-hr .quick-tile[data-goto="tabPayslip"]{display:none !important;}
@@ -2299,7 +2307,7 @@ main>.app-tabs>*{flex-shrink:0 !important;}
       </div>
     </details>
 
-    <details class="payslip-table-card bv-details-card">
+    <details class="payslip-table-card bv-details-card" id="bvSettingsCard">
       <summary>Processing settings</summary>
       <div class="payslip-controls bv-settings">
         <div class="control-field"><label for="bvSameGap">Same-shift max gap (hours)</label><input type="number" id="bvSameGap" value="4" min="0" step="0.5"></div>
@@ -2316,7 +2324,7 @@ main>.app-tabs>*{flex-shrink:0 !important;}
       <div class="bv-how" style="padding-top:0">Changes apply the next time you click “Process Biometric Report”.</div>
     </details>
 
-    <div class="upload-actions" style="margin-bottom:18px">
+    <div class="upload-actions" id="bvUploadActions" style="margin-bottom:18px">
       <div class="dropzone" id="bvDropzone">
         <div class="icon">⇧</div>
         <h2>Drag &amp; drop the biometric report here</h2>
@@ -3057,7 +3065,8 @@ const bvhDone = tx => new Promise((res, rej) => { tx.oncomplete = () => res(); t
 const bvhKey = (id, ts, dir) => id + '|' + ts + '|' + dir;
 
 async function bvhSaveResult(res, fileName) {
-  const list = (res.punches || []).map(p => ({ id: normalizeEmployeeKey(p.id), ts: p.ts, dir: p.dir })).filter(p => p.id && p.ts !== null && (p.dir === 'E' || p.dir === 'X'));
+  if (window.OTATS_ROLE && window.OTATS_ROLE.readOnly) throw new Error('View-only access: this action is not available for your role.');
+    const list = (res.punches || []).map(p => ({ id: normalizeEmployeeKey(p.id), ts: p.ts, dir: p.dir })).filter(p => p.id && p.ts !== null && (p.dir === 'E' || p.dir === 'X'));
   if (!list.length) return { total: 0, added: 0, refreshed: 0 };
   const db = await bvhOpen();
   const before = await bvhReq(db.transaction('punches').objectStore('punches').count());
@@ -3104,7 +3113,8 @@ async function bvhStats() {
   return stats;
 }
 async function bvhDeleteBatch(batchId) {
-  const db = await bvhOpen();
+  if (window.OTATS_ROLE && window.OTATS_ROLE.readOnly) throw new Error('View-only access: this action is not available for your role.');
+    const db = await bvhOpen();
   const tx = db.transaction(['punches', 'batches'], 'readwrite');
   const ps = tx.objectStore('punches');
   const rq = ps.index('byBatch').openKeyCursor(IDBKeyRange.only(batchId));
@@ -3113,7 +3123,8 @@ async function bvhDeleteBatch(batchId) {
   await bvhDone(tx); BVH.version++;
 }
 async function bvhClear() {
-  const db = await bvhOpen();
+  if (window.OTATS_ROLE && window.OTATS_ROLE.readOnly) throw new Error('View-only access: this action is not available for your role.');
+    const db = await bvhOpen();
   const tx = db.transaction(['punches', 'batches'], 'readwrite');
   tx.objectStore('punches').clear(); tx.objectStore('batches').clear();
   await bvhDone(tx); BVH.version++;
@@ -3127,7 +3138,8 @@ async function bvhExport() {
     punches: punches.map(p => [p.id, p.ts, p.d, bIdx.has(p.b) ? bIdx.get(p.b) : -1]) };
 }
 async function bvhImport(obj) {
-  if (!obj || obj.app !== 'otats-biometric-history' || obj.v !== 1 || !Array.isArray(obj.punches) || !Array.isArray(obj.batches)) throw new Error('This is not a biometric history backup file.');
+  if (window.OTATS_ROLE && window.OTATS_ROLE.readOnly) throw new Error('View-only access: this action is not available for your role.');
+    if (!obj || obj.app !== 'otats-biometric-history' || obj.v !== 1 || !Array.isArray(obj.punches) || !Array.isArray(obj.batches)) throw new Error('This is not a biometric history backup file.');
   const db = await bvhOpen();
   const before = await bvhReq(db.transaction('punches').objectStore('punches').count());
   const tx = db.transaction(['punches', 'batches'], 'readwrite');
@@ -10198,6 +10210,7 @@ const SB = (function () {
       let pushed = 0, pulled = 0, removed = 0;
 
       for (const [bid] of groups) {
+        if (out.readOnlyOt) break;   // HR Advisor: view-only, never push local biometric batches to the cloud
         if (cloud.has(bid) && pushedSet.has(bid)) continue;                                                  // confirmed complete in the cloud
         if (!cloud.has(bid) && pushedSet.has(bid)) { await _origDelete(bid); pushedSet.delete(bid); removed++; continue; }   // removed from the cloud on another device
         // otherwise: new, restored from a backup, or an earlier upload that did not finish — (re)send it (idempotent upsert)
@@ -10744,12 +10757,12 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
 
   // ---- roles -------------------------------------------------------------------------------
   // '' = full access (Administrator and every existing role, unchanged). 'hr_advisor' = restricted.
-  const ROLE_HR = 'hr_advisor', HR_TABS = ['biometric', 'undertime', 'night'];
+  const ROLE_HR = 'hr_advisor', HR_TABS = ['biometric', 'toil', 'undertime'];
   const ALL_TABS = ['command', 'validator', 'maintenance', 'biometric', 'undertime', 'night', 'fatigue', 'payslip', 'claim', 'toil'];
   const TAB_BTN = { command: 'tabCommand', validator: 'tabValidator', maintenance: 'tabMaintenance', biometric: 'tabBiometric', undertime: 'tabUndertime', night: 'tabNight', fatigue: 'tabFatigue', payslip: 'tabPayslip', claim: 'tabClaim', toil: 'tabToil' };
   const TAB_PANEL = { command: 'ccPanel', validator: 'validatorPanel', maintenance: 'validatorPanel', biometric: 'bvPanel', undertime: 'undertimePanel', night: 'nightPanel', fatigue: 'fatiguePanel', payslip: 'payslipPanel', claim: 'claimPanel', toil: 'toilPanel' };
   const roleKeyOf = r => String(r || '').trim().toLowerCase().replace(/[\s-]+/g, '_') === ROLE_HR ? ROLE_HR : '';
-  window.OTATS_ROLE = { key: '', allowedTabs: null, defaultTab: 'command' };
+  window.OTATS_ROLE = { key: '', allowedTabs: null, defaultTab: 'command', readOnly: false };
 
   const LS_ACCOUNT = 'otats.localAccess.v1', LS_LOCK = 'otats.authLock.v1';
   const SS_SESSION = 'otats.session.v1', SS_TOKEN = 'otats.token.v1';
@@ -10912,7 +10925,8 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
     document.body.classList.toggle('role-hr', hr);
     window.OTATS_ROLE.key = rk;
     window.OTATS_ROLE.allowedTabs = hr ? HR_TABS.slice() : null;
-    window.OTATS_ROLE.defaultTab = hr ? 'biometric' : 'command';
+    window.OTATS_ROLE.defaultTab = hr ? 'undertime' : 'command';
+    window.OTATS_ROLE.readOnly = hr;   // HR Advisor: Biometric Validation and TOIL are view-only
     if (!hr) return;
     ALL_TABS.filter(k => !HR_TABS.includes(k)).forEach(k => {
       const b = $(TAB_BTN[k]), pn = $(TAB_PANEL[k]);
@@ -10920,7 +10934,7 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
       if (pn) { pn.setAttribute('aria-hidden', 'true'); pn.setAttribute('inert', ''); pn.classList.remove('active'); }
     });
     document.querySelectorAll('.nav-grp').forEach(g => { if (/^main$/i.test(g.textContent.trim())) g.style.display = 'none'; });
-    if (typeof window.switchTab === 'function') window.switchTab('biometric');
+    if (typeof window.switchTab === 'function') window.switchTab('undertime');
   }
   function unlock(user) {
     const rk = user.roleKey || roleKeyOf(user.role);
@@ -11086,7 +11100,7 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
 
   const sb = () => (window.SB && window.SB.enabled && window.SB.client) || null;
   const planner = () => { const u = window.OTATS_AUTH && window.OTATS_AUTH.getUser && window.OTATS_AUTH.getUser(); return (u && u.name) || S.email || ''; };
-  const canWrite = () => S.loaded && !S.issue && !!planner();
+  const canWrite = () => S.loaded && !S.issue && !!planner() && !(window.OTATS_ROLE && window.OTATS_ROLE.readOnly);   // HR Advisor: view-only
   const isMissing = e => e && (e.code === '42P01' || e.code === 'PGRST205' || /relation .* does not exist|schema cache|Could not find the table/i.test(e.message || ''));
   const isOldSchema = e => e && (e.code === '42703' || e.code === 'PGRST204' || /toil_year|holiday/i.test(e.message || '') && /column|schema cache/i.test(e.message || ''));
   const years = () => [...new Set([...S.openings.values()].map(tyear))].sort((a, b) => b - a);
@@ -11320,6 +11334,7 @@ window.SB = SB;   // a top-level const is not a window property; the sign-in lay
       ' <span class="sub">\u00b7 by ' + esc(t.changed_by || '') + ', ' + stamp(t.created_at) + '</span></div>').join('') + '</div>';
   }
   function openTitleForm(staffId) {
+    if (!canWrite()) return;
     const b = compute('').get(staffId); if (!b) return;
     if (!S.titlesOk) {
       const m0 = modal('<div class="toil-dh"><h3>Change job title</h3><button type="button" class="btn-secondary" data-close>Close</button></div>' +

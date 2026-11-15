@@ -10384,10 +10384,36 @@ const SB = (function () {
     return { batchId, empDateKey: x.emp_key + '||' + ms, empKey: x.emp_key, sap: (/^[1-9]\d{0,14}$/.test(String(x.sap)) ? Number(x.sap) : x.sap), name: x.name, dateVal: x.date_val || rosterDay(ms),
       minutes: x.minutes, rule: x.rule, religion: x.religion || '', line: x.line || '', position: x.position || '', noBiometric: !!x.no_biometric, dispatched: x.dispatched || '' };
   }
+  async function localOtCount(id) {
+    const db = await openOtHistoryDb();
+    return idbReq(db.transaction('records', 'readonly').objectStore('records').index('batchId').count(IDBKeyRange.only(id)));
+  }
+  const LS_OT_VERIFIED = 'otats.sb.otVerified.v1';
+  const loadOtVerified = () => { try { return new Set(JSON.parse(localStorage.getItem(LS_OT_VERIFIED) || '[]')); } catch (e) { return new Set(); } };
+  const saveOtVerified = set => { try { localStorage.setItem(LS_OT_VERIFIED, JSON.stringify([...set])); } catch (e) {} };
+  // Once per batch per browser: compare this browser's copy with the cloud's record count and repair whichever side is short.
+  //  - the cloud is missing records this browser has      -> upload them again (idempotent)
+  //  - this browser has a short copy, the cloud is whole  -> download it again
+  //  - both sides are short                               -> report it, change nothing
+  async function verifyOtBatch(id, lb, cloudMeta) {
+    const local = await localOtCount(id); if (!local) return 'skip';
+    const c = await client.from('ot_history_records').select('id', { count: 'exact', head: true }).eq('batch_id', id);
+    if (c.error || typeof c.count !== 'number') return 'skip';             // could not check right now: try again next sync
+    const inCloud = c.count, expected = Number(cloudMeta.record_count) || 0, whole = n => n >= Math.floor(expected * 0.98);
+    if (inCloud < Math.floor(local * 0.98)) { await pushOtBatch(id, lb, await localOtRecords(id)); return 'repushed'; }
+    if (expected > 0 && !whole(local)) {
+      if (whole(inCloud)) { await _origOtDelete(id); await pullOtBatch(cloudMeta); return 'repulled'; }
+      return 'short';
+    }
+    return 'ok';
+  }
   async function pushOtBatch(id, meta, records) {
+    // The batch row is written FIRST with record_count = 0, which marks it "still uploading" so other devices skip it instead of
+    // saving an empty copy. The real count is written only after every record has reached the cloud and the cloud row count
+    // has been checked, so an interrupted upload (timeout, lost connection, closed tab) can never look like a finished batch.
     let r = await client.from('ot_history_batches').upsert({
       id, label: meta.label || 'OT batch', period: meta.period || null,
-      employee_count: meta.employeeCount ?? null, day_count: meta.dayCount ?? null, record_count: records.length,
+      employee_count: meta.employeeCount ?? null, day_count: meta.dayCount ?? null, record_count: 0,
       source_file_name: meta.sourceFileName || null, saved_at: new Date(meta.savedAt || Date.now()).toISOString(),
     }, { onConflict: 'id' });
     if (r.error) throw fail('Could not save the OT batch', r.error);
@@ -10399,6 +10425,10 @@ const SB = (function () {
       if (r.error) throw fail('Could not save OT records', r.error);
       if (rows.length > SB_CONFIG.chunk) otMsg(`Uploading OT history… ${Math.min(i + SB_CONFIG.chunk, rows.length).toLocaleString()} / ${rows.length.toLocaleString()}`);
     }
+    const cnt = await client.from('ot_history_records').select('id', { count: 'exact', head: true }).eq('batch_id', id);
+    if (!cnt.error && typeof cnt.count === 'number' && cnt.count < rows.length) throw fail('Could not save OT records', { message: `only ${cnt.count.toLocaleString()} of ${rows.length.toLocaleString()} records reached the cloud` });
+    r = await client.from('ot_history_batches').update({ record_count: rows.length }).eq('id', id);
+    if (r.error) throw fail('Could not finish the OT batch', r.error);
     return { sent: rows.length, skipped };
   }
   async function localOtRecords(id) {
@@ -10439,6 +10469,13 @@ const SB = (function () {
       if (last === undefined || last === null) throw fail('Could not download OT records', { message: 'records have no id' });
       if (data.length < page) break;
     }
+    // A batch whose records are missing (an interrupted upload) must never be saved here as if it were complete.
+    const expected = Number(cb.record_count) || 0;
+    if (recs.length === 0 || recs.length < Math.floor(expected * 0.98)) {
+      const e = new Error(`${String(cb.label || 'OT batch').replace(/^\s*\[Maintenance\]\s*/i, '')}${cb.period ? ' (' + cb.period + ')' : ''}: ` +
+        (expected === 0 ? 'still being uploaded, or its upload was interrupted' : `the cloud holds only ${recs.length.toLocaleString()} of ${expected.toLocaleString()} records`));
+      e.otIncomplete = true; throw e;
+    }
     await _origOtSave({ batchId: cb.id, label: cb.label, period: cb.period, employeeCount: cb.employee_count, dayCount: cb.day_count,
       recordCount: recs.length, savedAt: Date.parse(cb.saved_at), sourceFileName: cb.source_file_name || '' }, recs);
     return recs.length;
@@ -10457,19 +10494,35 @@ const SB = (function () {
       if (cr.error) throw fail('Could not read the cloud OT history', cr.error);
       const cloud = new Map(cr.data.map(b => [b.id, b]));
       const pushedSet = loadOtPushed();
-      const localBatches = await idbGetAllBatches();
+      let localBatches = await idbGetAllBatches();
+      let pushed = 0, pulled = 0, removed = 0, repaired = 0; const problems = [];
+      // A local batch with NO records is never real data - it is the leftover of an interrupted upload/download. Drop it
+      // (nothing is lost) so it can be fetched again once the cloud copy is complete.
+      for (const lb of localBatches.slice()) {
+        if (cloud.has(lb.batchId) && (await localOtCount(lb.batchId)) === 0) { await _origOtDelete(lb.batchId); pushedSet.delete(lb.batchId); localBatches = localBatches.filter(b => b.batchId !== lb.batchId); }
+      }
       const localIds = new Set(localBatches.map(b => b.batchId));
-      let pushed = 0, pulled = 0, removed = 0;
+      const verified = loadOtVerified();
       for (const lb of localBatches) {
         if (out.readOnlyOt) break;   // HR Advisor: read-only on OT history (also enforced by the database policies)
         const id = lb.batchId;
-        if (cloud.has(id) && pushedSet.has(id)) continue;                                                   // confirmed complete in the cloud
+        if (cloud.has(id) && pushedSet.has(id)) {                                                           // confirmed in the cloud - checked once per browser
+          if (!verified.has(id)) {
+            try {
+              const v = await verifyOtBatch(id, lb, cloud.get(id));
+              if (v === 'repushed') { pushed++; repaired++; } else if (v === 'repulled') { pulled++; repaired++; } else if (v === 'short') problems.push(`${lb.label || id}: this browser and the cloud both hold fewer records than expected`);
+              if (v === 'ok' || v === 'repushed' || v === 'repulled') { verified.add(id); saveOtVerified(verified); }
+            } catch (e) { console.warn('OT batch check failed', e); problems.push(`${lb.label || id}: could not be checked (${e.message})`); }
+          }
+          continue;
+        }
         if (!cloud.has(id) && pushedSet.has(id)) { await _origOtDelete(id); pushedSet.delete(id); removed++; continue; }   // deleted on another device
         const newId = isUuid(id) ? id : uuid();
         if (newId !== id) await remapOtBatch(id, newId, lb);
         const recs = await localOtRecords(newId);
+        if (!recs.length) continue;                                                                          // nothing to upload
         await pushOtBatch(newId, lb, recs);
-        pushedSet.add(newId); saveOtPushed(pushedSet); pushed++;
+        pushedSet.add(newId); verified.add(newId); saveOtVerified(verified); saveOtPushed(pushedSet); pushed++;
       }
       if (smart) {
         const cutoff = monthsCutoff(SMART_MONTHS), ver = loadVer(), status = [];
@@ -10482,7 +10535,10 @@ const SB = (function () {
               if (recent) { await _origOtDelete(cb.id); await pullOtBatch(cb); ver[key] = mk; pulled++; }
               else state = 'update';
             }
-          } else if (recent) { await pullOtBatch(cb); ver[key] = mk; pushedSet.add(cb.id); pulled++; }
+          } else if (recent) {
+            try { await pullOtBatch(cb); ver[key] = mk; pushedSet.add(cb.id); verified.add(cb.id); saveOtVerified(verified); pulled++; }
+            catch (e) { if (e && e.otIncomplete) { problems.push(e.message); state = 'older'; } else throw e; }
+          }
           else state = 'older';
           status.push(otRow(cb, state));
         }
@@ -10490,13 +10546,15 @@ const SB = (function () {
       } else {
         for (const cb of cr.data) {
           if (localIds.has(cb.id)) continue;
-          await pullOtBatch(cb); pushedSet.add(cb.id); pulled++;
+          try { await pullOtBatch(cb); pushedSet.add(cb.id); verified.add(cb.id); saveOtVerified(verified); pulled++; }
+          catch (e) { if (e && e.otIncomplete) problems.push(e.message); else throw e; }      // an incomplete cloud batch is reported, the others still download
         }
       }
       saveOtPushed(pushedSet);
       deferredUi();
       await refreshOtHistoryCache();
-      otMsg(`OT history synced — ${pushed} batch${pushed === 1 ? '' : 'es'} sent, ${pulled} downloaded${removed ? `, ${removed} removed (deleted on another device)` : ''}${smart && out.status.ot.some(r => r.state === 'older') ? `, ${out.status.ot.filter(r => r.state === 'older').length} older batch(es) left in the cloud` : ''}. ${new Date().toLocaleTimeString()}`, 'ok');
+      otMsg(`OT history synced — ${pushed} batch${pushed === 1 ? '' : 'es'} sent, ${pulled} downloaded${removed ? `, ${removed} removed (deleted on another device)` : ''}${smart && out.status.ot.some(r => r.state === 'older') ? `, ${out.status.ot.filter(r => r.state === 'older').length} older batch(es) left in the cloud` : ''}${repaired ? `, ${repaired} repaired` : ''}. ${new Date().toLocaleTimeString()}` +
+        (problems.length ? ` NOT downloaded / incomplete (${problems.length}): ${problems.join(' | ')}. Open the app on the device that saved these months once (it repairs the cloud copy automatically), then press Sync OT history again.` : ''), problems.length ? 'error' : 'ok');
     } catch (e) {
       console.error(e);
       otMsg('OT history sync failed: ' + e.message + ' — your saved batches are safe in this browser; press “Sync OT history” to retry.', 'error');

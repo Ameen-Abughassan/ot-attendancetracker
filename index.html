@@ -10113,9 +10113,30 @@ const SB = (function () {
       }
       throw fail('Could not download punches', lastErr);
     };
-    const lo = cb.min_ts ? fromCloud(cb.min_ts) : NaN, hi = cb.max_ts ? fromCloud(cb.max_ts) : NaN;
+    // The date range recorded on the upload row can be shorter than the punches really stored under it (that left every
+    // later day undownloaded). So the real first and last punch of the batch are read from the punches themselves and the
+    // wider range is used.
+    const edge = async asc => {
+      try {
+        const d = await getPage(() => client.from('biometric_punches').select('punched_at').eq('batch_id', cb.id).order('punched_at', { ascending: asc }).limit(1));
+        return d && d.length ? fromCloud(d[0].punched_at) : NaN;
+      } catch (e) { return NaN; }
+    };
+    const metaLo = cb.min_ts ? fromCloud(cb.min_ts) : NaN, metaHi = cb.max_ts ? fromCloud(cb.max_ts) : NaN;
+    const realLo = await edge(true), realHi = await edge(false);
+    const lo = Math.min(...[metaLo, realLo].filter(isFinite)), hi = Math.max(...[metaHi, realHi].filter(isFinite));
+    const fetchPlain = async () => {           // no date windows: plain paging over the whole batch (slower, but independent of any dates)
+      const all = [];
+      for (let from = 0; ; from += PAGE) {
+        const data = await getPage(() => sel().eq('batch_id', cb.id)
+          .order('punched_at').order('staff_id').order('direction').range(from, from + PAGE - 1));
+        data.forEach(x => all.push(toRow(x)));
+        if (data.length < PAGE) break;
+      }
+      return all;
+    };
     let rows = [];
-    if (isFinite(lo) && isFinite(hi)) {
+    if (isFinite(lo) && isFinite(hi) && (hi - lo) / DAY < 4000) {
       const windows = [];
       for (let s = Math.floor(lo / DAY) * DAY; s <= hi; s += DAY) windows.push(s);
       const parts = new Array(windows.length);
@@ -10138,18 +10159,15 @@ const SB = (function () {
       await Promise.all(Array.from({ length: Math.min(CONCURRENCY, windows.length) }, worker));
       rows = [].concat(...parts);
     } else {
-      // no date range recorded for this batch: fall back to plain paging
-      for (let from = 0; ; from += PAGE) {
-        const data = await getPage(() => sel().eq('batch_id', cb.id)
-          .order('punched_at').order('staff_id').order('direction').range(from, from + PAGE - 1));
-        data.forEach(x => rows.push(toRow(x)));
-        if (data.length < PAGE) break;
-      }
+      rows = await fetchPlain();                // no usable date range for this batch
     }
     // A batch that is still uploading, or whose download came back short, must never be saved here as if it were complete.
     const expected = Number(cb.punches) || 0;
     const cnt = await client.from('biometric_punches').select('staff_id', { count: 'exact', head: true }).eq('batch_id', cb.id);
     const inCloud = (!cnt.error && typeof cnt.count === 'number') ? cnt.count : null;
+    if (inCloud !== null && rows.length < inCloud) {           // the date windows missed rows: fetch the whole batch by plain paging
+      try { const alt = await fetchPlain(); if (alt.length > rows.length) rows = alt; } catch (e) { /* keep what we have; reported below */ }
+    }
     const emptyOk = rows.length === 0 && inCloud === 0 && expected > 0;      // finished upload whose punches now belong to a later, overlapping upload
     if (emptyOk) return 0;
     if (expected === 0 || rows.length === 0 || (inCloud !== null && rows.length < inCloud)) {
@@ -10163,7 +10181,7 @@ const SB = (function () {
       const tx = db.transaction(['punches', 'batches'], 'readwrite');
       const ps = tx.objectStore('punches');
       rows.slice(i, i + 5000).forEach(p => ps.put({ k: bvhKey(p.id, p.ts, p.d), id: p.id, ts: p.ts, d: p.d, b: cb.id }));
-      if (i === 0) tx.objectStore('batches').put({ id: cb.id, file: cb.file_name, at: Date.parse(cb.uploaded_at), punches: cb.punches, staff: cb.staff, minTs: cb.min_ts ? fromCloud(cb.min_ts) : null, maxTs: cb.max_ts ? fromCloud(cb.max_ts) : null });
+      if (i === 0) tx.objectStore('batches').put({ id: cb.id, file: cb.file_name, at: Date.parse(cb.uploaded_at), punches: cb.punches, staff: cb.staff, minTs: isFinite(lo) ? lo : (cb.min_ts ? fromCloud(cb.min_ts) : null), maxTs: isFinite(hi) ? hi : (cb.max_ts ? fromCloud(cb.max_ts) : null) });
       await bvhDone(tx);
       if (rows.length > 5000) msg(`Saving to this browser… ${Math.min(i + 5000, rows.length).toLocaleString()} / ${rows.length.toLocaleString()}`);
     }

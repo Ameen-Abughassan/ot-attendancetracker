@@ -5055,6 +5055,7 @@ el('tabBiometric').addEventListener('click',()=>switchTab('biometric'));
 var OT_DEPT = 'ops';   // 'ops' | 'maint' - which department the Overtime verification screen is working on
 function isMaintBatch(b) { return !!b && (b.dept === 'maint' || /^\s*\[Maintenance\]/i.test(String(b.label || ''))); }   // the label prefix survives cloud sync
 var maintHistoryBatches = [];
+var maintHistoryMap = new Map();   // saved Maintenance OT records (empDateKey -> record); read only by the Under Time tab
 function otResetLoaded() {
   analysis = null; workbook = null; rawFileBuffer = null; blocks = []; otMasterReference = null; currentOtFileName = '';
   el('results').style.display = 'none'; el('filename').style.display = 'none'; el('filename').textContent = '';
@@ -5907,6 +5908,12 @@ async function _refreshOtHistoryCacheInner() {
   }
   maintHistoryBatches = batches.filter(isMaintBatch).sort((a,b) => (a.savedAt||0) - (b.savedAt||0));
   const maintIds = new Set(maintHistoryBatches.map(b => b.batchId));
+  try {   // keep the saved Maintenance records for the Under Time tab; they never enter Operations history, Overview, Claims or Payslips
+    const mSavedAt = new Map(maintHistoryBatches.map(b => [b.batchId, b.savedAt || 0]));
+    const mRecs = records.filter(r => maintIds.has(r.batchId)).sort((a,b) => (mSavedAt.get(a.batchId)||0) - (mSavedAt.get(b.batchId)||0));
+    maintHistoryMap = new Map();
+    mRecs.forEach(r => { otHistorySaFix(r); maintHistoryMap.set(r.empDateKey, r); });   // later-saved batch wins for the same staff + date
+  } catch (e) { maintHistoryMap = new Map(); }
   batches = batches.filter(b => !maintIds.has(b.batchId));          // Operations history only from here on
   records = records.filter(r => !maintIds.has(r.batchId));
   otHistoryBatches = batches.sort((a,b) => (a.savedAt||0) - (b.savedAt||0));
@@ -7797,7 +7804,13 @@ const utbUuid = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
 function utbOtSchedule() {
   const rows = []; let total = 0, withDisp = 0;
   let combined; try { combined = getCombinedMasterLookup(); } catch (e) { return { rows, total, withDisp }; }
-  combined.map.forEach((v, key) => {
+  // Maintenance OT is kept out of the combined (Operations) lookup on purpose; the Under Time tab reads it here:
+  // saved Maintenance batches first, then the Maintenance roster analysed in this session (freshest wins).
+  const srcOf = new Map(); let maintTotal = 0;
+  const sched = new Map(combined.map);
+  try { maintHistoryMap.forEach((v, k) => { sched.set(k, v); srcOf.set(k, 'Maintenance OT (Dispatch)'); }); } catch (e) { /* none saved */ }
+  try { if (otMasterReference && OT_DEPT === 'maint') otMasterReference.map.forEach((v, k) => { sched.set(k, v); srcOf.set(k, 'Maintenance OT (Dispatch)'); }); } catch (e) { /* no live roster */ }
+  sched.forEach((v, key) => {
     total++;
     const sep = key.lastIndexOf('||'); const dateMs = Number(key.slice(sep + 2));
     if (sep < 0 || !isFinite(dateMs)) return;
@@ -7808,9 +7821,10 @@ function utbOtSchedule() {
     if (isUtAllocationExcluded(disp.split('\n')[0].trim())) return;  // leave, training, RDOT … — not a normal scheduled duty
     let end = dt.end; if (end <= dt.start) end += 1440;
     rows.push({ id: key.slice(0, sep), sap: v.sap, name: v.name || '', position: v.position || '', line: v.line || '', dateMs,
-      dutyStartMin: dt.start, dutyEndMin: end, dispatched: disp, fixedMin: getFixedMinutesForPosition(v.position, dateMs), reportUnderMin: null, source: 'OT History (Dispatch)' });
+      dutyStartMin: dt.start, dutyEndMin: end, dispatched: disp, fixedMin: getFixedMinutesForPosition(v.position, dateMs), reportUnderMin: null, source: srcOf.get(key) || 'OT History (Dispatch)' });
   });
-  return { rows, total, withDisp };
+  const maint = rows.filter(r => r.source === 'Maintenance OT (Dispatch)').length;
+  return { rows, total, withDisp, maint };
 }
 
 // All schedule sources merged: stored attendance schedules < attendance report loaded now < OT Dispatch (for the duty TIMES).
@@ -7834,12 +7848,12 @@ async function utbLoadSchedule() {
     }
     put(o);
   });
-  return { rows: [...m.values()], counts: { stored: stored.length, live: live.length, ot: ot.rows.length, otTotal: ot.total, otWithDisp: ot.withDisp } };
+  return { rows: [...m.values()], counts: { stored: stored.length, live: live.length, ot: ot.rows.length, maint: ot.maint || 0, otTotal: ot.total, otWithDisp: ot.withDisp } };
 }
 function utbScheduleHint(c) {
   if (!c) return '';
   if (c.otTotal && !c.otWithDisp) return ' The saved OT History has no Dispatch times — it was saved before this update. Re-validate the OT report and save it to OT History again so the rostered duty times are stored.';
-  if (!c.ot && !c.stored && !c.live) return ' No schedule is available: save the OT report to OT History (Claim tab) or load the attendance report above.';
+  if (!c.ot && !c.stored && !c.live) return ' No schedule is available: save the OT report to OT History (or Maintenance OT History) or load the attendance report above.';
   return '';
 }
 
@@ -8213,7 +8227,9 @@ async function utbRefreshInfo() {
   const c = sch && sch.counts;
   if (c && (c.ot || c.stored || c.live)) {
     const bits = [];
-    if (c.ot) bits.push(`OT History Dispatch (${c.ot.toLocaleString()} duties)`);
+    const opsOt = (c.ot || 0) - (c.maint || 0);
+    if (opsOt > 0) bits.push(`OT History Dispatch (${opsOt.toLocaleString()} duties)`);
+    if (c.maint) bits.push(`Maintenance OT Dispatch (${c.maint.toLocaleString()} duties)`);
     if (c.stored) bits.push(`stored attendance schedules (${c.stored.toLocaleString()} rows)`);
     if (c.live) bits.push(`attendance report loaded now (${c.live.toLocaleString()} rows)`);
     parts.push(`<span><b>Schedule sources:</b> ${bits.join(' · ')}</span>`);

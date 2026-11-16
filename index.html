@@ -2539,8 +2539,8 @@ function normalizePosition(raw) {
 // Fixed hours that CHANGED over time. A duty date BEFORE `before` (UTC midnight, exclusive) uses `min`;
 // from that date on, the current value in POSITION_FIXED_MIN applies. Keep each list in ascending `before` order.
 const POSITION_FIXED_HISTORY = {
-  'SA':            [{ before: Date.UTC(2026, 3, 1), min: 10*60+30 }],   // Station Agent: 10:30 up to 31 Mar 2026, 9:30 from 1 Apr 2026
-  'STATION AGENT': [{ before: Date.UTC(2026, 3, 1), min: 10*60+30 }],
+  'SA':            [{ before: Date.UTC(2026, 2, 24), min: 10*60+30 }],   // Station Agent: 10:30 up to 23 Mar 2026, 9:30 from 24 Mar 2026 (after Eid)
+  'STATION AGENT': [{ before: Date.UTC(2026, 2, 24), min: 10*60+30 }],
 };
 // dateMs = the duty date (UTC ms). Without a date the CURRENT value is returned (the previous behaviour).
 // Resolve a roster position text to a key that exists in the hours tables. Tries the bracketed code first
@@ -2581,6 +2581,9 @@ function getFixedMinutesForPosition(raw, dateMs) {
   }
   return (key && POSITION_FIXED_MIN[key] !== undefined) ? POSITION_FIXED_MIN[key] : FIXED_STANDARD_MIN;
 }
+// On a day with a valid biometric and a readable duty that no rule changes, the roster's OT stays "As Recorded".
+// (No valid biometric = no OT is a separate rule and always applies.) Set to false to stop paying such days.
+const PAY_UNVALIDATED_AS_RECORDED = true;
 const MIN_OT_MIN = 30;                // OT under 30 minutes is not payable
 const MAX_PLAUSIBLE_WORKING_MIN = 14*60; // Working Hrs above this (14:00) is treated as a bad punch, not real biometric data — no OT considered
 const MAX_OT_WORKING_MIN = 12*60;           // 12:00 — OT calculation never treats working hours as more than this, even when Actual/Dispatched implies more
@@ -3689,7 +3692,16 @@ function runAnalysis() {
       // biometric if that's genuinely the case — otherwise it silently
       // passes through with the original file value and this fact is lost.
       const noBiometricForDay = !workingFromActualFallback;
-      const dispatchedDurMin = parseDispatchedDuration(dispatched);
+      // The strict reader needs "CODE<line break>HH:MM - HH:MM". A cell typed on one line, or with no spaces / a long
+      // dash around the times, used to read as "no duty times", so no rule fired and the roster OT stayed as recorded.
+      const dispatchedDurMin = (() => {
+        const strict = parseDispatchedDuration(dispatched);
+        if (strict !== null && strict !== undefined) return strict;
+        if (typeof dispatched !== 'string') return null;
+        const m = dispatched.match(/(\d{1,2}):(\d{2})\s*[-\u2013\u2014]\s*(\d{1,2}):(\d{2})/);
+        if (!m) return null;
+        return ((((+m[3]) * 60 + (+m[4])) - ((+m[1]) * 60 + (+m[2]))) % 1440 + 1440) % 1440;
+      })();
       // RD/RDOT/OT requirement — scoped to the WR-override rule (Rule 2) only.
       // Extended dispatch (Rule 1) is untouched by this and keeps its original logic.
       // "OT"/"ROT" is captured by dispatchHasOtCode(): token-based, wherever it sits in the cell
@@ -3842,9 +3854,16 @@ function runAnalysis() {
       // (A valid punch found later in the Biometric Validation tab re-runs this day with that punch, see below.)
       let zeroedNoBio = false;
       if (noBiometricForDay && correctedMin !== null && correctedMin > 0) { correctedMin = 0; zeroedNoBio = true; }
+      // A day that still matched no rule while carrying recorded OT is shown in the unverifiable list with the reason,
+      // instead of silently passing through as "As Recorded".
+      let zeroedUnvalidated = false;
+      if (!ruleApplied && !changed && otMin !== null && otMin > 0 && !noBiometricForDay) {
+        if (!reasonSkip) reasonSkip = dispatchedDurMin === null ? 'Dispatched duty times not readable — OT not validated' : 'No OT rule applies to this duty — OT not validated';
+        if (!PAY_UNVALIDATED_AS_RECORDED) { correctedMin = 0; zeroedUnvalidated = true; }
+      }
       // "No biometric" is computed once above (noBiometricForDay), for every
       // row+day regardless of which correction rule (if any) applied.
-      const corr = { minutes: correctedMin, changed: changed || zeroedNoBio, rule: ruleApplied, noBiometric: noBiometricForDay };
+      const corr = { minutes: correctedMin, changed: changed || zeroedNoBio || zeroedUnvalidated, rule: ruleApplied, noBiometric: noBiometricForDay };
       let mismatchRec = null, skipRec = null;
 
       if (changed) {
@@ -5849,14 +5868,20 @@ function otHistorySaFix(r) {
     if (!r || !(r.minutes > 0)) return;
     // Rule: no valid biometric = no OT. Records saved earlier with that flag still carry the roster's OT.
     if (r.noBiometric) { r.minutesOriginal = r.minutes; r.minutes = 0; return; }
-    if (normalizeRuleLabel(r.rule) !== 'Extended Duty') return;
+    // 'As Recorded' = no rule validated this day when it was saved: not paid (same rule as a fresh run).
+    if (normalizeRuleLabel(r.rule) === 'As Recorded' && !PAY_UNVALIDATED_AS_RECORDED) { r.minutesOriginal = r.minutes; r.minutes = 0; return; }
+    const ruleLbl2 = normalizeRuleLabel(r.rule);
+    if (ruleLbl2 !== 'Extended Duty') {
+      // SA / Station Agent only (the position whose hours changed): an 'As Recorded' day with an ordinary duty is
+      // capped like a fresh run would, but rest-day call-ins (RD / RDOT / ROT / OT codes) are left alone.
+      if (ruleLbl2 !== 'As Recorded' || /(^|[^A-Z])(RD|RDOT|ROT|OT)([^A-Z0-9]|$)/i.test(String(r.dispatched || ''))) return;
+    }
     const key = resolvePositionKey(r.position);
     if (!POSITION_FIXED_HISTORY[key]) return;
     let ms = rosterDateToMs(r.dateVal);
     if (ms === null && typeof r.empDateKey === 'string') { const t = Number(r.empDateKey.split('||')[1]); if (isFinite(t)) ms = t; }
     if (ms === null) return;
     const fixed = getFixedMinutesForPosition(r.position, ms);
-    if (fixed === getFixedMinutesForPosition(r.position, Date.UTC(2100, 0, 1))) return;   // current hours apply: nothing to fix
     let d = parseDispatchedDuration(r.dispatched);
     if ((d === null || d === undefined || !isFinite(d)) && typeof r.dispatched === 'string') {
       // saved history may hold the duty as "CODE · 05:00 - 15:30" or "CODE 05:00 - 15:30" (line break replaced)

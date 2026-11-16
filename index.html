@@ -10040,6 +10040,11 @@ const SB = (function () {
   const fromCloud = s => Date.parse(String(s).slice(0, 19) + 'Z');
   const loadPushed = () => { try { return new Set(JSON.parse(localStorage.getItem(LS_PUSHED) || '[]')); } catch (e) { return new Set(); } };
   const savePushed = set => { try { localStorage.setItem(LS_PUSHED, JSON.stringify([...set])); } catch (e) {} };
+  // id -> batch marker (uploaded_at|punches) at which this browser's copy was checked against the cloud's row count
+  const LS_BIO_VERIFIED = 'otats.sb.bioVerified.v1';
+  const loadBioVerified = () => { try { return JSON.parse(localStorage.getItem(LS_BIO_VERIFIED) || '{}') || {}; } catch (e) { return {}; } };
+  const saveBioVerified = o => { try { localStorage.setItem(LS_BIO_VERIFIED, JSON.stringify(o)); } catch (e) {} };
+  const bioReady = cb => (Number(cb && cb.punches) || 0) > 0;   // punches = 0 means the upload is still running (or was interrupted)
   const msg = (text, kind) => { const m = document.getElementById('sbSyncMsg'); if (!m) return; m.textContent = text || ''; m.className = 'bvh-msg' + (kind ? ' ' + kind : ''); };
   const fail = (what, error) => new Error(what + ': ' + (error && error.message ? error.message : error));
 
@@ -10052,8 +10057,11 @@ const SB = (function () {
     let minTs = Infinity, maxTs = -Infinity;
     punches.forEach(p => { if (p.ts < minTs) minTs = p.ts; if (p.ts > maxTs) maxTs = p.ts; });
     const b = Object.assign({ file: 'biometric report', at: Date.now() }, meta || {});
+    // The batch row is written FIRST with punches = 0, which marks it "still uploading" so other devices skip it instead of
+    // saving a partial copy. The real count is written only after every punch has reached the cloud and the cloud row count
+    // has been checked, so an interrupted upload can never look like a finished one.
     let r = await client.from('biometric_batches').upsert({
-      id, file_name: b.file, punches: punches.length, staff: staff.size,
+      id, file_name: b.file, punches: 0, staff: staff.size,
       min_ts: isFinite(minTs) ? toCloud(minTs) : null, max_ts: isFinite(maxTs) ? toCloud(maxTs) : null,
       uploaded_at: new Date(b.at).toISOString(),
     }, { onConflict: 'id' });
@@ -10066,6 +10074,10 @@ const SB = (function () {
       if (r.error) throw fail('Could not save punches', r.error);
       if (rows.length > SB_CONFIG.chunk) msg(`Uploading to cloud… ${Math.min(i + SB_CONFIG.chunk, rows.length).toLocaleString()} / ${rows.length.toLocaleString()}`);
     }
+    const cnt = await client.from('biometric_punches').select('staff_id', { count: 'exact', head: true }).eq('batch_id', id);
+    if (!cnt.error && typeof cnt.count === 'number' && cnt.count < rows.length) throw fail('Could not save punches', { message: `only ${cnt.count.toLocaleString()} of ${rows.length.toLocaleString()} punches reached the cloud` });
+    r = await client.from('biometric_batches').update({ punches: rows.length }).eq('id', id);
+    if (r.error) throw fail('Could not finish the upload record', r.error);
   }
   async function localBatchPunches(id) {
     const db = await bvhOpen();
@@ -10084,7 +10096,7 @@ const SB = (function () {
     if (meta) tx.objectStore('batches').put(Object.assign({}, meta, { id: newId }));
     await bvhDone(tx);
   }
-  async function pullBatch(cb) {
+  async function pullBatch(cb, replace) {
     // Fast download: the batch is split into one-day windows on punched_at (each window is a tiny, index-friendly
     // query) and several windows are fetched in parallel. This replaces one long chain of OFFSET pages, whose cost
     // grew with every page. Failed pages are retried with a short back-off.
@@ -10134,6 +10146,18 @@ const SB = (function () {
         if (data.length < PAGE) break;
       }
     }
+    // A batch that is still uploading, or whose download came back short, must never be saved here as if it were complete.
+    const expected = Number(cb.punches) || 0;
+    const cnt = await client.from('biometric_punches').select('staff_id', { count: 'exact', head: true }).eq('batch_id', cb.id);
+    const inCloud = (!cnt.error && typeof cnt.count === 'number') ? cnt.count : null;
+    const emptyOk = rows.length === 0 && inCloud === 0 && expected > 0;      // finished upload whose punches now belong to a later, overlapping upload
+    if (emptyOk) return 0;
+    if (expected === 0 || rows.length === 0 || (inCloud !== null && rows.length < inCloud)) {
+      const e = new Error((cb.file_name || 'Biometric upload') + ': ' + (expected === 0 ? 'still being uploaded, or its upload was interrupted'
+        : rows.length === 0 ? 'no punches could be downloaded' : `only ${rows.length.toLocaleString()} of ${inCloud.toLocaleString()} punches were downloaded`));
+      e.bioIncomplete = true; throw e;
+    }
+    if (replace) await _origDelete(cb.id);            // replace the old local copy only now that the new one is confirmed whole
     const db = await bvhOpen();
     for (let i = 0; i < Math.max(rows.length, 1); i += 5000) {
       const tx = db.transaction(['punches', 'batches'], 'readwrite');
@@ -10185,7 +10209,7 @@ const SB = (function () {
   let olderBusy = false, statusPage = 0;
   const bioRow = (cb, state) => ({ kind: 'bio', id: cb.id, label: cb.file_name || 'Biometric upload', period: [smDay(cb.min_ts ? fromCloud(cb.min_ts) : NaN), smDay(bioEnd(cb))].filter(Boolean).join(' → '), count: cb.punches, state, end: bioEnd(cb) });
   const otRow = (cb, state) => ({ kind: 'ot', id: cb.id, label: String(cb.label || 'OT History').replace(/^\s*\[Maintenance\]\s*/i, ''), period: cb.period || '', count: cb.record_count, state, end: otEnd(cb) });
-  const STATE_TXT = { synced: ['Downloaded', '#15803d'], older: ['In cloud only', '#b45309'], update: ['Update available', '#b91c1c'], busy: ['Downloading…', '#1d4ed8'] };
+  const STATE_TXT = { synced: ['Downloaded', '#15803d'], older: ['In cloud only', '#b45309'], update: ['Update available', '#b91c1c'], busy: ['Downloading…', '#1d4ed8'], uploading: ['Upload in progress', '#b45309'] };
   function renderStatus() {
     const body = document.getElementById('sbStatusBody'); if (!body) return;
     const rows = [...out.status.bio, ...out.status.ot].sort((a, b) => (isFinite(b.end) ? b.end : 0) - (isFinite(a.end) ? a.end : 0));
@@ -10221,8 +10245,7 @@ const SB = (function () {
     row.state = 'busy'; renderStatus();
     try {
       if (kind === 'bio') {
-        if (refresh) await _origDelete(id);
-        await pullBatch(cb); ver['b:' + id] = bioMarker(cb);
+        await pullBatch(cb, refresh); ver['b:' + id] = bioMarker(cb);
         const ps = loadPushed(); ps.add(id); savePushed(ps);
       } else {
         if (refresh) await _origOtDelete(id);
@@ -10311,32 +10334,55 @@ const SB = (function () {
         await pushBatch(newId, meta, punches);
         pushedSet.add(newId); savePushed(pushedSet); pushed++;
       }
+      // Check the copy this browser already holds against the cloud's row count (once per batch version). A copy that is
+      // short - for example saved while its upload was still running - is completed by downloading the batch again.
+      const verified = loadBioVerified(), problems = [];
+      let repaired = 0, uploading = 0;
+      for (const cb of cr.data) {
+        if (!bioReady(cb) || !groups.has(cb.id)) continue;
+        const mk = bioMarker(cb); if (verified[cb.id] === mk) continue;
+        try {
+          const c = await client.from('biometric_punches').select('staff_id', { count: 'exact', head: true }).eq('batch_id', cb.id);
+          if (c.error || typeof c.count !== 'number') continue;            // could not check right now: try again next sync
+          if ((groups.get(cb.id) || 0) < c.count) { await pullBatch(cb, false); repaired++; }
+          verified[cb.id] = mk; saveBioVerified(verified);
+        } catch (e) { if (e && e.bioIncomplete) problems.push(e.message); else console.warn('Biometric batch check failed', e); }
+      }
       if (smart) {
         const cutoff = monthsCutoff(SMART_MONTHS), ver = loadVer(), status = [];
         for (const cb of cr.data) {
-          const mk = bioMarker(cb), key = 'b:' + cb.id, recent = isRecent(bioEnd(cb), cutoff);
+          const mk = bioMarker(cb), key = 'b:' + cb.id, recent = isRecent(bioEnd(cb), cutoff), ready = bioReady(cb);
           let state = 'synced';
-          if (groups.has(cb.id)) {                                         // already stored in this browser: never downloaded again unless the cloud copy changed
+          if (!ready && !groups.has(cb.id)) { state = 'uploading'; uploading++; }
+          else if (groups.has(cb.id)) {                                    // already stored in this browser: never downloaded again unless the cloud copy changed
             if (!ver[key]) ver[key] = mk;                                  // stored before markers existed: adopt the current cloud marker
             else if (ver[key] !== mk) {
-              if (recent) { await _origDelete(cb.id); await pullBatch(cb); ver[key] = mk; pulled++; }
+              if (recent && ready) {
+                try { await pullBatch(cb, true); ver[key] = mk; verified[cb.id] = mk; pulled++; }
+                catch (e) { if (e && e.bioIncomplete) { problems.push(e.message); state = 'update'; } else throw e; }
+              }
               else state = 'update';
             }
-          } else if (recent) { await pullBatch(cb); ver[key] = mk; pushedSet.add(cb.id); pulled++; }
+          } else if (recent) {
+            try { const n = await pullBatch(cb); ver[key] = mk; verified[cb.id] = mk; pushedSet.add(cb.id); if (n > 0) pulled++; }
+            catch (e) { if (e && e.bioIncomplete) { problems.push(e.message); state = 'older'; } else throw e; }
+          }
           else state = 'older';
           status.push(bioRow(cb, state));
         }
-        saveVer(ver); out.status.bio = status; out.cloud.bio = new Map(cr.data.map(b => [b.id, b]));
+        saveBioVerified(verified); saveVer(ver); out.status.bio = status; out.cloud.bio = new Map(cr.data.map(b => [b.id, b]));
       } else {
         for (const cb of cr.data) {
           if (groups.has(cb.id)) continue;
-          await pullBatch(cb); pushedSet.add(cb.id); pulled++;
+          if (!bioReady(cb)) { uploading++; continue; }                    // still being uploaded by another device: picked up by a later sync
+          try { const n = await pullBatch(cb); pushedSet.add(cb.id); verified[cb.id] = bioMarker(cb); saveBioVerified(verified); if (n > 0) pulled++; }
+          catch (e) { if (e && e.bioIncomplete) problems.push(e.message); else throw e; }   // one incomplete upload is reported, the others still download
         }
       }
       savePushed(pushedSet);
       deferredUi();
       BVH.version++;
-      msg(`Cloud sync complete — ${pushed} upload${pushed === 1 ? '' : 's'} sent, ${pulled} downloaded${removed ? `, ${removed} removed (deleted on another device)` : ''}${smart && out.status.bio.some(r => r.state === 'older') ? `, ${out.status.bio.filter(r => r.state === 'older').length} older upload(s) left in the cloud` : ''}. Last sync ${new Date().toLocaleTimeString()}.`, 'ok');
+      msg(`Cloud sync complete — ${pushed} upload${pushed === 1 ? '' : 's'} sent, ${pulled} downloaded${removed ? `, ${removed} removed (deleted on another device)` : ''}${smart && out.status.bio.some(r => r.state === 'older') ? `, ${out.status.bio.filter(r => r.state === 'older').length} older upload(s) left in the cloud` : ''}${repaired ? `, ${repaired} incomplete cop${repaired === 1 ? 'y' : 'ies'} completed` : ''}${uploading ? `, ${uploading} upload${uploading === 1 ? '' : 's'} still in progress on another device` : ''}. Last sync ${new Date().toLocaleTimeString()}.${problems.length ? ' Not complete yet: ' + problems.join('; ') + ' — press “Sync with cloud” again.' : ''}`, problems.length ? 'error' : 'ok');
       try { await bvhRefreshCard(); } catch (e) {}
       try { await utbRefreshInfo(); } catch (e) {}
     } catch (e) {
